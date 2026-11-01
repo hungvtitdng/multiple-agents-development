@@ -1,3 +1,16 @@
+# Release notes - 01/11/2026 (v0.8.1)
+
+## Thay đổi
+- Nhiều repo: **chọn 1 repo chính** (vd `API/`) chứa `.claude/`, `docs/`, `CLAUDE.md`, không còn đặt ở thư mục cha. `REPOS=". ../FrontEnd"` (`.` là repo chính). Docs và board được commit cùng repo chính.
+- `/agent-team:init`: khi thấy ≥ 2 repo chỉ hỏi 1 câu "chọn repo chính", không tạo gì ở thư mục cha. Dặn user mở Claude Code ở repo chính và `/add-dir` repo còn lại.
+- Guard: khóa vùng hiểu đường dẫn ngoài repo chính (`FE_PATHS="../FrontEnd"`); file `*_test.*` nằm ngoài mọi repo khai báo không bị chặn.
+- `code-graph.py`: `REPOS` chấp nhận `.` và `../x`.
+- Init luôn dùng `docs/` viết thường (guard so khớp phân biệt hoa thường).
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update kevin-agent-team`, khởi động lại Claude Code.
+- Project đã init ở thư mục cha (v0.8.0): chuyển `.claude/`, `Docs/` (đổi tên thành `docs/`), mục Agent Team trong `CLAUDE.md`, `code-graph-out/` vào repo chính; sửa config thành `REPOS=". ../FrontEnd"`. Hoặc xoá các thứ này ở thư mục cha rồi chạy lại `/agent-team:init` ở repo chính.
+
 # Release notes - 01/11/2026 (v0.8.0)
 
 ## Thay đổi

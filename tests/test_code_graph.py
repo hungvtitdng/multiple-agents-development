@@ -86,5 +86,22 @@ sh("git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qam", "e", cw
 r = cg("who-uses", "Order", cwd=m)
 check("multi-repo: graph cũ ở be thì cảnh báo", "CẢNH BÁO" in r.stderr and "be@" in r.stderr)
 
+# Repo chính + repo anh em: REPOS=". ../FE"
+t = os.path.realpath(tempfile.mkdtemp())
+for name, rel, body in [("API", "app/models/order.rb", "class Order\nend\n"),
+                        ("FE", "src/view.ts", "export class View { o = 'Order' }\n")]:
+    d = os.path.join(t, name)
+    os.makedirs(os.path.dirname(os.path.join(d, rel)))
+    open(os.path.join(d, rel), "w").write(body)
+    sh("git", "init", "-q", "-b", "main", cwd=d)
+    sh("git", "-c", "user.email=t@t", "-c", "user.name=t", "add", ".", cwd=d)
+    sh("git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "i", cwd=d)
+os.makedirs(os.path.join(t, "API/.claude"))
+open(os.path.join(t, "API/.claude/agent-team.config"), "w").write('REPOS=". ../FE"\n')
+r = cg("build", cwd=os.path.join(t, "API"))
+check("repo chính + anh em: build 2 file", r.returncode == 0 and "2 file" in r.stdout)
+r = cg("who-uses", "Order", cwd=os.path.join(t, "API"))
+check("repo chính + anh em: FE dùng Order của API", "../FE/src/view.ts" in r.stdout)
+
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

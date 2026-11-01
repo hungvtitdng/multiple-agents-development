@@ -84,11 +84,12 @@ def build(root, repos):
     files, owner = set(), {}
     for r in repos:
         _, listing = sh("git", "-C", os.path.join(root, r), "ls-files")
+        pre = "" if r in ("", ".") else r
         for f in listing.splitlines():
-            p = os.path.join(r, f) if r else f
+            p = os.path.join(pre, f) if pre else f
             if os.path.splitext(p)[1] in EXTS and not SKIP_RE.search(p):
                 files.add(p)
-                owner[p] = r
+                owner[p] = pre
     text, defs = {}, defaultdict(set)
     for f in files:
         try:

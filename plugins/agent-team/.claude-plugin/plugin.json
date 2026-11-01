@@ -1,6 +1,6 @@
 {
   "name": "agent-team",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Đội 12 agent (Lead, BA, SA, TA, BE, FE, Tester, 4 Reviewer, Security) debate để chọn best solution rồi tự code, test, review. Chọn model theo vai trò để giảm token.",
   "author": { "name": "Kevin" },
   "license": "MIT",

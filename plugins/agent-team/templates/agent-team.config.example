@@ -2,9 +2,10 @@
 
 BASE_BRANCH=develop
 
-# Nhiều repo con: mở Claude Code ở thư mục cha (không cần là repo), liệt kê thư mục repo con.
-# Để trống = 1 repo (chạy như cũ). Mỗi repo con phải có .git riêng.
-# Khi dùng REPOS, các đường dẫn bên dưới tính từ thư mục cha, vd BE_PATHS="be" FE_PATHS="fe".
+# Nhiều repo: file này nằm trong repo chính ("."). Liệt kê repo chính + repo khác (đường dẫn từ repo chính).
+# Mở Claude Code ở repo chính, thêm repo còn lại bằng /add-dir.
+# Ví dụ: REPOS=". ../FrontEnd"  BE_PATHS="app lib"  FE_PATHS="../FrontEnd"  TEST_PATHS="spec ../FrontEnd/e2e"
+# Để trống = 1 repo (chạy như cũ). Các đường dẫn bên dưới tính từ repo chính.
 REPOS=
 
 # Đường dẫn code (guard dùng để khóa: dev chỉ sửa BE/FE của mình, Tester chỉ sửa test)

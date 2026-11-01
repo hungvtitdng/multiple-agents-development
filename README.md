@@ -97,18 +97,18 @@ Bật log để xem hook có nhận `agent_type` không: `AGENT_TEAM_DEBUG=1` �
 
 ## Nhiều repo (BE và FE là 2 repo riêng)
 
+Chọn **1 repo chính** (thường là API/BE) chứa `.claude/`, `docs/`, `CLAUDE.md`. Repo còn lại tham chiếu bằng đường dẫn từ repo chính.
 ```
-Tên dự án/                 ← mở Claude Code ở đây (có thể không phải repo)
-├── .claude/agent-team.config   REPOS="be fe"  BE_PATHS="be"  FE_PATHS="fe"
-├── docs/
-│   ├── domain/            ← knowledge base (BA ghi, mọi role đọc)
-│   └── agent-tasks/       ← board chung của cả BE và FE
-├── be/  (.git riêng)      ← branch agent/<task-id> riêng
-└── fe/  (.git riêng)      ← branch agent/<task-id> riêng
+3.KidTime/                  (thư mục cha, plugin không tạo gì ở đây)
+├── API/  ← repo chính, mở Claude Code ở đây
+│   ├── .claude/agent-team.config   REPOS=". ../FrontEnd"  FE_PATHS="../FrontEnd"
+│   ├── docs/domain/        knowledge base (BA ghi, mọi role đọc)
+│   └── docs/agent-tasks/   board chung của BE và FE
+└── FrontEnd/ ← repo thứ hai, thêm bằng /add-dir ../FrontEnd
 ```
-- Một team, một board; API contract chốt ngay trên board. Commit/push từng repo bằng `git -C be ...`.
-- Guard chặn commit/push vào main/develop ở từng repo (hiểu `git -C` và `cd be && git ...`), hoàn tác diff theo từng repo.
-- Khuyên `git init` ở thư mục cha để lưu `docs/` + `.claude/` (thêm `be/`, `fe/` vào `.gitignore` của nó).
+- Một team, một board; API contract chốt ngay trên board. Mỗi repo có branch `agent/<task-id>` riêng, commit/push trong từng repo (`git -C ../FrontEnd ...`).
+- `/agent-team:init` hỏi chọn repo chính khi thấy ≥ 2 repo.
+- Guard chặn commit/push vào main/develop ở từng repo (hiểu `git -C` và `cd`), hoàn tác diff theo từng repo, khóa vùng cả với đường dẫn `../FrontEnd`.
 - `REPOS` trống = 1 repo, chạy như cũ.
 
 ## Code graph (tự có, không cài gói ngoài)

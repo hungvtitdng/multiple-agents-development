@@ -15,8 +15,8 @@ Làm đúng playbook dưới đây. **Không hỏi lại user**, team tự bàn 
    - Đọc `docs/domain/` (knowledge base). Phần liên quan task → tóm tắt 3-5 dòng vào TASK.md, các role tự đọc thêm.
 2. `git status` phải sạch. `git fetch`, tạo branch `agent/<task-id>` từ `origin/$BASE_BRANCH`.
    - `<task-id>` = `YYYYMMDD-<slug-ngắn>`.
-   - `REPOS` trống = 1 repo. Có `REPOS` (vd `be fe`) = làm bước này **trong từng repo con** (`git -C be ...`, `git -C fe ...`). Chỉ tạo branch ở repo task thực sự đụng tới, ghi danh sách repo vào TASK.md.
-   - Thư mục cha có thể không phải repo: board và `docs/` nằm ở đó, không có branch.
+   - `REPOS` trống = 1 repo. Có `REPOS` (vd `be fe`) = làm bước này **trong từng repo con** (`git -C ../FrontEnd ...`; repo chính là `.`). Chỉ tạo branch ở repo task thực sự đụng tới, ghi danh sách repo vào TASK.md.
+   - Board và `docs/` nằm trong repo chính (repo đầu tiên trong `REPOS`, thường là API/BE), nên được commit cùng branch của repo đó.
 3. Tạo:
    - `docs/agent-tasks/<task-id>/TASK.md` từ `.claude/agent-team/templates/TASK.md`
    - `docs/agent-tasks/<task-id>/board/SUMMARY.md` từ `.claude/agent-team/templates/SUMMARY.md`
@@ -146,8 +146,8 @@ Trong TASK.md, mục "Tổng hợp ý kiến theo role": mỗi role tham gia 1 d
 ## 7. Git
 - Commit sau mỗi giai đoạn: `[<role>] <task-id>: <mô tả ngắn>`. Board được commit cùng.
 - Push: `git push -u origin agent/<task-id>`.
-- Nhiều repo (`REPOS`): commit/push **trong từng repo con** (`git -C be commit ...`, `git -C fe push -u origin agent/<task-id>`). Mỗi repo chỉ commit file của repo đó.
-- `docs/` ở thư mục cha: commit nếu thư mục cha là repo riêng (docs repo), không thì ghi chú cho user trong báo cáo.
+- Nhiều repo (`REPOS`): commit/push **trong từng repo con** (`git commit ...` ở repo chính, `git -C ../FrontEnd push -u origin agent/<task-id>`). Mỗi repo chỉ commit file của repo đó.
+- Board và `docs/` commit cùng repo chính.
 - Không push/merge vào main/develop, không force push, không tạo PR. (Hook chặn.)
 - Hook chặn push nếu diff có secret hoặc file `.env`, key, dump DB.
 

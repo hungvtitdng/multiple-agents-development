@@ -311,5 +311,53 @@ multi_post("multi post: BE dev sửa be/app thì giữ", "backend-dev", "be/app/
 multi_post("multi post: FE dev ghi be/app bị hoàn tác", "frontend-dev", "be/app/a.rb", "HACK\n", B, lambda: rd("be/app/a.rb") == "y\n")
 multi_post("multi post: reviewer ghi be/ bị hoàn tác", "code-reviewer", "be/app/new.rb", "x\n", B, lambda: not os.path.exists(os.path.join(mr, "be/app/new.rb")))
 
+# ---- Repo chính (API) + repo anh em (../FrontEnd), docs/.claude nằm trong repo chính ----
+sib = os.path.realpath(tempfile.mkdtemp())
+for name, f in (("API", "app/a.rb"), ("FrontEnd", "src/a.ts")):
+    d = os.path.join(sib, name)
+    os.makedirs(os.path.dirname(os.path.join(d, f)))
+    sh(d, "git", "init", "-q", "-b", "develop")
+    sh(d, "git", "config", "user.email", "t@t")
+    sh(d, "git", "config", "user.name", "t")
+    open(os.path.join(d, f), "w").write("x\n")
+    sh(d, "git", "add", ".")
+    sh(d, "git", "commit", "-qm", "init")
+api = os.path.join(sib, "API")
+os.makedirs(os.path.join(api, ".claude"))
+open(os.path.join(api, ".claude/agent-team.config"), "w").write(
+    'REPOS=". ../FrontEnd"\nBE_PATHS="app"\nFE_PATHS="../FrontEnd"\nTEST_PATHS="spec ../FrontEnd/e2e"\n')
+scases = [
+    ("sibling: FE dev sửa ../FrontEnd", "Edit", {"file_path": "../FrontEnd/src/a.ts"}, "frontend-dev", api, OK),
+    ("sibling: BE dev sửa ../FrontEnd bị chặn", "Edit", {"file_path": "../FrontEnd/src/a.ts"}, "backend-dev", api, B),
+    ("sibling: FE dev sửa app của API bị chặn", "Edit", {"file_path": "app/a.rb"}, "frontend-dev", api, B),
+    ("sibling: FE dev sửa .test.ts ở FrontEnd bị chặn", "Edit", {"file_path": "../FrontEnd/src/a.test.ts"}, "frontend-dev", api, B),
+    ("sibling: tester sửa .test.ts ở FrontEnd", "Write", {"file_path": "../FrontEnd/src/a.test.ts"}, "tester", api, OK),
+    ("sibling: dev sửa file _test ngoài mọi repo thì không chặn", "Write", {"file_path": "/tmp/x_test.py"}, "backend-dev", api, OK),
+    ("sibling: reviewer sửa ../FrontEnd bị chặn", "Write", {"file_path": "../FrontEnd/src/a.ts"}, "code-reviewer", api, B),
+    ("sibling: git -C ../FrontEnd push develop", "Bash", {"command": "git -C ../FrontEnd push origin develop"}, "frontend-dev", api, B),
+    ("sibling: git -C ../FrontEnd status", "Bash", {"command": "git -C ../FrontEnd status"}, "code-reviewer", api, OK),
+    ("sibling: BA ghi docs/domain trong repo chính", "Write", {"file_path": "docs/domain/glossary.md"}, "business-analyst", api, OK),
+    ("sibling: dev ghi docs/domain bị chặn", "Write", {"file_path": "docs/domain/glossary.md"}, "backend-dev", api, B),
+]
+for c in scases:
+    check(*c)
+total += len(scases)
+
+
+def sib_post(desc, role, path, text, exp_code, expect):
+    global fail, total
+    run("Bash", {"command": "bundle exec rspec"}, role, api, session=desc)
+    open(path, "w").write(text)
+    got = run("Bash", {"command": "bundle exec rspec"}, role, api, mode="post", session=desc)
+    ok = got == exp_code and expect()
+    fail += not ok
+    total += 1
+    print(f"{'PASS' if ok else 'FAIL'}  {desc}  (expect {exp_code}, got {got})")
+
+
+fe_file = os.path.join(sib, "FrontEnd/src/a.ts")
+sib_post("sibling post: BE dev ghi FrontEnd bị hoàn tác", "backend-dev", fe_file, "HACK\n", B, lambda: open(fe_file).read() == "x\n")
+sib_post("sibling post: FE dev ghi FrontEnd thì giữ", "frontend-dev", fe_file, "y\n", OK, lambda: open(fe_file).read() == "y\n")
+
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

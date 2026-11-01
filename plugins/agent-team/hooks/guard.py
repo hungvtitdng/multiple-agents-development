@@ -364,7 +364,7 @@ def load_zones(cwd):
         m = re.match(r"^\s*(BE_PATHS|FE_PATHS|TEST_PATHS)=(.*)$", line)
         if m:
             val = m.group(2).split("#")[0].strip().strip("'\"")
-            zones[keys[m.group(1)]] = [p.strip("/") for p in val.split() if p.upper() != "TODO"]
+            zones[keys[m.group(1)]] = [os.path.normpath(p.strip("/")) for p in val.split() if p.upper() != "TODO"]
     return d, zones
 
 
@@ -386,6 +386,8 @@ def repo_tops(cwd):
 
 def zone_of(rel, zones):
     under = lambda ps: any(rel == p or rel.startswith(p + "/") for p in ps)
+    if rel.startswith("..") and not under(zones["be"] + zones["fe"] + zones["test"]):
+        return None  # ngoài root và không thuộc repo nào khai báo
     if under(zones["test"]) or TEST_FILE_RE.search(rel):
         return "test"
     if under(zones["be"]):
@@ -403,8 +405,6 @@ def check_owner(path, cwd, role):
         return
     root, zones = loaded
     rel = os.path.relpath(full_path(path, cwd), root).replace("\\", "/")
-    if rel.startswith(".."):
-        return
     z = zone_of(rel, zones)
     if z and z != mine:
         block(f"role '{role}' chỉ được sửa vùng '{mine}', '{rel}' thuộc vùng '{z}'. Post lên board và @ chủ vùng")
@@ -449,8 +449,6 @@ def check_stage(path, cwd):
         return
     root, zones = loaded
     rel = os.path.relpath(full_path(path, cwd), root).replace("\\", "/")
-    if rel.startswith(".."):
-        return
     z = zone_of(rel, zones)
     if z and z not in sz:
         block(f"giai đoạn hiện tại không được sửa vùng '{z}' ('{rel}'). Cần sửa → báo Lead đổi giai đoạn")
