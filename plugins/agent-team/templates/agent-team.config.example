@@ -2,7 +2,7 @@
 
 BASE_BRANCH=develop
 
-# Đường dẫn code (để agent biết phạm vi được sửa)
+# Đường dẫn code (guard dùng để khóa: dev chỉ sửa BE/FE của mình, Tester chỉ sửa test)
 BE_PATHS="app lib config db/migrate"
 FE_PATHS="frontend"
 TEST_PATHS="spec test e2e"

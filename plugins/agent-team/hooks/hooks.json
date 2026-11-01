@@ -1,5 +1,5 @@
 {
-  "description": "agent-team guard: chặn secret, push sai branch, migrate DB thật, role chỉ đọc sửa code",
+  "description": "agent-team guard: chặn secret, push sai branch, migrate DB thật, role ghi ngoài vùng (chặn trước + hoàn tác theo diff sau)",
   "hooks": {
     "PreToolUse": [
       {
@@ -8,6 +8,18 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/guard.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/guard.py\" post",
             "timeout": 30
           }
         ]

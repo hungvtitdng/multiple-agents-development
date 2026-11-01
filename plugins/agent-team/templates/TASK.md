@@ -27,7 +27,7 @@
 | Phương án | Role | Rủi ro / lỗ hổng | Mức | Trả lời / xử lý |
 |---|---|---|---|---|
 
-## 5. Bảng chấm điểm (tổng hợp từ `.agent-team/scores/`, mỗi role chấm độc lập)
+## 5. Bảng chấm điểm (Lead tổng hợp từ điểm các role gửi riêng, mỗi role chấm độc lập)
 | Tiêu chí | Trọng số | A | B | C |
 |---|---|---|---|---|
 | Đáp ứng AC | ×3 | | | |

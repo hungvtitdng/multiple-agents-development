@@ -9,11 +9,12 @@ import tempfile
 GUARD = os.path.join(os.path.dirname(__file__), "..", "plugins", "agent-team", "hooks", "guard.py")
 
 
-def run(tool, tool_input, role=None, cwd=None):
-    data = {"tool_name": tool, "tool_input": tool_input, "cwd": cwd or os.getcwd()}
+def run(tool, tool_input, role=None, cwd=None, mode=None, session="s1"):
+    data = {"tool_name": tool, "tool_input": tool_input, "cwd": cwd or os.getcwd(), "session_id": session}
     if role:
         data["agent_type"] = f"agent-team:{role}"
-    r = subprocess.run([sys.executable, GUARD], input=json.dumps(data), capture_output=True, text=True)
+    args = [mode] if mode else []
+    r = subprocess.run([sys.executable, GUARD, *args], input=json.dumps(data), capture_output=True, text=True)
     return r.returncode
 
 
@@ -97,15 +98,15 @@ sh(repo, "git", "commit", "-qm", "ok")
 cases.append(("push sạch từ agent/*", "Bash", {"command": "git push -u origin agent/t1"}, None, repo, OK))
 cases.append(("commit trên agent/*", "Bash", {"command": "git commit -m x"}, "backend-dev", repo, OK))
 
-# Debate board + điểm chấm
+# Debate board + .agent-team
 proj = tempfile.mkdtemp()
 board = os.path.join(proj, "docs/agent-tasks/T1/board")
 os.makedirs(board)
 open(os.path.join(board, "S2-R1-security-1.md"), "w").write("x")
-os.makedirs(os.path.join(proj, ".agent-team/scores/T1"))
-open(os.path.join(proj, ".agent-team/scores/T1/backend-dev.md"), "w").write("x")
+os.makedirs(os.path.join(proj, ".agent-team/clones"))
+open(os.path.join(proj, ".agent-team/clones/T1.state"), "w").write("x")
 bp = "docs/agent-tasks/T1/board/"
-sp = ".agent-team/scores/T1/"
+sp = ".agent-team/clones/"
 cases += [
     ("post bài của mình", "Write", {"file_path": bp + "S2-R1-security-2.md"}, "security", proj, OK),
     ("dev post bài của mình", "Write", {"file_path": bp + "S2-R2-backend-dev-1.md"}, "backend-dev", proj, OK),
@@ -116,20 +117,136 @@ cases += [
     ("role sửa TASK.md", "Edit", {"file_path": "docs/agent-tasks/T1/TASK.md"}, "backend-dev", proj, B),
     ("Lead ghi SUMMARY.md", "Write", {"file_path": bp + "SUMMARY.md"}, None, proj, OK),
     ("đọc board", "Read", {"file_path": bp + "S2-R1-security-1.md"}, "tester", proj, OK),
-    ("ghi điểm của mình", "Write", {"file_path": sp + "security.md"}, "security", proj, OK),
-    ("ghi điểm tên người khác", "Write", {"file_path": sp + "tester.md"}, "security", proj, B),
-    ("sửa điểm đã chấm", "Write", {"file_path": sp + "backend-dev.md"}, "backend-dev", proj, B),
-    ("đọc điểm người khác", "Read", {"file_path": sp + "backend-dev.md"}, "security", proj, B),
-    ("grep thư mục điểm", "Grep", {"path": ".agent-team/scores"}, "tester", proj, B),
-    ("cat điểm bằng Bash", "Bash", {"command": "cat .agent-team/scores/T1/*.md"}, "backend-dev", proj, B),
-    ("Lead đọc điểm", "Read", {"file_path": sp + "backend-dev.md"}, None, proj, OK),
+    ("ghi vào .agent-team", "Write", {"file_path": sp + "x.state"}, "security", proj, B),
+    ("đọc state .agent-team", "Read", {"file_path": sp + "T1.state"}, "security", proj, B),
+    ("grep .agent-team", "Grep", {"path": ".agent-team"}, "tester", proj, B),
+    ("cat .agent-team bằng Bash", "Bash", {"command": "cat .agent-team/clones/*.state"}, "backend-dev", proj, B),
+    ("Lead đọc .agent-team", "Read", {"file_path": sp + "T1.state"}, None, proj, OK),
     ("ghi board bằng Bash", "Bash", {"command": "echo hi > docs/agent-tasks/T1/board/S2-R1-backend-dev-9.md"}, "backend-dev", proj, B),
     ("ls board bằng Bash", "Bash", {"command": "ls -tr docs/agent-tasks/T1/board"}, "code-reviewer", proj, OK),
     ("dev chạy script clone", "Bash", {"command": ".claude/agent-team/agent-db-clone.sh verify T1"}, "backend-dev", proj, OK),
 ]
 
+# Khóa vùng ghi theo config
+zp = tempfile.mkdtemp()
+os.makedirs(os.path.join(zp, ".claude"))
+open(os.path.join(zp, ".claude/agent-team.config"), "w").write(
+    'BE_PATHS="app lib config db/migrate"\nFE_PATHS="frontend"\nTEST_PATHS="spec test e2e"\n')
+cases += [
+    ("BE dev sửa app", "Edit", {"file_path": "app/a.rb"}, "backend-dev", zp, OK),
+    ("BE dev sửa spec", "Edit", {"file_path": "spec/a_spec.rb"}, "backend-dev", zp, B),
+    ("BE dev sửa frontend", "Write", {"file_path": "frontend/x.ts"}, "backend-dev", zp, B),
+    ("FE dev sửa frontend", "Edit", {"file_path": "frontend/x.ts"}, "frontend-dev", zp, OK),
+    ("FE dev sửa app", "Edit", {"file_path": "app/a.rb"}, "frontend-dev", zp, B),
+    ("FE dev sửa file .test.ts", "Edit", {"file_path": "frontend/src/a.test.ts"}, "frontend-dev", zp, B),
+    ("Tester sửa spec", "Write", {"file_path": "spec/a_spec.rb"}, "tester", zp, OK),
+    ("Tester sửa .test.ts trong frontend", "Write", {"file_path": "frontend/src/a.test.ts"}, "tester", zp, OK),
+    ("Tester sửa app", "Edit", {"file_path": "app/a.rb"}, "tester", zp, B),
+    ("dev sửa release-notes", "Edit", {"file_path": "release-notes.md"}, "backend-dev", zp, OK),
+    ("dev ghi spec bằng >", "Bash", {"command": "echo x > spec/a_spec.rb"}, "backend-dev", zp, B),
+    ("Tester sed -i code", "Bash", {"command": "sed -i 's/a/b/' app/a.rb"}, "tester", zp, B),
+    ("dev cat spec", "Bash", {"command": "cat spec/a_spec.rb"}, "backend-dev", zp, OK),
+    ("dev chạy rspec", "Bash", {"command": "bundle exec rspec 2>&1 | tail -5"}, "backend-dev", zp, OK),
+    ("Tester ghi /tmp", "Bash", {"command": "echo x > /tmp/o"}, "tester", zp, OK),
+    ("Lead sửa spec", "Edit", {"file_path": "spec/a_spec.rb"}, None, zp, OK),
+    ("requirement-reviewer sửa code", "Edit", {"file_path": "app/a.rb"}, "requirement-reviewer", zp, B),
+    ("dev chmod mở khóa", "Bash", {"command": "chmod -R u+w spec"}, "backend-dev", zp, B),
+    ("dev sửa spec khi chưa có config", "Edit", {"file_path": "spec/a_spec.rb"}, "backend-dev", tempfile.mkdtemp(), OK),
+]
+
 for c in cases:
     check(*c)
 total += len(cases)
+# PostToolUse: ghi ngoài vùng bằng Bash (lách mẫu lệnh) phải bị hoàn tác theo diff
+pr = make_repo()
+os.makedirs(os.path.join(pr, ".claude"))
+open(os.path.join(pr, ".claude/agent-team.config"), "w").write('BE_PATHS="app"\nTEST_PATHS="spec"\n')
+os.makedirs(os.path.join(pr, "app"))
+os.makedirs(os.path.join(pr, "spec"))
+open(os.path.join(pr, "app/a.rb"), "w").write("a = 1\n")
+open(os.path.join(pr, "spec/a_spec.rb"), "w").write("s = 1\n")
+sh(pr, "git", "add", "app", "spec")
+sh(pr, "git", "commit", "-qm", "base")
+
+
+def post_case(desc, role, mutate, exp_code, expect):
+    global fail, total
+    run("Bash", {"command": "bundle exec rspec"}, role, pr, session=desc)
+    mutate()
+    got = run("Bash", {"command": "bundle exec rspec"}, role, pr, mode="post", session=desc)
+    ok = got == exp_code and expect()
+    fail += not ok
+    total += 1
+    print(f"{'PASS' if ok else 'FAIL'}  {desc}  (expect {exp_code}, got {got})")
+
+
+def w(rel, text):
+    open(os.path.join(pr, rel), "w").write(text)
+
+
+def r(rel):
+    return open(os.path.join(pr, rel)).read() if os.path.exists(os.path.join(pr, rel)) else None
+
+
+post_case("post: dev sửa spec đã track bị hoàn tác", "backend-dev", lambda: w("spec/a_spec.rb", "HACK\n"), B,
+          lambda: r("spec/a_spec.rb") == "s = 1\n")
+post_case("post: dev tạo spec mới bị xoá", "backend-dev", lambda: w("spec/new_spec.rb", "x\n"), B,
+          lambda: r("spec/new_spec.rb") is None)
+post_case("post: dev sửa app thì giữ", "backend-dev", lambda: w("app/a.rb", "a = 2\n"), OK,
+          lambda: r("app/a.rb") == "a = 2\n")
+post_case("post: dev sửa tiếp spec đã dirty sẵn của tester", "tester", lambda: w("spec/a_spec.rb", "T1\n"), OK,
+          lambda: r("spec/a_spec.rb") == "T1\n")
+post_case("post: dev ghi đè spec đang dirty, trả về bản của tester", "backend-dev", lambda: w("spec/a_spec.rb", "HACK2\n"), B,
+          lambda: r("spec/a_spec.rb") == "T1\n")
+post_case("post: tester sửa app bị hoàn tác", "tester", lambda: w("app/a.rb", "TESTER\n"), B,
+          lambda: r("app/a.rb") == "a = 1\n" or r("app/a.rb") == "a = 2\n")
+post_case("post: reviewer ghi file ngoài board bị xoá", "code-reviewer", lambda: w("notes.txt", "x\n"), B,
+          lambda: r("notes.txt") is None)
+post_case("post: Lead không bị theo dõi", None, lambda: w("spec/lead_spec.rb", "x\n"), OK,
+          lambda: r("spec/lead_spec.rb") == "x\n")
+
+# Chặn theo giai đoạn (không cần role)
+sp2 = tempfile.mkdtemp()
+os.makedirs(os.path.join(sp2, ".claude"))
+os.makedirs(os.path.join(sp2, ".agent-team"))
+open(os.path.join(sp2, ".claude/agent-team.config"), "w").write('BE_PATHS="app"\nFE_PATHS="frontend"\nTEST_PATHS="spec"\n')
+
+
+def at_stage(stage, desc, tool, ti, role, exp):
+    global fail, total
+    sf = os.path.join(sp2, ".agent-team/stage")
+    if stage:
+        open(sf, "w").write(stage + "\n")
+    elif os.path.exists(sf):
+        os.remove(sf)
+    got = run(tool, ti, role, sp2)
+    fail += got != exp
+    total += 1
+    print(f"{'PASS' if got == exp else 'FAIL'}  [{stage or '-'}] {desc}  (expect {exp}, got {got})")
+
+
+at_stage("S3", "dev sửa app", "Edit", {"file_path": "app/a.rb"}, "backend-dev", OK)
+at_stage("S3", "tester sửa spec bị chặn", "Edit", {"file_path": "spec/a_spec.rb"}, "tester", B)
+at_stage("S3", "dev sửa spec bị chặn", "Write", {"file_path": "spec/a_spec.rb"}, "backend-dev", B)
+at_stage("S3", "agent không rõ role sửa spec bị chặn", "Write", {"file_path": "spec/a_spec.rb"}, None, B)
+at_stage("S3", "Bash ghi spec bằng >, không rõ role", "Bash", {"command": "echo x > spec/a_spec.rb"}, None, B)
+at_stage("S3", "Bash python ghi spec: vẫn qua Pre (Post sẽ hoàn tác)", "Bash", {"command": "python3 w.py"}, None, OK)
+at_stage("S3", "sửa release-notes", "Edit", {"file_path": "release-notes.md"}, None, OK)
+at_stage("S4", "tester sửa spec", "Write", {"file_path": "spec/a_spec.rb"}, "tester", OK)
+at_stage("S4", "dev sửa app bị chặn", "Edit", {"file_path": "app/a.rb"}, "backend-dev", B)
+at_stage("S4", "không rõ role sửa app bị chặn", "Edit", {"file_path": "app/a.rb"}, None, B)
+at_stage("S1", "dev sửa app khi debate bị chặn", "Edit", {"file_path": "app/a.rb"}, "backend-dev", B)
+at_stage("S1", "post board vẫn được", "Write", {"file_path": "docs/agent-tasks/T1/board/S1-R1-backend-dev-1.md"}, "backend-dev", OK)
+at_stage("S5", "S5 không giới hạn theo giai đoạn", "Edit", {"file_path": "app/a.rb"}, "backend-dev", OK)
+at_stage(None, "không có file stage", "Edit", {"file_path": "spec/a_spec.rb"}, None, OK)
+
+# Post + stage: ghi sai vùng khi không biết role vẫn bị hoàn tác
+os.makedirs(os.path.join(pr, ".agent-team"), exist_ok=True)
+open(os.path.join(pr, ".agent-team/stage"), "w").write("S4\n")
+post_case("post+stage S4: ghi app khi không rõ role bị hoàn tác", None, lambda: w("app/a.rb", "SNEAK\n"), B,
+          lambda: r("app/a.rb") == "a = 2\n" or r("app/a.rb") == "a = 1\n")
+post_case("post+stage S4: ghi spec khi không rõ role được giữ", None, lambda: w("spec/b_spec.rb", "ok\n"), OK,
+          lambda: r("spec/b_spec.rb") == "ok\n")
+
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

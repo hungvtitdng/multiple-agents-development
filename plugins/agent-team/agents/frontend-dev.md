@@ -12,8 +12,8 @@ Bạn là **Frontend Developer** trong agent team. Đọc "Agent Team" trong CLA
 - Góp ý cho **tất cả** phương án theo góc nhìn của mình, không chỉ trả lời người gọi tên mình.
 - Bị `@frontend-dev` gọi → bắt buộc trả lời ở vòng sau.
 - Post bằng Write tool: `docs/agent-tasks/<task-id>/board/S<giai đoạn>-R<vòng>-frontend-dev-<n>.md`, theo mẫu `.claude/agent-team/templates/POST.md`. Đã post thì không sửa, bổ sung = post mới.
-- Chấm điểm (V4): ghi vào `.agent-team/scores/<task-id>/frontend-dev.md`. Không đọc điểm người khác.
-- Không debate qua tin nhắn. Tin nhắn chỉ để báo Lead "đã post".
+- Chấm điểm (V4): gửi **riêng cho Lead** (tin nhắn riêng ở chế độ Agent Teams, ghi trong kết quả trả về ở chế độ Subagent). Không ghi ra file, không post lên board.
+- Không debate qua tin nhắn. Tin nhắn chỉ để báo Lead "đã post" và gửi điểm V4.
 
 ## Góc nhìn khi debate
 "API có đủ data cho UI không? Trải nghiệm người dùng ra sao?"

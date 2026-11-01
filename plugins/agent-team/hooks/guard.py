@@ -4,16 +4,23 @@ import json
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
+import time
 
 PROTECTED_BRANCHES = {"main", "master", "develop"}
 READONLY_ROLES = {
     "business-analyst", "solution-architect", "technical-architect",
-    "code-reviewer", "solution-reviewer", "test-reviewer", "security",
+    "code-reviewer", "solution-reviewer", "test-reviewer", "requirement-reviewer", "security",
 }
 DOCS_DIR = "docs/agent-tasks/"
-SCORES_DIR = ".agent-team/scores/"
+OWNER_ZONE = {"backend-dev": "be", "frontend-dev": "fe", "tester": "test"}
+TEST_FILE_RE = re.compile(r"(^|/)(__tests__|__mocks__)/|(_spec|_test)\.\w+$|\.(spec|test)\.\w+$|(^|/)test_[^/]+\.py$")
+STAGE_ZONES = {"S1": set(), "S2": set(), "S3": {"be", "fe"}, "S4": {"test"}}
+PERM_CMDS = {"chmod", "chown", "chgrp", "setfacl", "chattr"}
+SNAP_MAX = 2_000_000
+WRITE_CMDS = {"tee", "mv", "cp", "rm", "touch", "truncate", "install", "dd", "ln"}
 HIDDEN_RE = re.compile(r"(^|[\s/'\"=])\.agent-team(/|\s|$|['\"])")
 CLONE_SCRIPT = "agent-db-clone"
 
@@ -300,11 +307,241 @@ def full_path(path, cwd):
 
 def check_readonly_write(path, cwd, role):
     full = full_path(path, cwd) + "/"
-    if "/" + DOCS_DIR not in full and "/" + SCORES_DIR not in full:
-        block(f"role '{role}' chỉ được post vào board hoặc ghi điểm của mình")
+    if "/" + DOCS_DIR not in full:
+        block(f"role '{role}' chỉ được post vào board")
 
 
-# ---------- debate board + điểm chấm (mọi role, trừ Lead) ----------
+# ---------- khóa vùng ghi: dev chỉ sửa BE/FE của mình, Tester chỉ sửa test ----------
+
+def find_root(cwd):
+    """Thư mục chứa .claude/agent-team.config (đi ngược từ cwd). None nếu không có."""
+    d = os.path.abspath(cwd)
+    while True:
+        if os.path.isfile(os.path.join(d, ".claude", "agent-team.config")):
+            return d
+        if os.path.dirname(d) == d:
+            return None
+        d = os.path.dirname(d)
+
+
+def load_zones(cwd):
+    """Đọc BE_PATHS/FE_PATHS/TEST_PATHS từ .claude/agent-team.config. None nếu không có."""
+    d = find_root(cwd)
+    if not d:
+        return None
+    cfg = os.path.join(d, ".claude", "agent-team.config")
+    zones = {"be": [], "fe": [], "test": []}
+    keys = {"BE_PATHS": "be", "FE_PATHS": "fe", "TEST_PATHS": "test"}
+    for line in open(cfg, encoding="utf-8", errors="ignore"):
+        m = re.match(r"^\s*(BE_PATHS|FE_PATHS|TEST_PATHS)=(.*)$", line)
+        if m:
+            val = m.group(2).split("#")[0].strip().strip("'\"")
+            zones[keys[m.group(1)]] = [p.strip("/") for p in val.split() if p.upper() != "TODO"]
+    return d, zones
+
+
+def zone_of(rel, zones):
+    under = lambda ps: any(rel == p or rel.startswith(p + "/") for p in ps)
+    if under(zones["test"]) or TEST_FILE_RE.search(rel):
+        return "test"
+    if under(zones["be"]):
+        return "be"
+    if under(zones["fe"]):
+        return "fe"
+    return None
+
+
+def check_owner(path, cwd, role):
+    """Chặn role ghi vào vùng của role khác."""
+    mine = OWNER_ZONE.get(role)
+    loaded = load_zones(cwd) if mine else None
+    if not loaded or not path:
+        return
+    root, zones = loaded
+    rel = os.path.relpath(full_path(path, cwd), root).replace("\\", "/")
+    if rel.startswith(".."):
+        return
+    z = zone_of(rel, zones)
+    if z and z != mine:
+        block(f"role '{role}' chỉ được sửa vùng '{mine}', '{rel}' thuộc vùng '{z}'. Post lên board và @ chủ vùng")
+
+
+def bash_write_targets(cmd):
+    """File bị ghi bởi lệnh Bash (redirect, tee, mv, cp, rm, sed -i...)."""
+    out = []
+    for tk in parse(cmd):
+        while tk and re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", tk[0]):
+            tk = tk[1:]
+        if not tk:
+            continue
+        fc = os.path.basename(tk[0])
+        if fc in WRITE_CMDS or (fc == "sed" and any(t.startswith("-i") or t == "--in-place" for t in tk)):
+            out += [t for t in tk[1:] if not t.startswith("-")]
+        for i, t in enumerate(tk):
+            if t.startswith(">"):
+                tgt = t.lstrip(">")
+                out.append(tgt if tgt else (tk[i + 1] if i + 1 < len(tk) else ""))
+    return [t for t in out if t and not t.startswith("&") and t != "/dev/null"]
+
+
+# ---------- chặn theo giai đoạn: không cần biết ai gọi ----------
+
+def stage_zones(cwd):
+    """Vùng được ghi ở giai đoạn hiện tại (file .agent-team/stage do Lead ghi). None = không giới hạn."""
+    root = find_root(cwd)
+    if not root:
+        return None
+    try:
+        st = open(os.path.join(root, ".agent-team", "stage"), encoding="utf-8").read().strip().upper()
+    except OSError:
+        return None
+    return STAGE_ZONES.get(st)
+
+
+def check_stage(path, cwd):
+    sz = stage_zones(cwd)
+    loaded = load_zones(cwd) if sz is not None else None
+    if not loaded or not path:
+        return
+    root, zones = loaded
+    rel = os.path.relpath(full_path(path, cwd), root).replace("\\", "/")
+    if rel.startswith(".."):
+        return
+    z = zone_of(rel, zones)
+    if z and z not in sz:
+        block(f"giai đoạn hiện tại không được sửa vùng '{z}' ('{rel}'). Cần sửa → báo Lead đổi giai đoạn")
+
+
+# ---------- log agent_type + kiểm tra diff sau khi tool chạy (PostToolUse) ----------
+
+def debug_log(event, data, role, cwd):
+    """AGENT_TEAM_DEBUG=1: ghi lại hook nhận được gì để biết agent_type có tới không."""
+    if os.environ.get("AGENT_TEAM_DEBUG") != "1":
+        return
+    root = find_root(cwd) or os.path.abspath(cwd)
+    d = os.path.join(root, ".agent-team")
+    os.makedirs(d, exist_ok=True)
+    rec = {"t": int(time.time()), "event": event, "tool": data.get("tool_name"), "role": role,
+           "agent_type": data.get("agent_type"), "subagent_type": data.get("subagent_type"),
+           "agent_id": data.get("agent_id"), "keys": sorted(data.keys())}
+    with open(os.path.join(d, "guard.log"), "a", encoding="utf-8") as f:
+        f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+
+
+def dirty_files(top):
+    """{path tương đối: (mtime_ns, size)} cho mọi file đang khác HEAD hoặc chưa track."""
+    try:
+        r = subprocess.run(["git", "status", "--porcelain", "-z", "-uall"], cwd=top,
+                           capture_output=True, text=True, timeout=20)
+    except Exception:
+        return {}
+    out, ents, i = {}, r.stdout.split("\0"), 0
+    while i < len(ents):
+        e = ents[i]
+        i += 1
+        if len(e) < 4:
+            continue
+        if e[0] in "RC":
+            i += 1
+        try:
+            st = os.stat(os.path.join(top, e[3:]))
+            out[e[3:]] = (st.st_mtime_ns, st.st_size)
+        except OSError:
+            out[e[3:]] = (None, None)
+    return out
+
+
+def snap_dir(top, data):
+    _, gd = git(top, "rev-parse", "--absolute-git-dir")
+    key = re.sub(r"[^A-Za-z0-9_.-]", "_", f"{data.get('session_id', 's')}-{data.get('agent_id', 'main')}")
+    return os.path.join(gd or top, "agent-team-snap", key)
+
+
+def watched(role, cwd):
+    """Role cần theo dõi diff: role chỉ đọc, hoặc dev/tester khi có config vùng."""
+    if stage_zones(cwd) is not None or role in READONLY_ROLES:
+        return True
+    return role in OWNER_ZONE and bool(load_zones(cwd))
+
+
+def take_snapshot(data, role, cwd):
+    code, top = git(cwd, "rev-parse", "--show-toplevel")
+    if code != 0:
+        return
+    sd = snap_dir(top, data)
+    shutil.rmtree(sd, ignore_errors=True)
+    os.makedirs(os.path.join(sd, "files"))
+    meta = {}
+    for i, (rel, (mt, sz)) in enumerate(dirty_files(top).items()):
+        saved = False
+        src = os.path.join(top, rel)
+        if sz is not None and sz <= SNAP_MAX and os.path.isfile(src):
+            shutil.copy2(src, os.path.join(sd, "files", str(i)))
+            saved = str(i)
+        meta[rel] = [mt, sz, saved]
+    json.dump(meta, open(os.path.join(sd, "meta.json"), "w"))
+
+
+def path_allowed(rel, role, cwd):
+    zones = (load_zones(cwd) or (None, None))[1]
+    z = zone_of(rel, zones) if zones else None
+    sz = stage_zones(cwd)
+    if sz is not None and z and z not in sz:
+        return False
+    if not role:
+        return True
+    if role in READONLY_ROLES:
+        return "/" + DOCS_DIR in "/" + rel and "/board/" in rel
+    return z is None or z == OWNER_ZONE.get(role)
+
+
+def revert(top, rel, pre):
+    """Trả file về trạng thái trước lệnh. Trả về True nếu hoàn tác được."""
+    dst = os.path.join(top, rel)
+    if rel in pre:
+        saved = pre[rel][2]
+        if saved is False:
+            return False
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        shutil.copy2(os.path.join(pre["_dir"], "files", saved), dst)
+        return True
+    if git(top, "ls-files", "--error-unmatch", "--", rel)[0] == 0:
+        return git(top, "restore", "--staged", "--worktree", "--source=HEAD", "--", rel)[0] == 0
+    try:
+        os.remove(dst)
+        return True
+    except OSError:
+        return False
+
+
+def post_check(data, role, cwd):
+    code, top = git(cwd, "rev-parse", "--show-toplevel")
+    if code != 0 or not watched(role, cwd):
+        return
+    sd = snap_dir(top, data)
+    try:
+        pre = json.load(open(os.path.join(sd, "meta.json")))
+    except Exception:
+        return
+    pre["_dir"] = sd
+    bad, stuck = [], []
+    for rel, (mt, sz) in dirty_files(top).items():
+        if rel in pre and tuple(pre[rel][:2]) == (mt, sz):
+            continue
+        if path_allowed(rel, role, cwd):
+            continue
+        (bad if revert(top, rel, pre) else stuck).append(rel)
+    shutil.rmtree(sd, ignore_errors=True)
+    if bad or stuck:
+        msg = f"role '{role}' vừa ghi ngoài vùng của mình."
+        if bad:
+            msg += f" Đã hoàn tác: {', '.join(bad[:5])}."
+        if stuck:
+            msg += f" KHÔNG hoàn tác được (báo Lead): {', '.join(stuck[:5])}."
+        block(msg + " Post lên board và @chủ vùng sửa.")
+
+
+# ---------- debate board (mọi role, trừ Lead) ----------
 
 def check_board(tool, path, cwd, role):
     full = full_path(path, cwd)
@@ -317,15 +554,13 @@ def check_board(tool, path, cwd, role):
             block(f"tên bài post phải là S<giai đoạn>-R<vòng>-{role}-<n>.md (chỉ post bằng tên mình)")
         if os.path.exists(full):
             block("bài post đã tồn tại, không ghi đè, tăng <n> lên")
-    if "/" + SCORES_DIR in full + "/":
-        if tool != "Write" or os.path.basename(full) != f"{role}.md":
-            block("chỉ được ghi điểm của mình, không đọc/sửa điểm người khác")
-        if os.path.exists(full):
-            block("đã chấm điểm rồi, không sửa")
 
 
 def touches_hidden(text):
     return bool(HIDDEN_RE.search(text or ""))
+
+
+POST = len(sys.argv) > 1 and sys.argv[1] == "post"
 
 
 def main():
@@ -338,20 +573,27 @@ def main():
     cwd = data.get("cwd") or os.getcwd()
     role = norm_role(data)
 
+    debug_log("post" if POST else "pre", data, role, cwd)
+    if POST:
+        post_check(data, role, cwd)
+        sys.exit(0)
+
     path = ti.get("file_path") or ti.get("notebook_path") or ti.get("path") or ""
     if tool in ("Read", "Edit", "Write", "MultiEdit", "NotebookEdit", "Grep", "Glob"):
         if is_secret_path(path) or is_secret_path(ti.get("glob", "")):
             block(f"không được đọc/sửa file nhạy cảm '{path or ti.get('glob')}'")
 
-    # điểm chấm + state DB clone: agent không được đọc (Lead thì được)
-    if role and tool in ("Read", "Grep", "Glob", "Edit", "MultiEdit", "NotebookEdit"):
+    # state DB clone: agent không được đọc/ghi (Lead thì được)
+    if role and tool in ("Read", "Grep", "Glob", "Write", "Edit", "MultiEdit", "NotebookEdit"):
         if touches_hidden(full_path(path, cwd) + "/") or touches_hidden(ti.get("glob", "")):
-            block("không được đọc .agent-team/ (điểm chấm của role khác, state DB clone)")
+            block("không được đụng .agent-team/ (state DB clone)")
 
     if tool == "Bash":
         cmd = ti.get("command", "")
+        if role and any(first_cmd(tk) in PERM_CMDS for tk in parse(cmd)):
+            block("không được đổi quyền file (chmod/chown...), nhờ Lead")
         if role and touches_hidden(cmd):
-            block("không được đụng .agent-team/ (điểm chấm của role khác, state DB clone)")
+            block("không được đụng .agent-team/ (state DB clone)")
         if role and "agent-tasks" in cmd and (
                 re.search(r">|\btee\b|\bsed\s+(-\w*\s+)*-i|\b(mv|cp|rm|touch|truncate)\b", unquoted(cmd))):
             block("board chỉ được post bằng Write tool, không ghi/xoá bằng Bash")
@@ -362,12 +604,21 @@ def main():
         check_rm(cmd)
         if role in READONLY_ROLES:
             check_readonly_bash(cmd, role)
+        for tgt in bash_write_targets(cmd):
+            check_stage(tgt, cwd)
+            check_owner(tgt, cwd, role)
+
+    if tool in ("Edit", "Write", "MultiEdit", "NotebookEdit"):
+        check_stage(path, cwd)
 
     if role and tool in ("Edit", "Write", "MultiEdit", "NotebookEdit"):
         if role in READONLY_ROLES:
             check_readonly_write(path, cwd, role)
+        check_owner(path, cwd, role)
         check_board(tool, path, cwd, role)
 
+    if tool == "Bash" and watched(role, cwd):
+        take_snapshot(data, role, cwd)
     sys.exit(0)
 
 

@@ -16,4 +16,5 @@ Project dùng plugin `agent-team`. Chạy task: `/agent-team:run <task>`.
 - Security bắt buộc mọi task. Lỗi Critical/High phải sửa, Lead không được override.
 - Debate trên board, không debate qua tin nhắn. Mỗi vòng đọc `board/SUMMARY.md` + toàn bộ bài post của vòng hiện tại.
 - Bài post: `board/S<giai đoạn>-R<vòng>-<role>-<n>.md`, đã post thì không sửa. `@role` = bắt buộc trả lời.
-- Điểm chấm: `.agent-team/scores/<task-id>/<role>.md`, không đọc điểm người khác.
+- Guard chặn theo giai đoạn (`.agent-team/stage` do Lead ghi): S3 chỉ ghi code, S4 chỉ ghi test. Ghi sai vùng sẽ bị chặn hoặc hoàn tác.
+- Điểm chấm (V4): gửi riêng cho Lead, không ghi file, không post board.
