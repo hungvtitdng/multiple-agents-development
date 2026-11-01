@@ -10,7 +10,7 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
 2. **Nhận diện project** (chỉ đọc):
    - Stack BE/FE/test: Gemfile, package.json, thư mục spec/test
    - docker-compose: file nằm trong repo hay repo khác, tên service DB và app, loại DB (postgres/mysql)
-   - Branch gốc (develop/main)
+   - Branch gốc (develop/main/master) của **từng repo** (`git symbolic-ref --short refs/remotes/origin/HEAD`). Giống nhau → `BASE_BRANCH`. Repo nào khác → ghi vào `BASE_BRANCHES="<repo>=<nhánh>"`.
    - **Có mấy repo git?** Tìm repo ở thư mục hiện tại và thư mục con cấp 1 (`.git`). Thư mục hiện tại là repo thì hỏi thêm user có repo khác đi kèm không (vd `../FrontEnd`).
 2b. **Nhiều repo → chọn repo chính** (chỉ hỏi khi ≥ 2 repo, 1 câu hỏi duy nhất bằng AskUserQuestion):
    - Câu hỏi: "Chọn repo chính, nơi chứa `.claude/`, `docs/`, `CLAUDE.md`". Mỗi lựa chọn là tên 1 repo tìm thấy. Gợi ý đầu tiên: repo BE/API (nơi có logic nghiệp vụ).

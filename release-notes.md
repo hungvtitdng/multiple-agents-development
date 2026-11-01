@@ -1,3 +1,13 @@
+# Release notes - 01/11/2026 (v0.8.2)
+
+## Thay đổi
+- Config mới `BASE_BRANCHES="../FrontEnd=master"`: nhánh gốc riêng cho repo khác `BASE_BRANCH` (vd BE `main`, FE `master`). Repo không khai báo dùng `BASE_BRANCH`.
+- `run.md`, `code-reviewer`, `init.md` dùng nhánh gốc theo từng repo. Init tự đọc nhánh mặc định của từng repo.
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update kevin-agent-team`.
+- Project đang dùng: thêm dòng `BASE_BRANCHES="../FrontEnd=master"` vào `.claude/agent-team.config` (trống nếu mọi repo cùng nhánh gốc).
+
 # Release notes - 01/11/2026 (v0.8.1)
 
 ## Thay đổi

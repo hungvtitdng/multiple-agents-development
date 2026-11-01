@@ -13,7 +13,7 @@ Làm đúng playbook dưới đây. **Không hỏi lại user**, team tự bàn 
 ## 0. Chuẩn bị
 1. Đọc `CLAUDE.md` (mục "Agent Team") và `.claude/agent-team.config`. Nếu chưa có thì dừng, báo user chạy `/agent-team:init`.
    - Đọc `docs/domain/` (knowledge base). Phần liên quan task → tóm tắt 3-5 dòng vào TASK.md, các role tự đọc thêm.
-2. `git status` phải sạch. `git fetch`, tạo branch `agent/<task-id>` từ `origin/$BASE_BRANCH`.
+2. `git status` phải sạch. `git fetch`, tạo branch `agent/<task-id>` từ `origin/<nhánh gốc>`. Nhánh gốc của repo = giá trị trong `BASE_BRANCHES` (dạng `repo=nhánh`, vd `../FrontEnd=master`) nếu có, không thì `BASE_BRANCH`.
    - `<task-id>` = `YYYYMMDD-<slug-ngắn>`.
    - `REPOS` trống = 1 repo. Có `REPOS` (vd `be fe`) = làm bước này **trong từng repo con** (`git -C ../FrontEnd ...`; repo chính là `.`). Chỉ tạo branch ở repo task thực sự đụng tới, ghi danh sách repo vào TASK.md.
    - Board và `docs/` nằm trong repo chính (repo đầu tiên trong `REPOS`, thường là API/BE), nên được commit cùng branch của repo đó.

@@ -1,6 +1,9 @@
 # Agent team config cho project. KHÔNG ghi password/KEY vào file này.
 
 BASE_BRANCH=develop
+# Repo nào có nhánh gốc khác BASE_BRANCH thì ghi ở đây (repo=nhánh, cách nhau bằng dấu cách). Chỉ cần khi có REPOS.
+# Ví dụ: BASE_BRANCH=main  BASE_BRANCHES="../FrontEnd=master"
+BASE_BRANCHES=
 
 # Nhiều repo: file này nằm trong repo chính ("."). Liệt kê repo chính + repo khác (đường dẫn từ repo chính).
 # Mở Claude Code ở repo chính, thêm repo còn lại bằng /add-dir.

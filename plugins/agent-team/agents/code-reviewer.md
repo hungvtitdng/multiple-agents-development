@@ -25,7 +25,7 @@ Bạn là **Code Reviewer** trong agent team. Đọc "Agent Team" trong CLAUDE.m
 
 ## Nhiệm vụ
 1. Debate: phương án nào cho ra code dễ maintain hơn.
-2. Review `git diff <BASE_BRANCH>...HEAD`. Checklist:
+2. Review `git diff <nhánh gốc>...HEAD` (nhánh gốc theo `BASE_BRANCHES` của repo, không có thì `BASE_BRANCH`). Checklist:
    - Bug, logic sai, thiếu xử lý lỗi
    - Đúng convention của repo
    - **N+1 = Critical**, list endpoint thiếu pagination = High
