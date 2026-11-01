@@ -1,3 +1,11 @@
+# Release notes - 01/11/2026 (v0.4.1)
+
+## Thay đổi
+- Hook `PostToolUse` mới `show_post.py`: khi role ghi bài lên `board/`, nội dung bài (tối đa 15 dòng) hiện thẳng trong chat dạng `[role · S2-R1]`. Điểm V4 và suy nghĩ của agent không hiện.
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update kevin-agent-team`, rồi mở lại Claude Code.
+
 # Release notes - 01/11/2026 (v0.4.0)
 
 ## Thay đổi

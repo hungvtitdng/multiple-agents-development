@@ -91,6 +91,7 @@ Cách giảm token thêm:
 3. Giai đoạn    Lead ghi .agent-team/stage: S3 chỉ ghi code, S4 chỉ ghi test
                 → không cần biết ai gọi (lớp 1, 2 cũng dùng luật này)
 ```
+Xem debate trực tiếp: hook `show_post.py` hiện mỗi bài post trên board vào chat (`[role · S2-R1]`).
 Bật log để xem hook có nhận `agent_type` không: `AGENT_TEAM_DEBUG=1` → `.agent-team/guard.log`.
 
 ## Cài đặt

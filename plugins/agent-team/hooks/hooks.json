@@ -23,6 +23,16 @@
             "timeout": 30
           }
         ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/show_post.py\"",
+            "timeout": 10
+          }
+        ]
       }
     ]
   }
