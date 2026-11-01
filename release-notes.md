@@ -1,3 +1,21 @@
+# Release notes - 01/11/2026 (v0.5.0)
+
+## Thay đổi
+- Tích hợp **Graphify** (code graph) như bước tùy chọn của `/agent-team:init`. 5 role (BA, SA, TA, Code Reviewer, Security) đọc `graphify-out/GRAPH_REPORT.md` và query `graphify query/path/explain`. Lead chạy `graphify update .` đầu task, sau S3 và S4.
+- Guard: role chỉ được `graphify query|path|explain`; `install/update/extract/hook...` chỉ Lead.
+- Config mới `USE_GRAPHIFY=1`.
+
+## Cần làm thủ công
+- Cài Graphify (đúng tên gói **graphifyy**, 2 chữ y; kiểm tra PyPI trỏ về `github.com/Graphify-Labs/graphify`):
+```
+uv tool install graphifyy==0.9.100
+```
+- Cần Python 3.10+. Trong project: `graphify install --project`, rồi `/graphify .` để build graph lần đầu.
+- **Không** chạy `graphify hook install` (dễ đụng hook guard của agent-team).
+- Muốn không log câu query vào `~/.cache/graphify-queries.log`: đặt biến môi trường `GRAPHIFY_QUERY_LOG_DISABLE=1`.
+- Chạy lại `/agent-team:init` để thêm `USE_GRAPHIFY` vào config và `graphify-out/` vào `.gitignore`.
+- Cập nhật plugin: `/plugin marketplace update kevin-agent-team`
+
 # Release notes - 01/11/2026 (v0.4.1)
 
 ## Thay đổi

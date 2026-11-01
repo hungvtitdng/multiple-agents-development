@@ -18,7 +18,8 @@ Làm đúng playbook dưới đây. **Không hỏi lại user**, team tự bàn 
    - `docs/agent-tasks/<task-id>/TASK.md` từ `.claude/agent-team/templates/TASK.md`
    - `docs/agent-tasks/<task-id>/board/SUMMARY.md` từ `.claude/agent-team/templates/SUMMARY.md`
    - `.agent-team/stage` = `S1` (xem mục 4c, đổi mỗi khi sang giai đoạn mới)
-4. Chọn chế độ:
+4. Nếu `USE_GRAPHIFY=1` và có `graphify-out/`: chạy `graphify update .` để graph khớp code hiện tại. Role chỉ đọc/query, không tự build.
+5. Chọn chế độ:
    - **A. Agent Teams** (khi `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`)
    - **B. Subagent** (dự phòng): gọi subagent `agent-team:<role>` theo từng vòng.
    - Cả 2 chế độ đều debate trên **board**. Tin nhắn chỉ dùng để báo "đã post", "mời vào vòng mới" và nhận điểm V4 riêng từ role. Không debate qua tin nhắn.
@@ -122,6 +123,7 @@ S3 CODE      BE ◄─► FE theo API contract (TA post). Migration chỉ qua ag
              Thay đổi API/thiết kế giữa chừng → post lên board, không thống nhất riêng
 S4 TEST      Tester viết test theo AC + test bảo mật, chạy trên DB clone
              Gate: test chưa pass → không qua S5
+             Xong S3 và S4 (sau commit): Lead chạy `graphify update .` để reviewer ở S5 query đúng code mới
 S5 REVIEW    Code / Solution / Test / Requirement Reviewer + Security post kết quả lên board (song song)
              Có issue → dev sửa + post trả lời. Dev được phản biện reviewer trên board
              Lặp đến khi hết issue (không giới hạn vòng; bế tắc → Lead quyết, trừ Security Critical/High)

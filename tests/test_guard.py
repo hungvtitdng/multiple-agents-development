@@ -151,6 +151,12 @@ cases += [
     ("Lead sửa spec", "Edit", {"file_path": "spec/a_spec.rb"}, None, zp, OK),
     ("requirement-reviewer sửa code", "Edit", {"file_path": "app/a.rb"}, "requirement-reviewer", zp, B),
     ("dev chmod mở khóa", "Bash", {"command": "chmod -R u+w spec"}, "backend-dev", zp, B),
+    ("reviewer graphify query", "Bash", {"command": "graphify query \"ai gọi checkPermission\""}, "code-reviewer", zp, OK),
+    ("security graphify path", "Bash", {"command": "graphify path \"UserController\" \"Order\""}, "security", zp, OK),
+    ("reviewer graphify update", "Bash", {"command": "graphify update ."}, "code-reviewer", zp, B),
+    ("dev graphify hook install", "Bash", {"command": "graphify hook install"}, "backend-dev", zp, B),
+    ("dev graphify explain", "Bash", {"command": "graphify explain \"User\""}, "backend-dev", zp, OK),
+    ("Lead graphify update", "Bash", {"command": "graphify update ."}, None, zp, OK),
     ("dev sửa spec khi chưa có config", "Edit", {"file_path": "spec/a_spec.rb"}, "backend-dev", tempfile.mkdtemp(), OK),
 ]
 

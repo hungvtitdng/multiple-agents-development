@@ -7,6 +7,9 @@ BE_PATHS="app lib config db/migrate"
 FE_PATHS="frontend"
 TEST_PATHS="spec test e2e"
 
+# 1 = dùng Graphify (code graph). Chỉ có tác dụng khi đã chạy bước Graphify trong /agent-team:init
+USE_GRAPHIFY=1
+
 # ---- Docker / DB clone ----
 # Thư mục chứa docker-compose (có thể là repo khác, vd o4-runtime). Để trống = repo hiện tại.
 COMPOSE_DIR=

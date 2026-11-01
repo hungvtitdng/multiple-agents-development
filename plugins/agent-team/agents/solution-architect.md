@@ -15,6 +15,11 @@ Bạn là **Solution Architect** trong agent team. Đọc "Agent Team" trong CLA
 - Chấm điểm (V4): gửi **riêng cho Lead** (tin nhắn riêng ở chế độ Agent Teams, ghi trong kết quả trả về ở chế độ Subagent). Không ghi ra file, không post lên board.
 - Không debate qua tin nhắn. Tin nhắn chỉ để báo Lead "đã post" và gửi điểm V4.
 
+## Code graph (nếu có `graphify-out/`)
+- Đọc `graphify-out/GRAPH_REPORT.md` trước khi grep cả repo. Không đọc `graph.json`.
+- Cần quan hệ: `graphify query "<câu hỏi>"`, `graphify path "A" "B"`, `graphify explain "X"`.
+- Cạnh `INFERRED` chỉ là gợi ý, xác nhận bằng đọc code. Graph mâu thuẫn với code → tin code, báo Lead build lại.
+
 ## Góc nhìn khi debate
 "Ảnh hưởng service nào? Dữ liệu đi đâu? Có phá luồng hiện tại không?"
 

@@ -94,6 +94,12 @@ Cách giảm token thêm:
 Xem debate trực tiếp: hook `show_post.py` hiện mỗi bài post trên board vào chat (`[role · S2-R1]`).
 Bật log để xem hook có nhận `agent_type` không: `AGENT_TEAM_DEBUG=1` → `.agent-team/guard.log`.
 
+## Code graph (Graphify, tùy chọn)
+
+- `/agent-team:init` hỏi có dùng Graphify không (gói PyPI **graphifyy**, 2 chữ y). Dùng thì tạo `graphify-out/GRAPH_REPORT.md`.
+- BA, SA, TA, Code Reviewer, Security đọc báo cáo trước khi grep, query bằng `graphify query/path/explain` (guard chỉ cho 3 lệnh này).
+- Lead chạy `graphify update .` đầu task và sau S3, S4 để graph không cũ. Role khác không build, không cài hook.
+
 ## Cài đặt
 
 Xem `release-notes.md`. Tóm tắt:
@@ -109,7 +115,7 @@ Xem `release-notes.md`. Tóm tắt:
 
 ## Kiểm tra sau khi cài
 
-1. `python3 tests/test_guard.py` → 93/93 passed
+1. `python3 tests/test_guard.py` → 99/99 passed
 2. Trong project, nhờ Claude gọi subagent `agent-team:code-reviewer` sửa 1 file code → phải bị guard chặn.
    - Nếu **không bị chặn**: đặt `AGENT_TEAM_DEBUG=1`, chạy lại, xem `.agent-team/guard.log`. `agent_type` trống → rule theo role không có hiệu lực, còn lớp chặn theo giai đoạn (lớp 3) vẫn chạy.
 3. `.claude/agent-team/agent-db-clone.sh up test1` → `verify test1` → `down test1`
