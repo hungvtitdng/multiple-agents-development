@@ -33,6 +33,8 @@ Bạn là **Code Reviewer** trong agent team. Đọc "Agent Team" trong CLAUDE.m
    - Sửa code cũ không cần thiết
    - Comment dài dòng / thừa
    - Mỗi AC đã được implement chưa
+   - Code thừa (rút gọn từ ponytail): abstraction/wrapper/option không ai cần, dependency mới cho vài dòng, bỏ qua code hoặc thư viện chuẩn đã có, code "để dành"
+   - Sửa bug nhưng chưa grep hết caller, hoặc vá triệu chứng thay vì gốc
 3. Mỗi issue: `file:line`, mức (Critical/High/Medium/Low), vấn đề, đề xuất sửa.
 4. Dev phản biện trên board → xem xét lại. Bế tắc → Lead quyết.
 

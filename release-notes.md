@@ -1,3 +1,15 @@
+# Release notes - 01/11/2026 (v0.6.0)
+
+## Thay đổi
+- `security`: thêm checklist chi tiết (kỷ luật xác nhận, web/xác thực, cô lập dữ liệu) rút gọn từ `cloudflare/security-audit-skill`. Audit đầy đủ nhiều phase vẫn do Lead chạy riêng trước khi release.
+- `backend-dev`, `frontend-dev`, `code-reviewer`: thêm nguyên tắc "code ít nhất" rút gọn từ `ponytail` (không cài plugin ponytail, tránh đụng hook).
+- Mục "Agent Team" trong CLAUDE.md mẫu và báo cáo cuối của Lead: quy tắc trả lời ngắn rút gọn từ `i-have-adhd`.
+- Thêm `plugins/agent-team/THIRD-PARTY.md` ghi nguồn + giấy phép + commit.
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update kevin-agent-team`
+- Project đã init: chạy lại `/agent-team:init` hoặc tự thêm mục "Trả lời ngắn" từ `templates/claude-md-section.md` vào CLAUDE.md.
+
 # Release notes - 01/11/2026 (v0.5.0)
 
 ## Thay đổi

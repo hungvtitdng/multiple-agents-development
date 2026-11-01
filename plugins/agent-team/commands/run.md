@@ -144,6 +144,7 @@ Trong TASK.md, mục "Tổng hợp ý kiến theo role": mỗi role tham gia 1 d
 - Hook chặn push nếu diff có secret hoặc file `.env`, key, dump DB.
 
 ## 8. Báo cáo cho user (cuối cùng)
+Viết ngắn: dòng đầu là kết quả + link branch. Danh sách tối đa 5 mục mỗi nhóm. Cuối cùng nêu đúng 1 việc user làm tiếp (≤ 2 phút).
 - Link branch, đường dẫn TASK.md
 - Phương án được chọn + 1 dòng lý do
 - Số issue review theo mức, issue còn để lại (nếu có)

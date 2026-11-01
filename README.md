@@ -100,6 +100,10 @@ Bật log để xem hook có nhận `agent_type` không: `AGENT_TEAM_DEBUG=1` �
 - BA, SA, TA, Code Reviewer, Security đọc báo cáo trước khi grep, query bằng `graphify query/path/explain` (guard chỉ cho 3 lệnh này).
 - Lead chạy `graphify update .` đầu task và sau S3, S4 để graph không cũ. Role khác không build, không cài hook.
 
+## Nguồn bên thứ ba
+
+Checklist bảo mật, quy tắc trả lời ngắn và nguyên tắc code ít nhất được rút gọn từ 3 dự án MIT, xem `plugins/agent-team/THIRD-PARTY.md`.
+
 ## Cài đặt
 
 Xem `release-notes.md`. Tóm tắt:

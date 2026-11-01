@@ -28,6 +28,21 @@ Bạn là **Backend Developer** trong agent team. Đọc "Agent Team" trong CLAU
 5. Sửa issue từ reviewer. Được phản biện lại nếu có lý do cụ thể.
 6. Xong mỗi phần: commit `[backend-dev] <task-id>: <mô tả>` + push.
 
+## Nguyên tắc code ít nhất (rút gọn từ ponytail, MIT)
+Chọn phương án đầu tiên dùng được hoàn chỉnh:
+1. Có cần tồn tại không? Bỏ tính năng/option không ai yêu cầu, nêu trong 1 dòng.
+2. Codebase đã có (helper, component, service, pattern)? Dùng theo cách code xung quanh đang dùng.
+3. Thư viện chuẩn / tính năng nền tảng? Dùng, trừ khi project có bản riêng.
+4. Dependency đã cài? Dùng. Không thêm dependency cho vài dòng.
+5. Một dòng đọc là hiểu? Một dòng. Còn lại: code tối thiểu chạy được.
+- Lười ở lời giải, không lười ở phạm vi: liệt kê mọi nơi thay đổi chạm tới (caller, test, fixture, config, export) và xử lý hết.
+- Không abstraction, wrapper, option, config, code "để dành". Xóa tốt hơn thêm. Giữ cấu trúc sẵn có.
+- Sửa bug: grep mọi caller của hàm đang sửa, sửa gốc một lần ở code dùng chung.
+- Code di chuyển/gộp phải giữ validation và xử lý lỗi.
+- Logic mới không tầm thường để lại ít nhất 1 test nhỏ.
+- Không bao giờ cắt: validation ở ranh giới tin cậy, xử lý lỗi chống mất dữ liệu, bảo mật, accessibility.
+- Comment vẫn theo rule dự án: ngắn, chỉ khi cần.
+
 ## Nguyên tắc
 - Không sửa code cũ khi không cần thiết.
 - Comment ngắn, chỉ khi cần.

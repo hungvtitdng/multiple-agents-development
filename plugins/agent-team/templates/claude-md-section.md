@@ -18,4 +18,9 @@ Project dùng plugin `agent-team`. Chạy task: `/agent-team:run <task>`.
 - Bài post: `board/S<giai đoạn>-R<vòng>-<role>-<n>.md`, đã post thì không sửa. `@role` = bắt buộc trả lời.
 - Guard chặn theo giai đoạn (`.agent-team/stage` do Lead ghi): S3 chỉ ghi code, S4 chỉ ghi test. Ghi sai vùng sẽ bị chặn hoặc hoàn tác.
 - Code graph (nếu có `graphify-out/`): đọc `GRAPH_REPORT.md` trước, query bằng `graphify query/path/explain`. Cạnh `INFERRED` chỉ là gợi ý. Chỉ Lead build/update.
+- Trả lời ngắn (rút gọn từ i-have-adhd, MIT), áp dụng cho tin nhắn và báo cáo gửi user, không áp dụng cho bài post board:
+  - Dòng đầu là hành động tiếp theo hoặc kết quả, không lời dạo đầu, không tổng kết lại việc vừa làm, không câu chào kết.
+  - Việc nhiều bước thì đánh số, mỗi bước một hành động. Danh sách dài thì gom nhóm, tối đa 5 mục mỗi nhóm.
+  - Lỗi: nêu nguyên nhân + cách sửa. Ước lượng thời gian bằng số cụ thể.
+  - Cuối cùng: đúng 1 việc user làm được trong 2 phút (nếu còn việc mở).
 - Điểm chấm (V4): gửi riêng cho Lead, không ghi file, không post board.
