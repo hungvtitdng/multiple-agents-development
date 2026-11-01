@@ -21,13 +21,16 @@ die() { echo "ERROR: $*" >&2; exit 1; }
 CMD="${1:-}"; TASK="${2:-}"
 [ -n "$CMD" ] || usage
 
-ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+ROOT="$PWD"
+while [ "$ROOT" != "/" ] && [ ! -f "$ROOT/.claude/agent-team.config" ]; do ROOT="$(dirname "$ROOT")"; done
+[ -f "$ROOT/.claude/agent-team.config" ] || ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 CONFIG="$ROOT/.claude/agent-team.config"
 [ -f "$CONFIG" ] || die "thiếu $CONFIG, chạy /agent-team:init"
 # shellcheck disable=SC1090
 . "$CONFIG"
 
 COMPOSE_DIR="${COMPOSE_DIR:-$ROOT}"
+case "$COMPOSE_DIR" in /*) ;; *) COMPOSE_DIR="$ROOT/$COMPOSE_DIR" ;; esac
 export COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}" COMPOSE_PROFILES="${COMPOSE_PROFILES:-}"
 STATE_DIR="$ROOT/.agent-team/clones"
 [ -n "${CLONE_ENV:-}" ] || CLONE_ENV='DATABASE_URL={url}'

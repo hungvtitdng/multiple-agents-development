@@ -12,8 +12,11 @@ Làm đúng playbook dưới đây. **Không hỏi lại user**, team tự bàn 
 
 ## 0. Chuẩn bị
 1. Đọc `CLAUDE.md` (mục "Agent Team") và `.claude/agent-team.config`. Nếu chưa có thì dừng, báo user chạy `/agent-team:init`.
+   - Đọc `docs/domain/` (knowledge base). Phần liên quan task → tóm tắt 3-5 dòng vào TASK.md, các role tự đọc thêm.
 2. `git status` phải sạch. `git fetch`, tạo branch `agent/<task-id>` từ `origin/$BASE_BRANCH`.
    - `<task-id>` = `YYYYMMDD-<slug-ngắn>`.
+   - `REPOS` trống = 1 repo. Có `REPOS` (vd `be fe`) = làm bước này **trong từng repo con** (`git -C be ...`, `git -C fe ...`). Chỉ tạo branch ở repo task thực sự đụng tới, ghi danh sách repo vào TASK.md.
+   - Thư mục cha có thể không phải repo: board và `docs/` nằm ở đó, không có branch.
 3. Tạo:
    - `docs/agent-tasks/<task-id>/TASK.md` từ `.claude/agent-team/templates/TASK.md`
    - `docs/agent-tasks/<task-id>/board/SUMMARY.md` từ `.claude/agent-team/templates/SUMMARY.md`
@@ -98,6 +101,7 @@ V5 CHỐT      : Lead ghi bảng điểm tổng vào TASK.md → Solution Review
 | Code FE | frontend-dev | Code Reviewer |
 | Test | tester | Test Reviewer |
 | AC / business logic | business-analyst | Requirement Reviewer |
+| Knowledge base `docs/domain/` | business-analyst (Lead cũng ghi được) | Requirement Reviewer |
 - Lỗi thuộc sản phẩm của người khác → post lên board, `@` chủ sản phẩm sửa. Không tự sửa hộ.
 
 ## 4c. Giai đoạn hiện tại (guard chặn theo giai đoạn, không cần biết ai gọi)
@@ -127,7 +131,9 @@ S4 TEST      Tester viết test theo AC + test bảo mật, chạy trên DB clon
 S5 REVIEW    Code / Solution / Test / Requirement Reviewer + Security post kết quả lên board (song song)
              Có issue → dev sửa + post trả lời. Dev được phản biện reviewer trên board
              Lặp đến khi hết issue (không giới hạn vòng; bế tắc → Lead quyết, trừ Security Critical/High)
-S6 ĐÓNG      Tổng hợp ý kiến theo role vào TASK.md, agent-db-clone.sh down, push lần cuối
+S6 ĐÓNG      BA cập nhật `docs/domain/` (thuật ngữ, quy tắc, quyết định task này chốt, ghi task nguồn)
+             Requirement Reviewer APPROVED mới đóng
+             Tổng hợp ý kiến theo role vào TASK.md, agent-db-clone.sh down, push lần cuối
 ```
 
 ## 6. Khi chốt: tổng hợp ý kiến TỪNG ROLE (bắt buộc)
@@ -140,12 +146,14 @@ Trong TASK.md, mục "Tổng hợp ý kiến theo role": mỗi role tham gia 1 d
 ## 7. Git
 - Commit sau mỗi giai đoạn: `[<role>] <task-id>: <mô tả ngắn>`. Board được commit cùng.
 - Push: `git push -u origin agent/<task-id>`.
+- Nhiều repo (`REPOS`): commit/push **trong từng repo con** (`git -C be commit ...`, `git -C fe push -u origin agent/<task-id>`). Mỗi repo chỉ commit file của repo đó.
+- `docs/` ở thư mục cha: commit nếu thư mục cha là repo riêng (docs repo), không thì ghi chú cho user trong báo cáo.
 - Không push/merge vào main/develop, không force push, không tạo PR. (Hook chặn.)
 - Hook chặn push nếu diff có secret hoặc file `.env`, key, dump DB.
 
 ## 8. Báo cáo cho user (cuối cùng)
 Viết ngắn: dòng đầu là kết quả + link branch. Danh sách tối đa 5 mục mỗi nhóm. Cuối cùng nêu đúng 1 việc user làm tiếp (≤ 2 phút).
-- Link branch, đường dẫn TASK.md
+- Link branch (mỗi repo một branch nếu nhiều repo), đường dẫn TASK.md, `docs/domain/` đã cập nhật gì
 - Phương án được chọn + 1 dòng lý do
 - Số issue review theo mức, issue còn để lại (nếu có)
 - Migration cần chạy khi merge vào develop

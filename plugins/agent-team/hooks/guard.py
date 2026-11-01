@@ -15,6 +15,7 @@ READONLY_ROLES = {
     "code-reviewer", "solution-reviewer", "test-reviewer", "requirement-reviewer", "security",
 }
 DOCS_DIR = "docs/agent-tasks/"
+DOMAIN_DIR = "docs/domain/"
 OWNER_ZONE = {"backend-dev": "be", "frontend-dev": "fe", "tester": "test"}
 TEST_FILE_RE = re.compile(r"(^|/)(__tests__|__mocks__)/|(_spec|_test)\.\w+$|\.(spec|test)\.\w+$|(^|/)test_[^/]+\.py$")
 STAGE_ZONES = {"S1": set(), "S2": set(), "S3": {"be", "fe"}, "S4": {"test"}}
@@ -177,13 +178,29 @@ def scan_outgoing(cwd):
                 block(f"phát hiện chuỗi giống secret trong diff: '{m.group(0)[:20]}...'")
 
 
+def git_target(tk, cwd):
+    """(thư mục repo, subcommand, args). Hiểu `git -C <dir>` và `-c k=v` trước subcommand."""
+    d, i = cwd, 1
+    while i < len(tk) and tk[i].startswith("-"):
+        if tk[i] == "-C" and i + 1 < len(tk):
+            d = os.path.join(d, os.path.expanduser(tk[i + 1]))
+            i += 2
+        elif tk[i] == "-c":
+            i += 2
+        else:
+            i += 1
+    return d, (tk[i] if i < len(tk) else ""), tk[i + 1:]
+
+
 def check_git(cmd, cwd):
+    cur = cwd
     for tk in parse(cmd):
+        if first_cmd(tk) == "cd" and len(tk) > 1:
+            cur = os.path.join(cur, os.path.expanduser(tk[1]))
+            continue
         if "git" not in tk or first_cmd(tk) in READ_ONLY_FIRST - {"git"}:
             continue
-        tk = tk[tk.index("git"):]
-        sub = next((t for t in tk[1:] if not t.startswith("-")), "")
-        args = tk[tk.index(sub) + 1:] if sub in tk else []
+        cwd, sub, args = git_target(tk[tk.index("git"):], cur)
         _, branch = git(cwd, "rev-parse", "--abbrev-ref", "HEAD")
 
         if sub == "push":
@@ -279,8 +296,7 @@ def readonly_segment_ok(tk):
     if cmd == CODE_GRAPH:
         return len(tk) > 1 and tk[1] in CODE_GRAPH_READ
     if cmd == "git":
-        sub = next((t for t in tk[1:] if not t.startswith("-")), "")
-        return sub in GIT_READ
+        return git_target(tk, "")[1] in GIT_READ
     if cmd == "find":
         return not any(t in ("-delete", "-exec", "-execdir", "-ok", "-okdir") or t.startswith("-fprint") for t in tk)
     if cmd == "sed":
@@ -311,8 +327,16 @@ def full_path(path, cwd):
 
 def check_readonly_write(path, cwd, role):
     full = full_path(path, cwd) + "/"
+    if role == "business-analyst" and "/" + DOMAIN_DIR in full:
+        return
     if "/" + DOCS_DIR not in full:
         block(f"role '{role}' chỉ được post vào board")
+
+
+def check_domain(path, cwd, role):
+    """docs/domain (knowledge base): chỉ BA và Lead được ghi."""
+    if role and role != "business-analyst" and "/" + DOMAIN_DIR in full_path(path, cwd) + "/":
+        block(f"role '{role}' không được sửa knowledge base docs/domain. Post lên board và @business-analyst")
 
 
 # ---------- khóa vùng ghi: dev chỉ sửa BE/FE của mình, Tester chỉ sửa test ----------
@@ -342,6 +366,22 @@ def load_zones(cwd):
             val = m.group(2).split("#")[0].strip().strip("'\"")
             zones[keys[m.group(1)]] = [p.strip("/") for p in val.split() if p.upper() != "TODO"]
     return d, zones
+
+
+def repo_tops(cwd):
+    """Repo cần theo dõi: REPOS trong config (nhiều repo con) hoặc repo chứa cwd."""
+    root = find_root(cwd)
+    if root:
+        cfg = os.path.join(root, ".claude", "agent-team.config")
+        for line in open(cfg, encoding="utf-8", errors="ignore"):
+            m = re.match(r"^\s*REPOS=(.*)$", line)
+            if m:
+                names = m.group(1).split("#")[0].strip().strip("'\"").split()
+                tops = [os.path.join(root, n) for n in names if os.path.exists(os.path.join(root, n, ".git"))]
+                if tops:
+                    return tops
+    code, top = git(cwd, "rev-parse", "--show-toplevel")
+    return [top] if code == 0 else []
 
 
 def zone_of(rel, zones):
@@ -469,21 +509,19 @@ def watched(role, cwd):
 
 
 def take_snapshot(data, role, cwd):
-    code, top = git(cwd, "rev-parse", "--show-toplevel")
-    if code != 0:
-        return
-    sd = snap_dir(top, data)
-    shutil.rmtree(sd, ignore_errors=True)
-    os.makedirs(os.path.join(sd, "files"))
-    meta = {}
-    for i, (rel, (mt, sz)) in enumerate(dirty_files(top).items()):
-        saved = False
-        src = os.path.join(top, rel)
-        if sz is not None and sz <= SNAP_MAX and os.path.isfile(src):
-            shutil.copy2(src, os.path.join(sd, "files", str(i)))
-            saved = str(i)
-        meta[rel] = [mt, sz, saved]
-    json.dump(meta, open(os.path.join(sd, "meta.json"), "w"))
+    for top in repo_tops(cwd):
+        sd = snap_dir(top, data)
+        shutil.rmtree(sd, ignore_errors=True)
+        os.makedirs(os.path.join(sd, "files"))
+        meta = {}
+        for i, (rel, (mt, sz)) in enumerate(dirty_files(top).items()):
+            saved = False
+            src = os.path.join(top, rel)
+            if sz is not None and sz <= SNAP_MAX and os.path.isfile(src):
+                shutil.copy2(src, os.path.join(sd, "files", str(i)))
+                saved = str(i)
+            meta[rel] = [mt, sz, saved]
+        json.dump(meta, open(os.path.join(sd, "meta.json"), "w"))
 
 
 def path_allowed(rel, role, cwd):
@@ -495,7 +533,11 @@ def path_allowed(rel, role, cwd):
     if not role:
         return True
     if role in READONLY_ROLES:
+        if role == "business-analyst" and rel.startswith(DOMAIN_DIR):
+            return True
         return "/" + DOCS_DIR in "/" + rel and "/board/" in rel
+    if rel.startswith(DOMAIN_DIR):
+        return False
     return z is None or z == OWNER_ZONE.get(role)
 
 
@@ -519,23 +561,27 @@ def revert(top, rel, pre):
 
 
 def post_check(data, role, cwd):
-    code, top = git(cwd, "rev-parse", "--show-toplevel")
-    if code != 0 or not watched(role, cwd):
+    if not watched(role, cwd):
         return
-    sd = snap_dir(top, data)
-    try:
-        pre = json.load(open(os.path.join(sd, "meta.json")))
-    except Exception:
-        return
-    pre["_dir"] = sd
+    root = find_root(cwd)
+    root = os.path.realpath(root) if root else None
     bad, stuck = [], []
-    for rel, (mt, sz) in dirty_files(top).items():
-        if rel in pre and tuple(pre[rel][:2]) == (mt, sz):
+    for top in repo_tops(cwd):
+        top = os.path.realpath(top)
+        sd = snap_dir(top, data)
+        try:
+            pre = json.load(open(os.path.join(sd, "meta.json")))
+        except Exception:
             continue
-        if path_allowed(rel, role, cwd):
-            continue
-        (bad if revert(top, rel, pre) else stuck).append(rel)
-    shutil.rmtree(sd, ignore_errors=True)
+        pre["_dir"] = sd
+        for rel, (mt, sz) in dirty_files(top).items():
+            if rel in pre and tuple(pre[rel][:2]) == (mt, sz):
+                continue
+            rr = os.path.relpath(os.path.join(top, rel), root or top).replace("\\", "/")
+            if path_allowed(rr, role, cwd):
+                continue
+            (bad if revert(top, rel, pre) else stuck).append(rr)
+        shutil.rmtree(sd, ignore_errors=True)
     if bad or stuck:
         msg = f"role '{role}' vừa ghi ngoài vùng của mình."
         if bad:
@@ -614,6 +660,7 @@ def main():
         for tgt in bash_write_targets(cmd):
             check_stage(tgt, cwd)
             check_owner(tgt, cwd, role)
+            check_domain(tgt, cwd, role)
 
     if tool in ("Edit", "Write", "MultiEdit", "NotebookEdit"):
         check_stage(path, cwd)
@@ -622,6 +669,7 @@ def main():
         if role in READONLY_ROLES:
             check_readonly_write(path, cwd, role)
         check_owner(path, cwd, role)
+        check_domain(path, cwd, role)
         check_board(tool, path, cwd, role)
 
     if tool == "Bash" and watched(role, cwd):

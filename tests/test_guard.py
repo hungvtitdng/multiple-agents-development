@@ -254,5 +254,62 @@ post_case("post+stage S4: ghi app khi không rõ role bị hoàn tác", None, la
 post_case("post+stage S4: ghi spec khi không rõ role được giữ", None, lambda: w("spec/b_spec.rb", "ok\n"), OK,
           lambda: r("spec/b_spec.rb") == "ok\n")
 
+# ---- Nhiều repo con (REPOS) + knowledge base docs/domain ----
+mr = tempfile.mkdtemp()
+for name in ("be", "fe"):
+    d = os.path.join(mr, name)
+    os.makedirs(os.path.join(d, "app" if name == "be" else "src"))
+    sh(d, "git", "init", "-q", "-b", "develop")
+    sh(d, "git", "config", "user.email", "t@t")
+    sh(d, "git", "config", "user.name", "t")
+    open(os.path.join(d, "app/a.rb" if name == "be" else "src/a.ts"), "w").write("x\n")
+    sh(d, "git", "add", ".")
+    sh(d, "git", "commit", "-qm", "init")
+os.makedirs(os.path.join(mr, ".claude"))
+os.makedirs(os.path.join(mr, "docs/domain"))
+open(os.path.join(mr, ".claude/agent-team.config"), "w").write(
+    'REPOS="be fe"\nBE_PATHS="be"\nFE_PATHS="fe"\nTEST_PATHS="be/spec fe/e2e"\n')
+mcases = [
+    ("multi: BE dev sửa be/app", "Edit", {"file_path": "be/app/a.rb"}, "backend-dev", mr, OK),
+    ("multi: BE dev sửa fe/", "Edit", {"file_path": "fe/src/a.ts"}, "backend-dev", mr, B),
+    ("multi: FE dev sửa be/", "Edit", {"file_path": "be/app/a.rb"}, "frontend-dev", mr, B),
+    ("multi: Tester sửa be/spec", "Write", {"file_path": "be/spec/a_spec.rb"}, "tester", mr, OK),
+    ("multi: dev sửa be/spec", "Write", {"file_path": "be/spec/a_spec.rb"}, "backend-dev", mr, B),
+    ("multi: git -C be commit trên develop", "Bash", {"command": "git -C be commit -m x"}, "backend-dev", mr, B),
+    ("multi: cd fe && git push origin develop", "Bash", {"command": "cd fe && git push origin develop"}, "frontend-dev", mr, B),
+    ("multi: git -c k=v -C be push (đang ở develop)", "Bash", {"command": "git -c a.b=c -C be push"}, None, mr, B),
+    ("multi: git -C be status", "Bash", {"command": "git -C be status"}, "code-reviewer", mr, OK),
+    ("domain: BA ghi", "Write", {"file_path": "docs/domain/glossary.md"}, "business-analyst", mr, OK),
+    ("domain: BA Edit", "Edit", {"file_path": "docs/domain/glossary.md"}, "business-analyst", mr, OK),
+    ("domain: dev ghi bị chặn", "Write", {"file_path": "docs/domain/glossary.md"}, "backend-dev", mr, B),
+    ("domain: tester ghi bị chặn", "Write", {"file_path": "docs/domain/rules.md"}, "tester", mr, B),
+    ("domain: reviewer ghi bị chặn", "Write", {"file_path": "docs/domain/rules.md"}, "requirement-reviewer", mr, B),
+    ("domain: security ghi bị chặn", "Write", {"file_path": "docs/domain/rules.md"}, "security", mr, B),
+    ("domain: dev ghi bằng Bash bị chặn", "Bash", {"command": "echo x > docs/domain/glossary.md"}, "backend-dev", mr, B),
+    ("domain: Lead ghi", "Write", {"file_path": "docs/domain/glossary.md"}, None, mr, OK),
+    ("domain: dev đọc", "Read", {"file_path": "docs/domain/glossary.md"}, "backend-dev", mr, OK),
+]
+for c in mcases:
+    check(*c)
+total += len(mcases)
+
+
+def multi_post(desc, role, rel, text, exp_code, expect):
+    global fail, total
+    run("Bash", {"command": "bundle exec rspec"}, role, mr, session=desc)
+    open(os.path.join(mr, rel), "w").write(text)
+    got = run("Bash", {"command": "bundle exec rspec"}, role, mr, mode="post", session=desc)
+    ok = got == exp_code and expect()
+    fail += not ok
+    total += 1
+    print(f"{'PASS' if ok else 'FAIL'}  {desc}  (expect {exp_code}, got {got})")
+
+
+rd = lambda rel: open(os.path.join(mr, rel)).read()
+multi_post("multi post: BE dev ghi fe/ bị hoàn tác", "backend-dev", "fe/src/a.ts", "HACK\n", B, lambda: rd("fe/src/a.ts") == "x\n")
+multi_post("multi post: BE dev sửa be/app thì giữ", "backend-dev", "be/app/a.rb", "y\n", OK, lambda: rd("be/app/a.rb") == "y\n")
+multi_post("multi post: FE dev ghi be/app bị hoàn tác", "frontend-dev", "be/app/a.rb", "HACK\n", B, lambda: rd("be/app/a.rb") == "y\n")
+multi_post("multi post: reviewer ghi be/ bị hoàn tác", "code-reviewer", "be/app/new.rb", "x\n", B, lambda: not os.path.exists(os.path.join(mr, "be/app/new.rb")))
+
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

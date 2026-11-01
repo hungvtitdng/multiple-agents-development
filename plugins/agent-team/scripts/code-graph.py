@@ -54,17 +54,41 @@ def resolve_relative(src, target, files):
     return None
 
 
-def resolve_py(mod, files):
-    p = mod.replace(".", "/")
+def config_repos():
+    """(root, [repo con]) nếu .claude/agent-team.config có REPOS, ngược lại None."""
+    d = os.getcwd()
+    while True:
+        cfg = os.path.join(d, ".claude", "agent-team.config")
+        if os.path.isfile(cfg):
+            for line in open(cfg, encoding="utf-8", errors="ignore"):
+                m = re.match(r"^\s*REPOS=(.*)$", line)
+                if m:
+                    names = m.group(1).split("#")[0].strip().strip("'\"").split()
+                    names = [n for n in names if os.path.exists(os.path.join(d, n, ".git"))]
+                    return (d, names) if names else None
+            return None
+        if os.path.dirname(d) == d:
+            return None
+        d = os.path.dirname(d)
+
+
+def resolve_py(mod, files, prefix=""):
+    p = os.path.join(prefix, mod.replace(".", "/"))
     for cand in (p + ".py", p + "/__init__.py"):
         if cand in files:
             return cand
     return None
 
 
-def build(root):
-    _, listing = sh("git", "-C", root, "ls-files")
-    files = {f for f in listing.splitlines() if os.path.splitext(f)[1] in EXTS and not SKIP_RE.search(f)}
+def build(root, repos):
+    files, owner = set(), {}
+    for r in repos:
+        _, listing = sh("git", "-C", os.path.join(root, r), "ls-files")
+        for f in listing.splitlines():
+            p = os.path.join(r, f) if r else f
+            if os.path.splitext(p)[1] in EXTS and not SKIP_RE.search(p):
+                files.add(p)
+                owner[p] = r
     text, defs = {}, defaultdict(set)
     for f in files:
         try:
@@ -85,7 +109,7 @@ def build(root):
         explicit += [resolve_relative(f, m, files) for m in RUBY_REQ.findall(t)]
         explicit += [resolve_relative(f, m, files) for m in JS_IMP.findall(t)]
         if f.endswith(".py"):
-            explicit += [resolve_py(a or b, files) for a, b in PY_IMP.findall(t)]
+            explicit += [resolve_py(a or b, files, owner.get(f, "")) for a, b in PY_IMP.findall(t)]
         for to in filter(None, explicit):
             if to != f:
                 edges[(f, to)] = "EXTRACTED"
@@ -94,9 +118,11 @@ def build(root):
             if owners and len(owners) <= MAX_DEFINERS and f not in owners:
                 for to in owners:
                     edges.setdefault((f, to), "INFERRED")
+    commits = {r: sh("git", "-C", os.path.join(root, r), "rev-parse", "HEAD")[1] for r in repos}
     graph = {
         "version": 1,
-        "commit": sh("git", "-C", root, "rev-parse", "HEAD")[1],
+        "commit": commits[""] if repos == [""] else "",
+        "repos": {} if repos == [""] else commits,
         "files": {f: {"defs": file_defs[f]} for f in sorted(text)},
         "edges": [{"from": a, "to": b, "kind": k} for (a, b), k in sorted(edges.items())],
     }
@@ -116,7 +142,8 @@ def report(g):
     ex = sum(e["kind"] == "EXTRACTED" for e in g["edges"])
     lines = [
         "# Code graph",
-        f"Build ở commit `{g['commit'][:10]}`. Thay đổi chưa commit không có trong graph.",
+        "Build ở commit " + (", ".join(f"{r}@{c[:10]}" for r, c in g["repos"].items()) if g.get("repos") else f"`{g['commit'][:10]}`")
+        + ". Thay đổi chưa commit không có trong graph.",
         f"- {len(g['files'])} file ({', '.join(f'{k}: {v}' for k, v in langs.most_common())})",
         f"- {len(g['edges'])} cạnh: {ex} EXTRACTED (import tường minh), {len(g['edges']) - ex} INFERRED (suy từ tên class/module, chỉ là gợi ý)",
         "",
@@ -140,9 +167,10 @@ def load(root):
         print("Chưa có graph. Nhờ Lead chạy: .claude/agent-team/code-graph.py build", file=sys.stderr)
         sys.exit(3)
     g = json.load(open(p))
-    head = sh("git", "-C", root, "rev-parse", "HEAD")[1]
-    if head and g.get("commit") and head != g["commit"]:
-        print(f"CẢNH BÁO: graph build ở {g['commit'][:10]}, HEAD hiện {head[:10]}. Mâu thuẫn với code thì tin code.", file=sys.stderr)
+    for r, c in (g.get("repos") or {"": g.get("commit")}).items():
+        head = sh("git", "-C", os.path.join(root, r), "rev-parse", "HEAD")[1]
+        if head and c and head != c:
+            print(f"CẢNH BÁO: graph build ở {r or 'repo'}@{c[:10]}, HEAD hiện {head[:10]}. Mâu thuẫn với code thì tin code.", file=sys.stderr)
     return g
 
 
@@ -172,9 +200,11 @@ def main():
     if len(sys.argv) < 2 or sys.argv[1] not in {"build", "who-uses", "uses", "explain"}:
         print(__doc__)
         sys.exit(2)
-    cmd, root = sys.argv[1], repo_root()
+    cmd = sys.argv[1]
+    multi = config_repos()
+    root, repos = multi if multi else (repo_root(), [""])
     if cmd == "build":
-        return build(root)
+        return build(root, repos)
     if len(sys.argv) < 3:
         print(__doc__)
         sys.exit(2)

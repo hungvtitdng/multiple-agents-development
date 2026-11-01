@@ -2,7 +2,9 @@
 
 Project dùng plugin `agent-team`. Chạy task: `/agent-team:run <task>`.
 
-- Config project: `.claude/agent-team.config` (branch gốc, đường dẫn BE/FE/test, DB clone)
+- Config project: `.claude/agent-team.config` (branch gốc, đường dẫn BE/FE/test, DB clone, `REPOS` nếu nhiều repo)
+- Mọi tài liệu nằm trong `docs/`: `docs/domain/` (knowledge base: thuật ngữ, quy tắc nghiệp vụ, quyết định; **đọc trước khi làm**, chỉ BA/Lead ghi) và `docs/agent-tasks/` (task + board)
+- Nhiều repo con (`REPOS`): mỗi repo con có branch `agent/<task-id>` riêng, commit/push bằng `git -C <repo> ...`
 - Tài liệu mỗi task: `docs/agent-tasks/<task-id>/TASK.md` (Lead) + `board/` (nơi debate chung)
 - Migration/test DB: chỉ qua `.claude/agent-team/agent-db-clone.sh` (DB clone, không đụng DB hiện tại)
 

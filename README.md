@@ -82,6 +82,7 @@ Cách giảm token thêm:
 | backend-dev, frontend-dev, tester | Sửa file ngoài vùng của mình: BE↔FE↔test (theo `BE_PATHS`/`FE_PATHS`/`TEST_PATHS`, kèm file `*_spec.*`, `*.test.*`, `__tests__/`) |
 | Mọi role (trừ Lead) | Post bằng tên role khác, sửa/ghi đè bài đã post, ghi TASK.md/SUMMARY.md, ghi board bằng Bash |
 | Mọi role (trừ Lead) | Đọc/ghi `.agent-team/` (state DB clone) |
+| Mọi role trừ BA và Lead | Ghi knowledge base `docs/domain/` (kể cả bằng Bash) |
 
 ## Chặn ghi sai vùng: 3 lớp
 
@@ -93,6 +94,22 @@ Cách giảm token thêm:
 ```
 Xem debate trực tiếp: hook `show_post.py` hiện mỗi bài post trên board vào chat (`[role · S2-R1]`).
 Bật log để xem hook có nhận `agent_type` không: `AGENT_TEAM_DEBUG=1` → `.agent-team/guard.log`.
+
+## Nhiều repo (BE và FE là 2 repo riêng)
+
+```
+Tên dự án/                 ← mở Claude Code ở đây (có thể không phải repo)
+├── .claude/agent-team.config   REPOS="be fe"  BE_PATHS="be"  FE_PATHS="fe"
+├── docs/
+│   ├── domain/            ← knowledge base (BA ghi, mọi role đọc)
+│   └── agent-tasks/       ← board chung của cả BE và FE
+├── be/  (.git riêng)      ← branch agent/<task-id> riêng
+└── fe/  (.git riêng)      ← branch agent/<task-id> riêng
+```
+- Một team, một board; API contract chốt ngay trên board. Commit/push từng repo bằng `git -C be ...`.
+- Guard chặn commit/push vào main/develop ở từng repo (hiểu `git -C` và `cd be && git ...`), hoàn tác diff theo từng repo.
+- Khuyên `git init` ở thư mục cha để lưu `docs/` + `.claude/` (thêm `be/`, `fe/` vào `.gitignore` của nó).
+- `REPOS` trống = 1 repo, chạy như cũ.
 
 ## Code graph (tự có, không cài gói ngoài)
 
@@ -129,4 +146,5 @@ Xem `release-notes.md`. Tóm tắt:
 
 - Guard là lớp chặn dựa trên mẫu lệnh, không phải sandbox. Agent cố tình lách vẫn có thể lách được, vì vậy vẫn cần review cuối trên branch.
 - Agent Teams đang là tính năng thử nghiệm. Nếu không bật, `run.md` tự chuyển sang chế độ subagent (Lead chuyển lời giữa các role).
+- Nhiều repo (`REPOS`) mới kiểm thử bằng test tự động với repo giả, chưa chạy trên dự án thật. Task xuyên nhiều repo cần Lead nhớ commit/push từng repo.
 - `agent-db-clone.sh` hỗ trợ Postgres và MySQL/MariaDB chạy bằng docker compose.

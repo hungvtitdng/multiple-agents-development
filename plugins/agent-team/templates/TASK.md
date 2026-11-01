@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Branch | `agent/<task-id>` |
+| Branch | `agent/<task-id>` (nhiều repo: liệt kê repo + branch từng repo) |
 | Loại task | NHỎ / VỪA / LỚN, lý do: |
 | Thành viên | (role nào tham gia, role nào bỏ qua + lý do) |
 | Chế độ | A. Agent Teams / B. Subagent |

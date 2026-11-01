@@ -1,3 +1,19 @@
+# Release notes - 01/11/2026 (v0.8.0)
+
+## Thay đổi
+- **Hỗ trợ nhiều repo con**: mở Claude Code ở thư mục cha (không cần là repo), khai báo `REPOS="be fe"` trong `.claude/agent-team.config`. Một team, một board chung, branch/commit/push theo từng repo (`git -C be ...`).
+- Guard: hiểu `git -C <repo>` và `cd <repo> && git ...` khi chặn commit/push vào main/master/develop; snapshot + hoàn tác diff chạy trên từng repo con.
+- `code-graph.py`: build gộp tất cả repo trong `REPOS` (cạnh FE -> BE hiện được), cảnh báo graph cũ theo từng repo.
+- `agent-db-clone.sh`: tìm config bằng cách đi ngược từ thư mục hiện tại (không cần repo git); `COMPOSE_DIR` tương đối tính từ thư mục có `.claude/`.
+- **Knowledge base `docs/domain/`** (glossary, business-rules, decisions): `/agent-team:init` tạo cấu trúc `docs/` (domain + agent-tasks). Mọi role đọc, chỉ BA và Lead ghi (guard chặn role khác, kể cả bằng Bash). S6: BA cập nhật, Requirement Reviewer duyệt.
+- `business-analyst` được thêm tool `Edit` (chỉ sửa được board và `docs/domain/`).
+- Config mới `REPOS` (để trống = 1 repo, chạy như cũ).
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update kevin-agent-team`
+- Project đã init: chạy lại `/agent-team:init` (tạo `docs/domain/`, thêm dòng `REPOS` vào config).
+- Dự án BE/FE là 2 repo riêng: tạo thư mục cha, mở Claude Code ở đó, đặt `REPOS="be fe"`, `BE_PATHS="be"`, `FE_PATHS="fe"`. Khuyên `git init` ở thư mục cha để lưu `docs/` và `.claude/` (thêm `be/`, `fe/` vào `.gitignore` của nó).
+
 # Release notes - 01/11/2026 (v0.7.0)
 
 ## Thay đổi

@@ -64,5 +64,27 @@ r = cg("who-uses", "User", cwd=d)
 check("graph cũ thì cảnh báo", "CẢNH BÁO" in r.stderr)
 check("lệnh sai exit 2", cg("bogus", cwd=d).returncode == 2)
 
+# Nhiều repo con: root không phải repo, REPOS="be fe"
+m = os.path.realpath(tempfile.mkdtemp())
+for repo, rel, body in [
+    ("be", "app/models/order.rb", "class Order\nend\n"),
+    ("fe", "src/order.ts", "export class OrderView { o = 'Order' }\n"),
+]:
+    os.makedirs(os.path.dirname(os.path.join(m, repo, rel)), exist_ok=True)
+    open(os.path.join(m, repo, rel), "w").write(body)
+    sh("git", "init", "-q", "-b", "main", cwd=os.path.join(m, repo))
+    sh("git", "-c", "user.email=t@t", "-c", "user.name=t", "add", ".", cwd=os.path.join(m, repo))
+    sh("git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "i", cwd=os.path.join(m, repo))
+os.makedirs(os.path.join(m, ".claude"))
+open(os.path.join(m, ".claude/agent-team.config"), "w").write('REPOS="be fe"\n')
+r = cg("build", cwd=m)
+check("multi-repo build ở root không phải repo", r.returncode == 0 and "2 file" in r.stdout)
+r = cg("who-uses", "Order", cwd=os.path.join(m, "fe"))
+check("multi-repo: query từ trong fe/ thấy cạnh fe -> be", "fe/src/order.ts" in r.stdout)
+open(os.path.join(m, "be/app/models/order.rb"), "a").write("# x\n")
+sh("git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qam", "e", cwd=os.path.join(m, "be"))
+r = cg("who-uses", "Order", cwd=m)
+check("multi-repo: graph cũ ở be thì cảnh báo", "CẢNH BÁO" in r.stderr and "be@" in r.stderr)
+
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

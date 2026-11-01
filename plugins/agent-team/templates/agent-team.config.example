@@ -2,6 +2,11 @@
 
 BASE_BRANCH=develop
 
+# Nhiều repo con: mở Claude Code ở thư mục cha (không cần là repo), liệt kê thư mục repo con.
+# Để trống = 1 repo (chạy như cũ). Mỗi repo con phải có .git riêng.
+# Khi dùng REPOS, các đường dẫn bên dưới tính từ thư mục cha, vd BE_PATHS="be" FE_PATHS="fe".
+REPOS=
+
 # Đường dẫn code (guard dùng để khóa: dev chỉ sửa BE/FE của mình, Tester chỉ sửa test)
 BE_PATHS="app lib config db/migrate"
 FE_PATHS="frontend"
@@ -11,7 +16,7 @@ TEST_PATHS="spec test e2e"
 USE_CODE_GRAPH=1
 
 # ---- Docker / DB clone ----
-# Thư mục chứa docker-compose (có thể là repo khác, vd o4-runtime). Để trống = repo hiện tại.
+# Thư mục chứa docker-compose (tính từ thư mục có .claude/, vd "be"). Để trống = thư mục đó.
 COMPOSE_DIR=
 COMPOSE_FILE=docker-compose.yml
 COMPOSE_PROFILES=
