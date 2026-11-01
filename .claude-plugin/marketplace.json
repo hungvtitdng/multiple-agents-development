@@ -1,0 +1,16 @@
+{
+  "name": "kevin-agent-team",
+  "owner": {
+    "name": "Kevin"
+  },
+  "metadata": {
+    "description": "Agent team của Kevin: debate chọn best solution, code, test, review, security."
+  },
+  "plugins": [
+    {
+      "name": "agent-team",
+      "source": "./plugins/agent-team",
+      "description": "Đội agent debate chọn best solution, tự code, test, review, security."
+    }
+  ]
+}

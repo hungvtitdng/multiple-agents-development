@@ -1,0 +1,28 @@
+# Agent team config cho project. KHÔNG ghi password/KEY vào file này.
+
+BASE_BRANCH=develop
+
+# Đường dẫn code (để agent biết phạm vi được sửa)
+BE_PATHS="app lib config db/migrate"
+FE_PATHS="frontend"
+TEST_PATHS="spec test e2e"
+
+# ---- Docker / DB clone ----
+# Thư mục chứa docker-compose (có thể là repo khác, vd o4-runtime). Để trống = repo hiện tại.
+COMPOSE_DIR=
+COMPOSE_FILE=docker-compose.yml
+COMPOSE_PROFILES=
+
+DB_ENGINE=postgres          # postgres | mysql
+DB_SERVICE=db               # tên service DB trong docker compose
+DB_NAME=app_development     # DB cần clone
+APP_SERVICE=app             # service để chạy migrate / test
+
+MIGRATE_CMD="bin/rails db:migrate"
+ROLLBACK_CMD="bin/rails db:rollback STEP=1"
+TEST_CMD="bundle exec rspec"
+
+# Biến env app dùng để trỏ tới DB clone. Placeholder: {host} {port} {user} {password} {db} {url}
+CLONE_ENV="DATABASE_URL={url}"
+# Ví dụ app dùng biến rời:
+# CLONE_ENV="DB_HOST={host} DB_PORT={port} DB_USERNAME={user} DB_PASSWORD={password} DB_NAME={db}"

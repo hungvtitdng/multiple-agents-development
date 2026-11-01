@@ -1,0 +1,7 @@
+.env*
+!.env.example
+.agent-team/
+*.dump
+*.sql.gz
+__pycache__/
+.DS_Store

@@ -1,0 +1,17 @@
+{
+  "description": "agent-team guard: chặn secret, push sai branch, migrate DB thật, role chỉ đọc sửa code",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Read|Edit|Write|MultiEdit|NotebookEdit|Grep|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/guard.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
