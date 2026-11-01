@@ -17,7 +17,7 @@ Project dùng plugin `agent-team`. Chạy task: `/agent-team:run <task>`.
 - Debate trên board, không debate qua tin nhắn. Mỗi vòng đọc `board/SUMMARY.md` + toàn bộ bài post của vòng hiện tại.
 - Bài post: `board/S<giai đoạn>-R<vòng>-<role>-<n>.md`, đã post thì không sửa. `@role` = bắt buộc trả lời.
 - Guard chặn theo giai đoạn (`.agent-team/stage` do Lead ghi): S3 chỉ ghi code, S4 chỉ ghi test. Ghi sai vùng sẽ bị chặn hoặc hoàn tác.
-- Code graph (nếu có `graphify-out/`): đọc `GRAPH_REPORT.md` trước, query bằng `graphify query/path/explain`. Cạnh `INFERRED` chỉ là gợi ý. Chỉ Lead build/update.
+- Code graph (nếu có `code-graph-out/`): đọc `GRAPH_REPORT.md` trước, query bằng `.claude/agent-team/code-graph.py who-uses|uses|explain`. Cạnh `INFERRED` chỉ là gợi ý. Chỉ Lead build.
 - Trả lời ngắn (rút gọn từ i-have-adhd, MIT), áp dụng cho tin nhắn và báo cáo gửi user, không áp dụng cho bài post board:
   - Dòng đầu là hành động tiếp theo hoặc kết quả, không lời dạo đầu, không tổng kết lại việc vừa làm, không câu chào kết.
   - Việc nhiều bước thì đánh số, mỗi bước một hành động. Danh sách dài thì gom nhóm, tối đa 5 mục mỗi nhóm.

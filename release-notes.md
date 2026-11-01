@@ -1,3 +1,15 @@
+# Release notes - 01/11/2026 (v0.7.0)
+
+## Thay đổi
+- **Thay Graphify bằng `code-graph.py` tự có**: không cài gói ngoài, chỉ cần `python3`. Lệnh: `build` (Lead), `who-uses`, `uses`, `explain` (mọi role). Graph cũ so với HEAD thì cảnh báo.
+- Config `USE_GRAPHIFY` đổi thành `USE_CODE_GRAPH`. Thư mục `graphify-out/` đổi thành `code-graph-out/`.
+- Guard: role chỉ được `code-graph.py who-uses|uses|explain`; `build` chỉ Lead (kể cả khi gọi qua `python3`).
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update kevin-agent-team`
+- Project đã init: chạy lại `/agent-team:init` (copy `code-graph.py`, đổi `USE_GRAPHIFY` thành `USE_CODE_GRAPH`, thêm `code-graph-out/` vào `.gitignore`).
+- Đã cài Graphify trước đó thì gỡ bỏ được, plugin không còn dùng: `uv tool uninstall graphifyy` hoặc `pipx uninstall graphifyy`; xóa thư mục `graphify-out/`.
+
 # Release notes - 01/11/2026 (v0.6.0)
 
 ## Thay đổi

@@ -18,7 +18,8 @@ DOCS_DIR = "docs/agent-tasks/"
 OWNER_ZONE = {"backend-dev": "be", "frontend-dev": "fe", "tester": "test"}
 TEST_FILE_RE = re.compile(r"(^|/)(__tests__|__mocks__)/|(_spec|_test)\.\w+$|\.(spec|test)\.\w+$|(^|/)test_[^/]+\.py$")
 STAGE_ZONES = {"S1": set(), "S2": set(), "S3": {"be", "fe"}, "S4": {"test"}}
-GRAPHIFY_READ = {"query", "path", "explain"}
+CODE_GRAPH = "code-graph.py"
+CODE_GRAPH_READ = {"who-uses", "uses", "explain"}
 PERM_CMDS = {"chmod", "chown", "chgrp", "setfacl", "chattr"}
 SNAP_MAX = 2_000_000
 WRITE_CMDS = {"tee", "mv", "cp", "rm", "touch", "truncate", "install", "dd", "ln"}
@@ -275,8 +276,8 @@ def readonly_segment_ok(tk):
     cmd = os.path.basename(tk[0])
     if cmd.startswith(CLONE_SCRIPT):
         return len(tk) > 1 and tk[1] in ("status", "test")
-    if cmd == "graphify":
-        return len(tk) > 1 and tk[1] in GRAPHIFY_READ
+    if cmd == CODE_GRAPH:
+        return len(tk) > 1 and tk[1] in CODE_GRAPH_READ
     if cmd == "git":
         sub = next((t for t in tk[1:] if not t.startswith("-")), "")
         return sub in GIT_READ
@@ -595,8 +596,9 @@ def main():
         cmd = ti.get("command", "")
         if role and any(first_cmd(tk) in PERM_CMDS for tk in parse(cmd)):
             block("không được đổi quyền file (chmod/chown...), nhờ Lead")
-        if role and any(first_cmd(tk) == "graphify" and (len(tk) < 2 or tk[1] not in GRAPHIFY_READ) for tk in parse(cmd)):
-            block("role chỉ được graphify query/path/explain. Cài, build, update, hook do Lead làm")
+        if role and any(os.path.basename(t) == CODE_GRAPH and (i + 1 >= len(tk) or tk[i + 1] not in CODE_GRAPH_READ)
+                        for tk in parse(cmd) for i, t in enumerate(tk)):
+            block("role chỉ được code-graph.py who-uses/uses/explain. build do Lead làm")
         if role and touches_hidden(cmd):
             block("không được đụng .agent-team/ (state DB clone)")
         if role and "agent-tasks" in cmd and (

@@ -18,18 +18,15 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
    - `scripts/agent-db-clone.sh` → `.claude/agent-team/agent-db-clone.sh` (chmod +x)
    - `templates/TASK.md`, `templates/POST.md`, `templates/SUMMARY.md` → `.claude/agent-team/templates/`
 5. **CLAUDE.md**: nếu chưa có mục "## Agent Team" thì thêm nội dung `templates/claude-md-section.md` vào cuối. Không sửa phần khác.
-5b. **Graphify (tùy chọn, code graph)**: hỏi user có muốn dùng không. Không → ghi `USE_GRAPHIFY=0` vào config, bỏ qua.
-   - Có → làm lần lượt, **hỏi xác nhận trước khi cài**:
-     1. `command -v graphify`. Chưa có thì đề nghị user chạy (đúng tên gói **graphifyy**, 2 chữ y; kiểm tra trang PyPI trỏ về `github.com/Graphify-Labs/graphify`):
-        `uv tool install graphifyy==0.9.100` (hoặc `pipx install graphifyy==0.9.100`)
-     2. `graphify install --project` (chỉ ghi vào project, không đụng `~/.claude`).
-     3. **Không** chạy `graphify hook install` hay cài hook Claude Code của Graphify (dễ đụng hook guard của agent-team). Lead tự cập nhật graph theo giai đoạn.
-     4. Build graph lần đầu: `/graphify .` (hoặc code-only nếu repo ít tài liệu). Lệnh nào lỗi → báo user, không đoán.
-   - Ghi chú vào release-notes: tùy chọn `GRAPHIFY_QUERY_LOG_DISABLE=1` nếu không muốn log câu query vào `~/.cache/graphify-queries.log`.
+5b. **Code graph (tùy chọn)**: hỏi user có muốn dùng không. Không → ghi `USE_CODE_GRAPH=0` vào config, bỏ qua.
+   - Có → không cài gói ngoài, chỉ cần `python3`:
+     1. Copy `scripts/code-graph.py` → `.claude/agent-team/code-graph.py` (chmod +x).
+     2. Build lần đầu: `.claude/agent-team/code-graph.py build` → `code-graph-out/GRAPH_REPORT.md`. Lệnh lỗi → báo user, không đoán.
+     3. Báo user: graph quét file đã commit (`git ls-files`), hỗ trợ rb, py, js/ts, go, java, php, vue. Cạnh INFERRED là gợi ý.
 6. **.gitignore**: thêm nếu chưa có:
    ```
    .agent-team/
-   graphify-out/
+   code-graph-out/
    .env*
    !.env.example
    *.dump

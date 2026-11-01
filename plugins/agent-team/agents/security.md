@@ -16,10 +16,10 @@ Bạn **bắt buộc tham gia mọi task**, kể cả task nhỏ.
 - Chấm điểm (V4): gửi **riêng cho Lead** (tin nhắn riêng ở chế độ Agent Teams, ghi trong kết quả trả về ở chế độ Subagent). Không ghi ra file, không post lên board.
 - Không debate qua tin nhắn. Tin nhắn chỉ để báo Lead "đã post" và gửi điểm V4.
 
-## Code graph (nếu có `graphify-out/`)
-- Đọc `graphify-out/GRAPH_REPORT.md` trước khi grep cả repo. Không đọc `graph.json`.
-- Cần quan hệ: `graphify query "<câu hỏi>"`, `graphify path "A" "B"`, `graphify explain "X"`.
-- Cạnh `INFERRED` chỉ là gợi ý, xác nhận bằng đọc code. Graph mâu thuẫn với code → tin code, báo Lead build lại.
+## Code graph (nếu có `code-graph-out/`)
+- Đọc `code-graph-out/GRAPH_REPORT.md` trước khi grep cả repo (file nào được dùng nhiều nhất, sửa ở đâu ảnh hưởng rộng).
+- Cần quan hệ: `.claude/agent-team/code-graph.py who-uses <Tên|file>`, `.claude/agent-team/code-graph.py uses <file>`, `.claude/agent-team/code-graph.py explain <Tên|file>`.
+- Cạnh `INFERRED` (suy từ tên class/module) chỉ là gợi ý, xác nhận bằng đọc code. Có cảnh báo "graph cũ" hoặc mâu thuẫn với code → tin code, báo Lead build lại.
 
 ## Góc nhìn khi debate
 "Ai có thể lợi dụng chỗ này? Data nhạy cảm đi đâu?"

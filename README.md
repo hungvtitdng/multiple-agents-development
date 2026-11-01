@@ -94,11 +94,12 @@ Cách giảm token thêm:
 Xem debate trực tiếp: hook `show_post.py` hiện mỗi bài post trên board vào chat (`[role · S2-R1]`).
 Bật log để xem hook có nhận `agent_type` không: `AGENT_TEAM_DEBUG=1` → `.agent-team/guard.log`.
 
-## Code graph (Graphify, tùy chọn)
+## Code graph (tự có, không cài gói ngoài)
 
-- `/agent-team:init` hỏi có dùng Graphify không (gói PyPI **graphifyy**, 2 chữ y). Dùng thì tạo `graphify-out/GRAPH_REPORT.md`.
-- BA, SA, TA, Code Reviewer, Security đọc báo cáo trước khi grep, query bằng `graphify query/path/explain` (guard chỉ cho 3 lệnh này).
-- Lead chạy `graphify update .` đầu task và sau S3, S4 để graph không cũ. Role khác không build, không cài hook.
+- `scripts/code-graph.py` quét file đã commit, tạo `code-graph-out/GRAPH_REPORT.md` + `graph.json`: file nào dùng file nào (rb, py, js/ts, go, java, php, vue).
+- Cạnh `EXTRACTED` = import/require tường minh. Cạnh `INFERRED` = tên class/module xuất hiện trong file khác (gợi ý, không phải parser đầy đủ).
+- BA, SA, TA, Code Reviewer, Security đọc báo cáo trước khi grep, query bằng `who-uses`, `uses`, `explain` (guard chỉ cho 3 lệnh này). Lead chạy `build` đầu task và sau S3, S4. Graph cũ so với HEAD thì query in cảnh báo.
+- Giới hạn: quan hệ ở mức file/class, không tới mức hàm gọi hàm. Thay đổi chưa commit không có trong graph.
 
 ## Nguồn bên thứ ba
 

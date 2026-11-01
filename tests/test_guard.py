@@ -151,12 +151,12 @@ cases += [
     ("Lead sửa spec", "Edit", {"file_path": "spec/a_spec.rb"}, None, zp, OK),
     ("requirement-reviewer sửa code", "Edit", {"file_path": "app/a.rb"}, "requirement-reviewer", zp, B),
     ("dev chmod mở khóa", "Bash", {"command": "chmod -R u+w spec"}, "backend-dev", zp, B),
-    ("reviewer graphify query", "Bash", {"command": "graphify query \"ai gọi checkPermission\""}, "code-reviewer", zp, OK),
-    ("security graphify path", "Bash", {"command": "graphify path \"UserController\" \"Order\""}, "security", zp, OK),
-    ("reviewer graphify update", "Bash", {"command": "graphify update ."}, "code-reviewer", zp, B),
-    ("dev graphify hook install", "Bash", {"command": "graphify hook install"}, "backend-dev", zp, B),
-    ("dev graphify explain", "Bash", {"command": "graphify explain \"User\""}, "backend-dev", zp, OK),
-    ("Lead graphify update", "Bash", {"command": "graphify update ."}, None, zp, OK),
+    ("reviewer code-graph who-uses", "Bash", {"command": ".claude/agent-team/code-graph.py who-uses User"}, "code-reviewer", zp, OK),
+    ("security code-graph uses", "Bash", {"command": ".claude/agent-team/code-graph.py uses app/a.rb"}, "security", zp, OK),
+    ("reviewer code-graph build", "Bash", {"command": ".claude/agent-team/code-graph.py build"}, "code-reviewer", zp, B),
+    ("dev python3 code-graph build", "Bash", {"command": "python3 .claude/agent-team/code-graph.py build"}, "backend-dev", zp, B),
+    ("dev code-graph explain", "Bash", {"command": ".claude/agent-team/code-graph.py explain User"}, "backend-dev", zp, OK),
+    ("Lead code-graph build", "Bash", {"command": ".claude/agent-team/code-graph.py build"}, None, zp, OK),
     ("dev sửa spec khi chưa có config", "Edit", {"file_path": "spec/a_spec.rb"}, "backend-dev", tempfile.mkdtemp(), OK),
 ]
 
