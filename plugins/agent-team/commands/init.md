@@ -20,7 +20,7 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
    - Mọi file init tạo **trong repo chính**. **Không tạo gì ở thư mục cha.**
    - Config: `REPOS=". ../FrontEnd"` (`.` là repo chính). `BE_PATHS`, `FE_PATHS`, `TEST_PATHS` tính từ repo chính, vd `FE_PATHS="../FrontEnd"`.
    - Dặn user: mở Claude Code ở **repo chính**, rồi thêm repo còn lại bằng `/add-dir ../FrontEnd`.
-3. **Tạo `.claude/agent-team.config`** từ `templates/agent-team.config.example`, điền giá trị đã nhận diện (kể cả `LINT_CMD`, `FORMAT_CMD`). Giá trị không chắc → `TODO` và báo user. Tuyệt đối không ghi password/KEY.
+3. **Tạo `.claude/agent-team.config`** từ `templates/agent-team.config.example`, điền giá trị đã nhận diện (kể cả `LINT_CMD`, `FORMAT_CMD`). Giữ mặc định `COST_TIER=standard` (economy | standard | max) và `LESSONS_PATH=docs/LESSONS.md`. Giá trị không chắc → `TODO` và báo user. Tuyệt đối không ghi password/KEY.
 4. **Copy vào project**:
    - `scripts/agent-db-clone.sh` → `.claude/agent-team/agent-db-clone.sh` (chmod +x)
    - `templates/TASK.md`, `POST.md`, `SUMMARY.md`, `CONTEXT.md` → `.claude/agent-team/templates/`
@@ -50,5 +50,5 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
    3. Scout báo lại lệnh lint/format nhận diện được → điền vào `LINT_CMD`, `FORMAT_CMD` nếu step 2 chưa có.
    4. Repo lớn: Scout quét theo module chính và ghi rõ phần chưa quét. Lỗi hoặc quá dài → báo user, KB sẽ tạo dần ở các task sau.
    5. Dự án mới (chưa có code): bỏ qua bước này, chỉ giữ khung. Architect đặt quy chuẩn ở task đầu tiên.
-8. **Ghi `release-notes.md`** (tạo nếu chưa có), mục `Release notes - DD/MM/YYYY`: đã cài agent team, file nào được thêm, key mới (`LINT_CMD`, `FORMAT_CMD`).
+8. **Ghi `release-notes.md`** (tạo nếu chưa có), mục `Release notes - DD/MM/YYYY`: đã cài agent team, file nào được thêm, key mới (`LINT_CMD`, `FORMAT_CMD`, `COST_TIER`, `LESSONS_PATH`).
 9. Báo user: danh sách file đã tạo/sửa, các `TODO` cần điền, phần KB còn `Unverified`. **Không commit**, để user xem trước. Cuối cùng: đúng 1 việc làm tiếp (≤ 2 phút), vd chạy `/agent-team:run <task đầu tiên>`.

@@ -15,7 +15,7 @@ Bạn là **Frontend Developer** trong agent team. Đọc "Agent Team" trong CLA
 ## Nhiệm vụ
 1. Tự nhận diện stack FE (package.json, config build).
 2. Code theo **phương án đã chốt** + API contract. Không tự suy đoán API response hay business rule.
-3. **Theo quy chuẩn `docs/engineering/`** và checklist `review-checklist.md`; bắt chước component/style/state đang có (file mẫu trong CONTEXT.md).
+3. **Đọc mục "Bài học" trong CONTEXT.md trước khi code** và không lặp lại lỗi đã ghi. **Theo quy chuẩn `docs/engineering/`** và checklist `review-checklist.md`; bắt chước component/style/state đang có (file mẫu trong CONTEXT.md).
 4. Thiếu data / API không hợp lý / contract không khớp → **không tự đổi**, báo Lead trong kết quả (`@backend-dev` cần sửa).
 5. Sửa issue từ reviewer; được phản biện lại nếu có lý do cụ thể (ghi trong kết quả).
 6. Trước khi commit: chạy `FORMAT_CMD` và `LINT_CMD` (nếu có trong config), xem `git diff`, stage đúng file của task.

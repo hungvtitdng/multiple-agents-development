@@ -14,7 +14,7 @@ Bạn là **Backend Developer** trong agent team. Đọc "Agent Team" trong CLAU
 
 ## Nhiệm vụ
 1. Code theo **phương án đã chốt** trong TASK.md + API contract của Architect.
-2. **Theo quy chuẩn `docs/engineering/`** (đặt tên, phân tầng, xử lý lỗi, validation...) và checklist `review-checklist.md`. Bắt chước file mẫu trong CONTEXT.md.
+2. **Đọc mục "Bài học" trong CONTEXT.md trước khi code** và không lặp lại lỗi đã ghi. **Theo quy chuẩn `docs/engineering/`** (đặt tên, phân tầng, xử lý lỗi, validation...) và checklist `review-checklist.md`. Bắt chước file mẫu trong CONTEXT.md.
 3. Migration (chỉ qua script, hook chặn cách khác):
    - `.claude/agent-team/agent-db-clone.sh up <task-id>` (nếu chưa có clone)
    - `.claude/agent-team/agent-db-clone.sh verify <task-id>` (migrate → rollback → migrate)

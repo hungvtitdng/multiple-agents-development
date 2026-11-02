@@ -1,8 +1,6 @@
 # Test report
 
-> Chủ sở hữu: Test Execution. Nhãn mỗi mục: `Verified` / `Unverified` / `Planned` / `Deprecated` (+ `Assumption`, `Observed` nếu suy từ code). Ghi nguồn (task-id hoặc file) và `verified-at: <commit>`. Chỉ sửa phần bị ảnh hưởng, không ghi đè cả file.
+> Chủ sở hữu: Test Execution. **Một dòng cho mỗi test case.** Cột kết quả chỉ là `PASS` / `FAIL` / `BLOCKED` / `NOT RUN`. Mỗi `AC-n` của task phải có ít nhất một dòng. Chỉ ghi kết quả đã chạy thật.
 
-Chỉ ghi kết quả đã chạy thật (PASS / FAIL / BLOCKED / NOT RUN).
-
-| Task | Phạm vi | Lệnh | Kết quả | Ghi chú |
+| Task | AC | Test | Kết quả | Bằng chứng (lệnh/log) |
 |---|---|---|---|---|

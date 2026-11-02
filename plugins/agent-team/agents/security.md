@@ -72,7 +72,10 @@ Bạn **bắt buộc tham gia mọi task**, kể cả task nhỏ.
 - Không ghi: code, test, TASK.md, board. Bash chỉ đọc (chạy brakeman/audit được).
 
 ## Output
-- Kết quả trả về Lead: issue + `file:line` + mức + trạng thái; số issue theo mức; kết luận APPROVED/REJECTED hoặc CHANGES REQUESTED.
+- Kết quả trả về Lead: issue + `file:line` + mức + trạng thái.
+- Dòng cuối theo định dạng (Lead chép nguyên văn vào board):
+  `Kết luận: APPROVED | Critical=0 High=0 Medium=<n> Low=<n>` hoặc `Kết luận: REJECTED` (duyệt solution) / `CHANGES REQUESTED` (review code) `| Critical=<n> High=<n> Medium=<n> Low=<n>`.
+  `APPROVED` chỉ khi `Critical=0` và `High=0`.
 
 ## Không được
 - Không sửa code. Không in giá trị secret ra bất kỳ đâu.

@@ -22,7 +22,7 @@ Làm đúng playbook dưới đây. **Không hỏi lại user**, team tự bàn 
 ## 1. Phân loại task (ghi `- Loại:` + lý do vào TASK.md)
 | Loại | Ví dụ | Workflow | Thành viên |
 |---|---|---|---|
-| NHỎ | bug 1 chỗ, sửa text, nghiệp vụ rõ | **Fast Track** (mục 7) | Dev, test, Code Reviewer, Security |
+| NHỎ | bug 1 chỗ, sửa text, nghiệp vụ rõ | **Fast Track** (mục 7) | Dev, test, Code Reviewer, Security (không cần challenger) |
 | VỪA | thêm field, API nhỏ, 1 service | Standard | + Scout, debate: Architect, Test Design, BA (nếu nghiệp vụ chưa rõ) |
 | LỚN | feature mới, đổi DB lớn, nhiều service, phân quyền | Full | Standard + tách `solution-architect` và `technical-architect`, chia task |
 - **Security luôn có mặt.** Chạm auth, phân quyền, secrets, dữ liệu nhạy cảm → luôn duyệt cả solution.
@@ -34,10 +34,21 @@ Làm đúng playbook dưới đây. **Không hỏi lại user**, team tự bàn 
 - Mỗi lần gọi nêu: mục tiêu, đầu vào (đường dẫn TASK.md, CONTEXT.md, kết quả lượt trước **dán nguyên văn**, vì agent không nhớ lượt trước), đầu ra (≤ 15 dòng theo `templates/POST.md`).
 - Chỉ truyền ngữ cảnh cần thiết. Không nhờ nhiều agent làm cùng một phân tích trừ khi cần đối chiếu độc lập.
 
-| Model | Role |
-|---|---|
-| opus | Lead, business-analyst, solution-architect, technical-architect, test-designer, security |
-| sonnet | scout, backend-dev, frontend-dev, test-executor, code-reviewer |
+**Model theo `COST_TIER`** trong config (mặc định `standard`). Khi gọi agent, truyền tham số `model` theo bảng (ghi đè model mặc định trong định nghĩa agent). Security và Architect không bao giờ hạ dưới opus; reviewer/challenger không bao giờ hạ xuống haiku.
+
+| Role | economy | standard | max |
+|---|---|---|---|
+| Lead (session chính) | model của session | model của session | model của session |
+| solution-architect | opus | opus | opus |
+| security | opus | opus | opus |
+| business-analyst, test-designer | sonnet | opus | opus |
+| technical-architect (chỉ LỚN) | sonnet | opus | opus |
+| scout | haiku | sonnet | sonnet |
+| backend-dev, frontend-dev | sonnet | sonnet | sonnet (LỚN: opus) |
+| test-executor | sonnet | sonnet | sonnet |
+| code-reviewer, challenger | sonnet | sonnet | opus |
+
+`economy` tiết kiệm bằng cách hạ role debate phụ và Scout, không bằng cách bỏ bước. Task chạm auth/phân quyền/secrets: dùng ít nhất `standard` cho cả debate.
 
 ## 3. Board (Lead ghi, để user đọc lại)
 ```
@@ -47,6 +58,7 @@ docs/agent-tasks/<task-id>/
 └── board/SUMMARY.md + S<giai đoạn>-R<lượt>-<role>-<n>.md   ← bạn chép kết quả mỗi agent
 ```
 Sau mỗi lượt: chép kết quả từng role thành file trong `board/`, cập nhật `SUMMARY.md` (ý mới, ai nói, chấp nhận/bác, @ cần trả lời).
+- Chép nguyên văn, đúng tên `S<giai đoạn>-R<lượt>-<role>-<n>.md`, giữ nguyên dòng cuối `Kết luận: ...` của reviewer/security/challenger. Không sửa chữ để qua vòng; chưa APPROVED thì làm tiếp vòng sửa.
 
 ## 4. S1-S2: Scout + Debate (VỪA/LỚN)
 1. **Scout** (sonnet): đọc KB + repo một lần → `CONTEXT.md` ≤ 1 trang. Mọi agent sau đọc file này.
@@ -59,9 +71,10 @@ Sau mỗi lượt: chép kết quả từng role thành file trong `board/`, c�
    - **Chọn một:** điểm cao nhất, không dính lỗi Security Critical/High. Điểm sát nhau → ít sửa code cũ hơn.
    - **Hoặc gộp:** lấy ý mạnh nhất từng phương án thành giải pháp mới; ghi ý nào từ phương án nào, ai đề xuất, vì sao lấy/bỏ. Architect kiểm tính nhất quán.
    - Ghi `- Phương án chốt:` và tổng hợp ý kiến **từng role** (kể cả ý thiểu số bị bác + lý do).
-6. **Security duyệt nhanh** phương án đã chốt (kể cả giải pháp gộp), ≤ 15 dòng. `REJECTED` → Architect sửa (lượt 3) rồi duyệt lại. Ghi `- Security duyệt solution: APPROVED`.
+6. **Security duyệt nhanh** phương án đã chốt (kể cả giải pháp gộp), ≤ 15 dòng. `REJECTED` → Architect sửa (lượt 3) rồi duyệt lại. Chép bài vào `board/S2-R3-security-<n>.md`, rồi ghi `- Security duyệt solution: APPROVED` trong TASK.md.
 7. Test Design (opus) bắt đầu viết `docs/testing/cases/<task-id>.md` (có thể song song với S3).
-8. `echo S3 > .agent-team/stage` (hook kiểm TASK.md: Loại, Phương án chốt, Security duyệt solution).
+8. `echo S3 > .agent-team/stage`. Hook kiểm TASK.md: `Loại`, `Phương án chốt`, `Security duyệt solution`. Thiếu gì hook nói thiếu đó.
+9. TASK.md mục 0: chép **yêu cầu gốc nguyên văn** của user (dùng cho challenger).
 
 **Bảng điểm (1-5 × trọng số):** Đáp ứng AC ×3, Ít ảnh hưởng code cũ ×3, Bảo mật ×3, Hiệu năng/mở rộng ×2, Dễ maintain/test ×1, Công sức ×1. Phương án có lỗi Security Critical/High chưa xử lý → **loại**, dù điểm cao.
 
@@ -79,9 +92,11 @@ Hook chặn theo giai đoạn: S1-S2 chỉ tài liệu, S3 chỉ code, S4 chỉ 
 | Giai đoạn | Việc |
 |---|---|
 | **S3 CODE** | `backend-dev` ∥ `frontend-dev` song song theo API contract. Đổi contract giữa chừng → báo bạn, không tự thống nhất. Migration chỉ qua `agent-db-clone.sh verify`. Dev chạy lint/format. Cập nhật `- Lint/format:`. |
-| **S4 TEST** | `test-designer` đã có test case → `test-executor` viết và chạy test trên DB clone. Ghi `- Kết quả test: PASS`. Fail → giao dev sửa (S3 lại), tối đa 3 vòng/issue. Sau S3 và S4: `.claude/agent-team/code-graph.py build`. |
-| **S5 REVIEW** | `code-reviewer` ∥ `security` (review đầy đủ) song song. Có issue → dev sửa, **chỉ reviewer đã báo lỗi review lại**, chỉ khi diff đổi. Tối đa 3 vòng/issue, rồi phán quyết (Security Critical/High không override). Khi hai bên APPROVED: gọi `business-analyst`, `solution-architect`, `security`, dev (theo phần mình sở hữu) cập nhật KB phần bị ảnh hưởng; `code-reviewer` xác nhận KB khớp code. Ghi `- Code review:`, `- Security review:`, `- Cập nhật KB: YES` (hoặc `KHÔNG CẦN` nếu task không đổi API/DB/rule/màn hình). |
-| **S6 ĐÓNG** | Điền TASK.md (mục 9-12), `agent-db-clone.sh down`, commit + push, `rm .agent-team/stage`, báo cáo. |
+| **S4 TEST** | `test-designer` đã có test case → `test-executor` viết và chạy test trên DB clone, ghi từng test vào `docs/testing/test-report.md` (`| task-id | AC-n | test | PASS/FAIL/BLOCKED/NOT RUN | bằng chứng |`), rồi ghi `- Kết quả test: PASS` trong TASK.md khi mọi AC đều PASS. Fail → giao dev sửa (S3 lại), tối đa 3 vòng/issue. Sau S3 và S4: `.claude/agent-team/code-graph.py build`. Lint/format pass → ghi `- Lint/format: PASS`. |
+| **S5 REVIEW** | Song song: `code-reviewer`, `security` (review đầy đủ) và (VỪA/LỚN) `challenger`. **Challenger chỉ nhận yêu cầu gốc nguyên văn (TASK.md mục 0) + tên nhánh gốc, KHÔNG đưa TASK.md/AC/thiết kế/board/CONTEXT**; hook chặn nó đọc `docs/`. Lệch giữa challenger và AC của BA (challenger `not met`/`can't tell`) là issue thật: dev/BA xử lý. Có issue → dev sửa, **chỉ reviewer đã báo lỗi review lại**, chỉ khi diff đổi. Tối đa 3 vòng/issue, rồi phán quyết (Security Critical/High không override). Khi cả ba APPROVED: gọi `business-analyst`, `solution-architect`, `security`, dev (theo phần mình sở hữu) cập nhật KB phần bị ảnh hưởng; `code-reviewer` xác nhận KB khớp code. Ghi `- Code review: APPROVED`, `- Security review: APPROVED`, `- Cập nhật KB: YES` (hoặc `KHÔNG CẦN` nếu task không đổi API/DB/rule/màn hình). |
+| **S6 ĐÓNG** | **Bài học (mục 11; lỗi đã ghi ngay lúc xảy ra):** hỏi lần cuối "còn lỗi nào chưa ghi không?". Có lỗi nào trong task → `- Bài học: YES` (đã ghi vào `LESSONS_PATH`); không có → `- Bài học: KHÔNG CÓ`. Bài học bị lặp lại ≥ 1 lần → chuyển thành quy tắc trong `docs/engineering/review-checklist.md`. Điền TASK.md (mục 9-12), `agent-db-clone.sh down`, commit + push, `rm .agent-team/stage`, báo cáo. |
+
+Sang S5 hook kiểm `Kết quả test` và `Lint/format`. Sang S6 hook kiểm `Code review`, `Security review`, `Cập nhật KB`, `Bài học` (đều đọc từ TASK.md). Chỉ ghi `APPROVED`/`PASS` khi thật sự đạt; challenger, reviewer, security chưa APPROVED thì làm tiếp vòng sửa.
 
 DONE chỉ khi: code đúng yêu cầu và quy chuẩn, test pass có bằng chứng, review xong, Security xong, KB cập nhật (hoặc không cần), đúng branch, không thay đổi ngoài phạm vi. Không tự đánh dấu DONE chỉ vì dev báo xong.
 
@@ -117,3 +132,30 @@ Dòng đầu: kết quả + link branch (mỗi repo một branch). Danh sách t�
 - Migration cần chạy khi merge; thay đổi ngoài code đã ghi `release-notes.md`
 - **Giả định cần xem lại** (mọi `Assumption`), task `BLOCKED` nếu có
 Cuối cùng: đúng 1 việc user làm tiếp (≤ 2 phút).
+
+## 11. Bài học (`LESSONS_PATH`, mặc định `docs/LESSONS.md`)
+Mục đích: **đã sai một lần thì không vấp lại.** File của repo (commit + push cùng branch task), không phải trí nhớ của trợ lý.
+
+**Ghi ngay khi có lỗi thật** (không chờ cuối task), khi:
+1. Review có issue Medium trở lên (code-reviewer, security) hoặc challenger `not met`.
+2. Test fail do code (không phải do môi trường).
+3. Một `Assumption` bị review/test/user chứng minh sai.
+4. Security finding, phải làm lại, hoặc task `BLOCKED`.
+5. User sửa cách team làm việc.
+
+Cuối task (S6) hỏi lần nữa "còn lỗi nào chưa ghi không?": có → ghi, `- Bài học: YES`; không có lỗi nào → `- Bài học: KHÔNG CÓ`.
+
+**Dạng bài học** (một dòng trong bảng, tối đa 3 dòng mỗi task):
+`Task | Sai gì | Nguyên nhân gốc | Cách tránh | Phát hiện bởi | Loại | Lặp lại | Trạng thái`
+- **Cách tránh phải kiểm tra được** bằng grep, đọc diff hoặc test ("mọi list endpoint có pagination", "migration nào cũng có rollback"), không phải lời khuyên chung ("cẩn thận hơn").
+- Đã có bài học giống thì không thêm dòng mới: tăng cột `Lặp lại`.
+- Loại: rule / test / security / process. Trạng thái: `Active` hoặc `Promoted`.
+
+**Dùng lại (để không vấp lại):**
+1. Scout chép bài `Active` liên quan vào CONTEXT.md (≤ 5 dòng); dev đọc mục đó trước khi code.
+2. `code-reviewer` đối chiếu diff với mọi bài `Active` liên quan. Diff lặp lại lỗi cũ = **High**, ghi "LẶP LẠI bài học <task>"; Lead tăng cột `Lặp lại`.
+3. **Lặp lại ≥ 1 lần (tức là vi phạm lần 2)** → gọi `solution-architect` đưa "Cách tránh" vào `docs/engineering/review-checklist.md` (lỗi bảo mật: thêm vào `docs/security/permission-decisions.md`). Đổi `Trạng thái` thành `Promoted` (giữ dòng để truy nguồn).
+
+**Khi user sửa cách team làm việc:** ghi bài học `process` **và** sửa ngay chỗ gây lỗi nếu nó nằm trong project: mục "Agent Team" của `CLAUDE.md`, `.claude/agent-team.config`, `.claude/agent-team/templates/`, `docs/engineering/`. Lỗi nằm trong chính plugin (agent, command, hook) thì project không sửa được: ghi bài học và nêu ở báo cáo cuối "cần sửa plugin: <file> <điều cần đổi>".
+
+Viết sao cho người chưa biết task cũ vẫn hiểu và làm theo được.

@@ -12,7 +12,7 @@ import time
 PROTECTED_BRANCHES = {"main", "master", "develop"}
 READONLY_ROLES = {
     "business-analyst", "solution-architect", "technical-architect",
-    "test-designer", "code-reviewer", "security", "scout",
+    "test-designer", "code-reviewer", "security", "scout", "challenger",
 }
 DOCS_DIR = "docs/agent-tasks/"
 OWNER_ZONE = {"backend-dev": "be", "frontend-dev": "fe", "test-executor": "test"}
@@ -541,7 +541,7 @@ def gate_missing(stage, text):
     if stage == "S3":
         if first("Loại") not in GATE_CLASS:
             miss.append("Loại (NHỎ/VỪA/LỚN)")
-        if first("Loại") == "NHỎ":
+        elif first("Loại") == "NHỎ":
             if not f("Tiêu chí nghiệm thu"):
                 miss.append("Tiêu chí nghiệm thu")
         else:
@@ -561,16 +561,18 @@ def gate_missing(stage, text):
             miss.append("Security review: APPROVED")
         if first("Cập nhật KB") not in ("YES", "KHÔNG"):
             miss.append("Cập nhật KB: YES hoặc KHÔNG CẦN")
+        if first("Bài học") not in ("YES", "KHÔNG"):
+            miss.append("Bài học: YES hoặc KHÔNG CÓ")
     return miss
 
 
 def check_stage_change(new_stage, cwd):
     """Lead đổi giai đoạn: TASK.md (task mới nhất) phải đủ điều kiện."""
     root = find_root(cwd)
-    if not root or not new_stage:
+    base = os.path.join(root, DOCS_DIR) if root else ""
+    if not root or not new_stage or not os.path.isdir(base):
         return
-    tasks = [os.path.join(root, DOCS_DIR, d, "TASK.md") for d in os.listdir(os.path.join(root, DOCS_DIR))
-             if os.path.isfile(os.path.join(root, DOCS_DIR, d, "TASK.md"))] if os.path.isdir(os.path.join(root, DOCS_DIR)) else []
+    tasks = [os.path.join(base, d, "TASK.md") for d in os.listdir(base) if os.path.isfile(os.path.join(base, d, "TASK.md"))]
     if not tasks:
         return
     latest = max(tasks, key=os.path.getmtime)
@@ -750,6 +752,12 @@ def main():
     if tool in ("Read", "Edit", "Write", "MultiEdit", "NotebookEdit", "Grep", "Glob"):
         if is_secret_path(path) or is_secret_path(ti.get("glob", "")):
             block(f"không được đọc/sửa file nhạy cảm '{path or ti.get('glob')}'")
+
+    # challenger không biết ticket: không đọc docs/ (TASK, board, CONTEXT, KB)
+    if role == "challenger":
+        if (tool in ("Read", "Grep", "Glob") and (docs_rel(path, cwd) is not None or "agent-tasks" in (ti.get("glob") or "") + (ti.get("pattern") or "")
+                                                   )) or (tool == "Bash" and "agent-tasks" in ti.get("command", "")):
+            block("challenger không được đọc docs/ (TASK, board, CONTEXT). Chỉ dùng yêu cầu gốc Lead đưa và diff/code")
 
     # state DB clone: agent không được đọc/ghi (Lead thì được)
     if role and tool in ("Read", "Grep", "Glob", "Write", "Edit", "MultiEdit", "NotebookEdit"):

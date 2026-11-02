@@ -19,9 +19,13 @@
 - Code review: TODO (APPROVED)
 - Security review: TODO (APPROVED)
 - Cập nhật KB: TODO (YES / KHÔNG CẦN)
+- Bài học: TODO (YES = đã ghi vào LESSONS_PATH / KHÔNG CÓ)
+
+## 0. Yêu cầu gốc (nguyên văn, Lead chép từ user, không sửa)
+> Đây là phần duy nhất `challenger` được biết (Lead đưa trong prompt; challenger không đọc file này).
 
 ## 1. Yêu cầu & Acceptance Criteria (BA)
-- AC-1: Given ... When ... Then ...
+- AC-<n>: Given ... When ... Then ... (đánh số AC-1, AC-2, ...)
 
 ## 2. Giả định (Assumption) cần user xem lại
 | Điểm chưa rõ | Cách hiểu đã chọn (best solution) | Lý do | Ai đề xuất |

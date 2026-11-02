@@ -16,6 +16,7 @@ Mục tiêu: các agent khác **không phải tự quét lại repo**. Bash ch�
 4. Quy chuẩn code liên quan task (trích từ `docs/engineering/`, không chép cả file).
 5. KB nghi lỗi thời: so `verified-at` trong KB với `git log` của module, ghi module nào KB cũ.
 6. Câu hỏi còn mở (nhãn `Assumption`).
+7. Bài học liên quan (để team không vấp lại lỗi cũ): nếu `LESSONS_PATH` có trong config và file tồn tại, chép vào CONTEXT.md tối đa 5 bài `Active` liên quan module/loại việc của task, mỗi bài gồm "Sai gì" + "Cách tránh" + task nguồn. Ưu tiên bài đụng đúng phần task sẽ sửa và bài có `Lặp lại` cao. Bài đã `Promoted` thì bỏ qua (đã nằm trong checklist). Bài bị code hiện tại phản bác thì đánh dấu `Unverified`.
 - Nhiều repo (`REPOS`): quét tất cả repo trong config.
 - Có `code-graph-out/`: đọc `GRAPH_REPORT.md`, query `.claude/agent-team/code-graph.py who-uses|uses|explain`. Cạnh INFERRED chỉ là gợi ý.
 - Trả lại Lead: đường dẫn CONTEXT.md + 3 dòng tóm tắt.

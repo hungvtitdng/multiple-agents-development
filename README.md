@@ -8,10 +8,11 @@ Plugin cho Claude Code. Đưa 1 task → Lead + BA + Architect + Test Design deb
 ├── .claude-plugin/marketplace.json
 ├── plugins/agent-team/
 │   ├── .claude-plugin/plugin.json
-│   ├── agents/          ← 10 role (Lead = session chính, nằm trong commands/run.md)
+│   ├── agents/          ← 11 role (Lead = session chính, nằm trong commands/run.md)
 │   ├── commands/
 │   │   ├── run.md       ← /agent-team:run    - playbook của Lead
 │   │   ├── resume.md    ← /agent-team:resume - làm tiếp task dang dở (hết quota, lỗi)
+│   │   ├── ask.md       ← /agent-team:ask    - hỏi về logic dự án, có dẫn nguồn
 │   │   └── init.md      ← /agent-team:init   - cài cho 1 project, dựng KB
 │   ├── hooks/           ← hooks.json, guard.py (chặn thật), show_post.py
 │   ├── scripts/         ← agent-db-clone.sh, code-graph.py
@@ -21,7 +22,7 @@ Plugin cho Claude Code. Đưa 1 task → Lead + BA + Architect + Test Design deb
 └── release-notes.md
 ```
 
-## Đội hình (10 agent)
+## Đội hình (11 agent)
 
 | Nhóm | Role | Model |
 |---|---|---|
@@ -29,6 +30,7 @@ Plugin cho Claude Code. Đưa 1 task → Lead + BA + Architect + Test Design deb
 | Chuẩn bị | scout | sonnet |
 | Làm | backend-dev, frontend-dev, test-executor | sonnet |
 | Kiểm | code-reviewer | sonnet |
+| Kiểm (mù ticket, VỪA/LỚN, ở S5) | challenger: chỉ nhận yêu cầu gốc + diff, tự dựng lại yêu cầu, chấm met / not met / can't tell. Hook chặn nó đọc `docs/` | sonnet |
 | Kiểm | security (bắt buộc mọi task) | opus |
 | Task LỚN | technical-architect (tách khỏi Architect) | opus |
 
@@ -56,6 +58,21 @@ Plugin cho Claude Code. Đưa 1 task → Lead + BA + Architect + Test Design deb
 - **Không hỏi user.** Thiếu business rule: Lead chọn best solution, ghi `Assumption`, liệt kê ở báo cáo cuối.
 - Giới hạn: debate 3 lượt, sửa 3 vòng/issue rồi Lead phán quyết. Lỗi Security Critical/High không ai override (không xử lý được → `BLOCKED`).
 - Agent là **subagent**: trả kết quả (≤ 15 dòng) cho Lead, không nhắn nhau, không ghi board/TASK.md. Lead chép vào `board/` để bạn đọc lại.
+
+## Hỏi về logic dự án (`/agent-team:ask <câu hỏi>`)
+
+Chỉ đọc, không tạo task. Lead chọn người trả lời, lấy nguồn từ `docs/` rồi đối chiếu code:
+
+| Loại câu hỏi | Người trả lời |
+|---|---|
+| Nghiệp vụ, quy tắc, quyền | business-analyst |
+| Kiến trúc, API, DB, tích hợp | solution-architect (sâu: + technical-architect) |
+| Test, độ phủ | test-designer |
+| Bảo mật, phân quyền | security |
+| Tra một chỗ trong docs | Lead trả lời luôn |
+| Xuyên nhiều mảng | 2 role song song, Lead gộp và nêu chỗ khác nhau |
+
+Nguồn theo thứ tự: KB (`docs/`) → `LESSONS.md` → `TASK.md` các task trước → code (`file:dòng`, code-graph). Mỗi ý có nguồn và nhãn `Verified/Unverified/Assumption`; KB lệch code thì tin code và ghi "KB nên cập nhật" (không tự sửa); không có nguồn thì nói thẳng, không bịa.
 
 ## Knowledge Base (`docs/`)
 
@@ -94,7 +111,14 @@ docs/
 |---|---|
 | S3 | `Loại`; NHỎ: `Tiêu chí nghiệm thu`; VỪA/LỚN: `Phương án chốt` + `Security duyệt solution: APPROVED` |
 | S5 | `Kết quả test: PASS`, `Lint/format: PASS` hoặc `N/A` |
-| S6 | `Code review: APPROVED`, `Security review: APPROVED`, `Cập nhật KB: YES` hoặc `KHÔNG CẦN` |
+| S6 | `Code review: APPROVED`, `Security review: APPROVED`, `Cập nhật KB: YES` hoặc `KHÔNG CẦN`, `Bài học: YES` hoặc `KHÔNG CÓ` |
+
+Gate chỉ đọc các dòng Lead tự điền: chặn quên bước, không kiểm chứng việc đã làm.
+
+## Mức model (`COST_TIER`) và bài học (`LESSONS_PATH`)
+
+- `COST_TIER=economy | standard | max` (mặc định standard): Lead truyền `model` cho từng agent theo bảng trong `run.md`. Economy hạ BA, Test Design, TA, Scout; max nâng Code Reviewer, Challenger. Security và Architect luôn opus.
+- `LESSONS_PATH` (mặc định `docs/LESSONS.md`): Lead ghi ≤ 3 dòng bài học cuối mỗi task; Scout đưa bài học liên quan vào CONTEXT.md ở task sau.
 
 ## Chặn ghi sai vùng: 3 lớp
 
@@ -141,14 +165,14 @@ Cập nhật: `/plugin marketplace update kevin-agent-team`, khởi động lạ
 
 ## Kiểm tra sau khi cài
 
-1. `python3 tests/test_guard.py` → toàn bộ pass (185 case)
+1. `python3 tests/test_guard.py` → toàn bộ pass
 2. Trong project, nhờ Claude gọi subagent `agent-team:business-analyst` ghi 1 file ngoài KB của BA → phải bị guard chặn.
 3. `.claude/agent-team/agent-db-clone.sh up test1` → `verify test1` → `down test1`
 
 ## Giới hạn
 
 - Guard dựa trên mẫu lệnh, không phải sandbox. Agent cố tình lách vẫn có thể lách; vẫn cần review cuối trên branch.
-- Gate chuyển giai đoạn đọc các dòng Lead tự điền trong TASK.md, chặn quên bước chứ không chứng minh việc đã làm.
+- Gate chỉ đọc các dòng Lead tự điền trong TASK.md, chặn quên bước chứ không chứng minh việc đã làm. Challenger mù ticket ở mức hook chặn đọc `docs/`; nó vẫn có thể grep nhầm vào `docs/` bằng Bash trên thư mục cha.
 - Lead là điểm tập trung ý kiến (subagent không nhắn nhau). Giảm thiên kiến bằng bảng điểm và ghi ý kiến thiểu số.
 - Chưa có: chia task nhỏ chạy song song bằng worktree riêng (để bản sau); plugin không tự chạy lại khi hết quota, dùng `/agent-team:resume`.
 - Nhiều repo (`REPOS`) mới kiểm thử bằng repo giả, chưa chạy trên dự án thật. Giảm 50-70% token so với 0.8 là ước lượng, chưa đo.

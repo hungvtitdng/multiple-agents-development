@@ -1,6 +1,6 @@
 ## Agent Team
 
-Project dùng plugin `agent-team`. Chạy task: `/agent-team:run <task>`. Làm tiếp task dang dở: `/agent-team:resume <task-id>`.
+Project dùng plugin `agent-team`. Chạy task: `/agent-team:run <task>`. Làm tiếp task dang dở: `/agent-team:resume <task-id>`. Hỏi về logic dự án (chỉ đọc, có dẫn nguồn): `/agent-team:ask <câu hỏi>`.
 
 - Config project: `.claude/agent-team.config` (nhánh gốc, đường dẫn BE/FE/test, DB clone, lint/format, `REPOS` nếu nhiều repo)
 - Mọi tài liệu nằm trong `docs/` (Knowledge Base, **đọc trước khi làm**, mỗi thư mục có chủ ghi riêng, xem `docs/README.md`). Quy chuẩn code ở `docs/engineering/`.
@@ -18,7 +18,9 @@ Project dùng plugin `agent-team`. Chạy task: `/agent-team:run <task>`. Làm t
 - **Không hỏi user.** Thiếu business rule: Lead chọn best solution, ghi nhãn `Assumption`, báo ở cuối. Kỹ thuật: team tự quyết.
 - Security bắt buộc mọi task. Critical/High phải sửa, Lead không được override.
 - Debate bằng subagent: agent trả kết quả (≤ 15 dòng) cho Lead, không ghi board/TASK.md. Lead chuyển ý kiến giữa các lượt. Điểm chấm chỉ Lead thấy.
-- Đọc `CONTEXT.md` của task, không tự quét lại repo.
+- Đọc `CONTEXT.md` của task, không tự quét lại repo. Bài học các task trước: `LESSONS_PATH` (mặc định `docs/LESSONS.md`). Đã sai một lần thì không vấp lại: Lead ghi lỗi ngay khi xảy ra (Sai gì, Nguyên nhân gốc, Cách tránh kiểm tra được); dev đọc trước khi code; Code Reviewer coi lặp lại lỗi cũ là High; lặp lại thì thành quy tắc trong `docs/engineering/review-checklist.md`.
+- `challenger` là reviewer mù ticket (VỪA/LỚN ở S5): chỉ nhận yêu cầu gốc + diff, không đọc `docs/`.
+- Mức model theo `COST_TIER` (economy | standard | max) trong config.
 - Guard chặn theo giai đoạn (`.agent-team/stage` do Lead ghi): S1-S2 chỉ tài liệu, S3 chỉ code, S4 chỉ test; và theo chủ sở hữu KB. Ghi sai vùng bị chặn hoặc hoàn tác.
 - Nhãn thông tin: `Verified` · `Unverified` · `Assumption` · `Observed` · `Planned` · `Deprecated`. Không ghi dự kiến như đã làm; không báo test PASS khi chưa chạy.
 - Code graph (nếu có `code-graph-out/`): đọc `GRAPH_REPORT.md` trước, query bằng `.claude/agent-team/code-graph.py who-uses|uses|explain`. Cạnh `INFERRED` chỉ là gợi ý. Chỉ Lead build.

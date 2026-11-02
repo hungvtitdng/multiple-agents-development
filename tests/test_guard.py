@@ -443,13 +443,33 @@ gate("S3 qua Write tool khi đủ", "- Loại: NHỎ\n- Tiêu chí nghiệm thu:
 gate("S5 test FAIL", "- Kết quả test: FAIL\n- Lint/format: PASS\n", "Bash", S5, None, B)
 gate("S5 thiếu lint", "- Kết quả test: PASS\n", "Bash", S5, None, B)
 gate("S5 đủ", "- Kết quả test: PASS\n- Lint/format: N/A\n", "Bash", S5, None, OK)
-gate("S6 thiếu Security review", "- Code review: APPROVED\n- Cập nhật KB: YES\n", "Bash", S6, None, B)
-gate("S6 thiếu KB", "- Code review: APPROVED\n- Security review: APPROVED\n", "Bash", S6, None, B)
-gate("S6 đủ", "- Code review: APPROVED\n- Security review: APPROVED\n- Cập nhật KB: KHÔNG CẦN\n", "Bash", S6, None, OK)
+DONE = "- Code review: APPROVED\n- Security review: APPROVED\n- Cập nhật KB: YES\n- Bài học: YES\n"
+gate("S6 thiếu Security review", DONE.replace("- Security review: APPROVED\n", ""), "Bash", S6, None, B)
+gate("S6 thiếu KB", DONE.replace("YES\n- Bài học", "TODO\n- Bài học"), "Bash", S6, None, B)
+gate("S6 thiếu bài học", DONE.replace("- Bài học: YES", "- Bài học: TODO"), "Bash", S6, None, B)
+gate("S6 đủ", DONE, "Bash", S6, None, OK)
+gate("S6 KB không cần + không có bài học", "- Code review: APPROVED\n- Security review: APPROVED\n- Cập nhật KB: KHÔNG CẦN\n- Bài học: KHÔNG CÓ\n", "Bash", S6, None, OK)
 gate("S2 không có điều kiện", "- Loại: TODO\n", "Bash", {"command": "echo S2 > .agent-team/stage"}, None, OK)
 gate("xoá stage khi đóng", "- Loại: TODO\n", "Bash", {"command": "rm .agent-team/stage"}, None, OK)
 gate("ghi stage không đúng dạng", "- Loại: TODO\n", "Bash", {"command": "echo done > .agent-team/stage"}, None, B)
 gate("agent ghi stage bị chặn", "- Loại: NHỎ\n- Tiêu chí nghiệm thu: x\n", "Bash", S3, "backend-dev", B)
+
+# ---- challenger không biết ticket: không đọc docs/, chỉ thấy code + diff ----
+ch = [
+    ("challenger đọc TASK.md bị chặn", "Read", {"file_path": "docs/agent-tasks/T1/TASK.md"}, "challenger", gp, B),
+    ("challenger đọc KB bị chặn", "Read", {"file_path": "docs/testing/test-report.md"}, "challenger", gp, B),
+    ("challenger cat TASK bằng Bash bị chặn", "Bash", {"command": "cat docs/agent-tasks/T1/TASK.md"}, "challenger", gp, B),
+    ("challenger grep agent-tasks bị chặn", "Grep", {"path": "docs/agent-tasks"}, "challenger", gp, B),
+    ("challenger Glob agent-tasks bị chặn", "Glob", {"glob": "docs/agent-tasks/**"}, "challenger", gp, B),
+    ("challenger đọc code", "Read", {"file_path": "app/a.rb"}, "challenger", gp, OK),
+    ("challenger git diff", "Bash", {"command": "git diff develop...HEAD"}, "challenger", gp, OK),
+    ("challenger sửa code bị chặn", "Edit", {"file_path": "app/a.rb"}, "challenger", gp, B),
+    ("challenger ghi board bị chặn", "Write", {"file_path": "docs/agent-tasks/T1/board/S5-R1-challenger-1.md"}, "challenger", gp, B),
+    ("Lead đọc TASK.md", "Read", {"file_path": "docs/agent-tasks/T1/TASK.md"}, None, gp, OK),
+]
+for c in ch:
+    check(*c)
+total += len(ch)
 
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

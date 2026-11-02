@@ -1,3 +1,30 @@
+# Release notes - 02/11/2026 (v0.9.2)
+
+## Thay đổi
+- Lệnh mới `/agent-team:ask <câu hỏi>`: hỏi về logic dự án, chỉ đọc, không tạo task. Lead chọn người trả lời (nghiệp vụ → business-analyst, kiến trúc/API/DB → solution-architect, test → test-designer, bảo mật → security, câu đơn giản Lead tự trả lời, xuyên nhiều mảng → 2 role song song rồi gộp).
+- Nguồn theo thứ tự: KB `docs/` → `LESSONS.md` → `TASK.md` các task trước → code (`file:dòng`, code-graph). Mỗi ý có nguồn và nhãn `Verified/Unverified/Assumption`. KB lệch code thì tin code và nêu "KB nên cập nhật" (không tự sửa). Không có nguồn thì nói thẳng.
+- Không cần key hay config mới. Không sửa guard (các role trả lời vốn chỉ đọc).
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update kevin-agent-team`, khởi động lại Claude Code.
+- Project đã init: thêm câu về `/agent-team:ask` vào mục "Agent Team" của `CLAUDE.md` (hoặc chạy lại phần CLAUDE.md của init).
+
+# Release notes - 02/11/2026 (v0.9.1)
+
+## Thay đổi
+- **Agent mới `challenger`** (sonnet, 11 agent): reviewer mù ticket, chỉ nhận yêu cầu gốc nguyên văn + diff, tự dựng lại yêu cầu và chấm met / not met / can't tell kèm `file:dòng`. Hook chặn nó đọc `docs/` (TASK, board, CONTEXT, KB). Dùng ở S5 cho task VỪA/LỚN; không có gate riêng (gate vẫn đọc dòng Lead điền trong TASK.md).
+- **`COST_TIER`** (`economy | standard | max`): bảng model theo mức trong `run.md`; Lead truyền `model` khi gọi agent. Security và Architect luôn opus.
+- **`LESSONS_PATH`** (`docs/LESSONS.md`): mục đích "đã sai một lần thì không vấp lại". Lead ghi **ngay khi có lỗi thật** (review Medium trở lên, test fail do code, Assumption sai, Security finding, làm lại, user sửa cách làm), mỗi bài gồm Sai gì, Nguyên nhân gốc, Cách tránh kiểm tra được, tối đa 3 dòng mỗi task. Dùng lại: Scout chép bài `Active` liên quan vào CONTEXT.md, dev đọc trước khi code, `code-reviewer` coi diff lặp lại lỗi cũ là High; lặp lại thì chuyển thành quy tắc trong `docs/engineering/review-checklist.md` (`Promoted`). Gate S6 chỉ kiểm dòng `Bài học: YES` hoặc `KHÔNG CÓ` trong TASK.md. User sửa cách team làm việc: ghi bài học `process` và sửa chỗ gây lỗi nếu nằm trong project (lỗi trong plugin thì nêu ở báo cáo cuối).
+- Định dạng gợi ý: `test-report.md` một dòng mỗi test (`| task-id | AC-n | test | PASS | bằng chứng |`); dòng cuối bài reviewer `Kết luận: APPROVED | Critical=0 High=0 ...`.
+- TASK.md thêm mục 0 "Yêu cầu gốc (nguyên văn)" cho challenger; AC đánh số `AC-<n>`.
+
+## Key mới trong `.claude/agent-team.config`
+- `COST_TIER`, `LESSONS_PATH`.
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update kevin-agent-team`, khởi động lại Claude Code, kiểm tra có 11 agent.
+- Project đã init: thêm `COST_TIER=standard`, `LESSONS_PATH=docs/LESSONS.md` vào config; copy `templates/kb/LESSONS.md` → `docs/LESSONS.md`; copy lại `TASK.md`, `CONTEXT.md` vào `.claude/agent-team/templates/`; thêm dòng `- Bài học: TODO` vào mục "Điều kiện chuyển giai đoạn" của TASK.md.
+
 # Release notes - 02/11/2026 (v0.9.0)
 
 ## Thay đổi

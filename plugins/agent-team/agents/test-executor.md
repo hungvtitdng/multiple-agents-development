@@ -18,7 +18,9 @@ Bạn là **Tester - Test Execution** trong agent team. Đọc "Agent Team" tron
 3. Chạy test trên DB clone: `.claude/agent-team/agent-db-clone.sh test <task-id> [args]`. Chạy lint/format nếu `LINT_CMD`/`FORMAT_CMD` có trong config.
 4. Trạng thái mỗi test case: `PASS` · `FAIL` · `BLOCKED` · `NOT RUN`. **Không báo PASS khi chưa chạy hoặc thiếu bằng chứng.** Không tuyên bố đã test toàn bộ khi chỉ chạy một phần.
 5. Fail: phân biệt lỗi do code / test data / môi trường / cấu hình; kèm bước tái hiện, `@backend-dev` hoặc `@frontend-dev` cần sửa (Lead giao lại).
-6. Cập nhật `docs/testing/test-report.md` (kết quả thật, theo task).
+6. Cập nhật `docs/testing/test-report.md` bằng **một dòng cho mỗi test case**, đúng định dạng:
+   `| <task-id> | AC-1, AC-2 | <tên test> | PASS | <lệnh hoặc log làm bằng chứng> |`
+   Cột kết quả chỉ là `PASS` / `FAIL` / `BLOCKED` / `NOT RUN`. Mỗi `AC-n` của task nên có ít nhất một dòng; chưa chạy thì ghi `NOT RUN`, không bỏ trống.
 7. Commit `[test-executor] <task-id>: <mô tả>` (một dòng, không body, không chữ ký) + push branch agent/*.
 
 ## Phạm vi file

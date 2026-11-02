@@ -20,6 +20,12 @@ TEST_PATHS="spec test e2e"
 LINT_CMD=
 FORMAT_CMD=
 
+# Mức model: economy | standard | max (mặc định standard). Lead chọn model theo bảng trong run.md mục 2.
+COST_TIER=standard
+
+# Nơi Lead ghi bài học sau mỗi task (Scout đọc ở task sau). Để trống = bỏ qua.
+LESSONS_PATH=docs/LESSONS.md
+
 # 1 = dùng code graph (Lead build bằng .claude/agent-team/code-graph.py build)
 USE_CODE_GRAPH=1
 
