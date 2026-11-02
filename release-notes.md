@@ -1,3 +1,15 @@
+# Release notes - 02/11/2026 (v0.9.4)
+
+## Thay đổi
+- **Sửa init không dựng đủ KB / không đọc sâu logic.** Nguyên nhân: Scout thiếu tool `Edit` nên không điền được khung đã có; một Scout đọc cả dự án; không chỉ cách đọc logic; có lối thoát "quá dài thì báo user"; không ai kiểm đủ hay chưa.
+- `scout`: thêm `Edit`, phải `Read` khung trước khi điền; thêm bảng cách đọc logic (routes/controller → API, service/job → luồng nghiệp vụ, model → validation/trạng thái, policy → quyền, migration → DB, test → quy tắc); mỗi quy tắc `BR-<tên>-<n>` kèm `file:dòng`; mỗi file có `verified-at: <commit>` và mục "Phạm vi đã quét / Chưa quét".
+- Lệnh mới `/agent-team:kb [--check | <module>]`: Bản đồ → nhiều Scout song song theo mảng (mỗi file KB chỉ một Scout ghi) → Scout tổng hợp nghiệp vụ → `kb-check.py` → gọi lại Scout cho file còn thiếu (tối đa 2 vòng); không giấu phần chưa quét. `init` dùng chung quy trình này.
+- Script mới `scripts/kb-check.py` (copy vào `.claude/agent-team/kb-check.py`): báo file KB nào còn là khung. Role chỉ đọc chạy được (hook cho phép); Lead dùng để kiểm sau init.
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update kevin-agent-team`, khởi động lại Claude Code.
+- Project đã init: chạy `/agent-team:kb` (đang có task thì đóng task / xoá `.agent-team/stage` trước).
+
 # Release notes - 02/11/2026 (v0.9.3)
 
 ## Thay đổi

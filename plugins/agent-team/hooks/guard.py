@@ -344,6 +344,8 @@ def readonly_segment_ok(tk):
         return len(tk) > 1 and tk[1] in ("status", "test")
     if cmd == CODE_GRAPH:
         return len(tk) > 1 and tk[1] in CODE_GRAPH_READ
+    if cmd == "kb-check.py":
+        return True  # chỉ đọc: báo file KB nào còn khung
     if cmd == "git":
         return git_target(tk, "")[1] in GIT_READ
     if cmd == "find":

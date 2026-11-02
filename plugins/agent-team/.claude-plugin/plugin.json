@@ -1,6 +1,6 @@
 {
   "name": "agent-team",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "Lead + 11 agent: BA, Architect (SA/TA), Test Design debate chọn best solution; Scout, BE, FE, Test Execution, Code Reviewer, Challenger, Security làm, kiểm. Model theo vai trò và COST_TIER để giảm token.",
   "author": {
     "name": "Kevin"

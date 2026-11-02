@@ -13,6 +13,7 @@ Plugin cho Claude Code. Đưa 1 task → Lead + BA + Architect + Test Design deb
 │   │   ├── run.md       ← /agent-team:run    - playbook của Lead
 │   │   ├── resume.md    ← /agent-team:resume - làm tiếp task dang dở (hết quota, lỗi)
 │   │   ├── ask.md       ← /agent-team:ask    - hỏi về logic dự án, có dẫn nguồn
+│   │   ├── kb.md        ← /agent-team:kb     - dựng/làm đầy KB từ code (nhiều Scout, kiểm bằng kb-check)
 │   │   └── init.md      ← /agent-team:init   - cài cho 1 project, dựng KB
 │   ├── hooks/           ← hooks.json, guard.py (chặn thật), show_post.py
 │   ├── scripts/         ← agent-db-clone.sh, code-graph.py
@@ -87,7 +88,9 @@ docs/
 └── agent-tasks/<task-id>/   TASK.md, CONTEXT.md, board/
 ```
 - Mỗi thư mục có chủ ghi riêng (hook chặn), nhãn `Verified/Unverified/Planned/Deprecated`, `verified-at: <commit>`.
-- `/agent-team:init` dự án có sẵn code: Scout dựng luôn nháp KB + quy chuẩn code (`Observed`), tất cả `Unverified`. `--skip-kb` để bỏ qua.
+- `/agent-team:init` dự án có sẵn code: dựng luôn KB bằng quy trình của `/agent-team:kb`: Bản đồ → nhiều Scout đọc sâu logic song song (module, kiến trúc/API/DB, frontend, quy chuẩn/test) → Scout tổng hợp nghiệp vụ → `kb-check.py` kiểm, gọi lại Scout cho file còn thiếu (tối đa 2 vòng). Mọi mục `Observed/Unverified/Assumption` kèm `file:dòng` và `verified-at`. `--skip-kb` để bỏ qua.
+- `kb-check.py`: file KB nào còn là khung (thiếu `verified-at: <commit>` hoặc thiếu nguồn `file:dòng`). Phần chưa quét được ghi trong `docs/README.md` mục "Tình trạng KB", không giấu.
+- `/agent-team:kb [--check | <module>]`: dựng/làm đầy/làm mới KB bất cứ lúc nào, tiếp tục được theo module. Không chạy khi đang có task (hook chặn Scout ghi KB).
 - Task đổi API/DB/rule/màn hình mà chưa cập nhật KB → không sang S6.
 - Quy chuẩn code lấy từ pattern đang dùng nhiều nhất; Code Reviewer review theo `docs/engineering/`. Dev chạy `LINT_CMD`/`FORMAT_CMD` trước khi commit.
 

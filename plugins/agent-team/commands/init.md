@@ -24,6 +24,7 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
 4. **Copy vào project**:
    - `scripts/agent-db-clone.sh` → `.claude/agent-team/agent-db-clone.sh` (chmod +x)
    - `templates/TASK.md`, `POST.md`, `SUMMARY.md`, `CONTEXT.md` → `.claude/agent-team/templates/`
+   - `scripts/kb-check.py` → `.claude/agent-team/kb-check.py` (chmod +x)
 5. **CLAUDE.md**: chưa có mục "## Agent Team" thì thêm nội dung `templates/claude-md-section.md` vào cuối. Không sửa phần khác.
 5b. **Code graph (tùy chọn)**: hỏi user có muốn dùng không. Không → `USE_CODE_GRAPH=0`, bỏ qua.
    - Có → không cài gói ngoài, chỉ cần `python3` (nhiều repo: chạy ở repo chính):
@@ -44,11 +45,12 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
    - Đã có `Docs/` viết hoa → hỏi user đổi tên thành `docs` (`git mv Docs docs`) trước khi tạo.
    - Project đã có `docs/domain/` từ bản cũ → giữ nguyên (BA vẫn ghi được), không di chuyển.
    - Project đã có tài liệu nghiệp vụ nơi khác → đọc làm nguồn, không tự di chuyển hay ghi đè.
-7b. **Dự án có sẵn code và không có `--skip-kb` → dựng nháp KB ngay:**
-   1. Gọi subagent `agent-team:scout` (sonnet). Giao: đọc một lần mọi repo trong `REPOS`, điền KB theo mục "Việc 2" trong định nghĩa của Scout (`project-overview`, `architecture`, `tech-stack`, `domain-model`, `api/endpoints`, `database/schema`, `integrations/`, `testing/test-strategy`, `modules/<tên>/README.md`, `engineering/coding-standards.md`).
-   2. Mọi mục gắn `Unverified`, có nguồn và `verified-at: <commit>`. Business rule suy từ code chỉ là `Assumption`. Quy chuẩn code là `Observed` (pattern chiếm đa số, kèm ví dụ `file:dòng`).
-   3. Scout báo lại lệnh lint/format nhận diện được → điền vào `LINT_CMD`, `FORMAT_CMD` nếu step 2 chưa có.
-   4. Repo lớn: Scout quét theo module chính và ghi rõ phần chưa quét. Lỗi hoặc quá dài → báo user, KB sẽ tạo dần ở các task sau.
-   5. Dự án mới (chưa có code): bỏ qua bước này, chỉ giữ khung. Architect đặt quy chuẩn ở task đầu tiên.
+7b. **Dự án có sẵn code và không có `--skip-kb` → dựng KB ngay, đọc sâu logic (không chỉ liệt kê thư mục):**
+   1. Copy `scripts/kb-check.py` → `.claude/agent-team/kb-check.py` (chmod +x).
+   2. **Đọc `<thư mục plugin>/commands/kb.md` rồi làm đúng quy trình trong đó** (mục 1-5): Bản đồ → nhiều Scout song song theo mảng (module, kiến trúc/API/DB, frontend, quy chuẩn/test) → Scout tổng hợp nghiệp vụ → `kb-check.py` và gọi lại Scout cho file còn `THIEU` (tối đa 2 vòng). Thư mục plugin lấy ở bước 1.
+   3. Mọi mục gắn nhãn (`Observed`/`Unverified`/`Assumption`), có `file:dòng` và `verified-at: <commit>`. Business rule suy từ code không bao giờ là Confirmed.
+   4. Lệnh lint/format Scout báo → điền `LINT_CMD`, `FORMAT_CMD` nếu bước 2 chưa nhận diện được.
+   5. **Không có lối thoát "quá dài thì bỏ qua".** Chưa đọc hết thì ghi rõ trong `docs/README.md` mục "Tình trạng KB" (đã quét / chưa quét / vì sao) và báo user chạy `/agent-team:kb <module>` để làm tiếp.
+   6. Dự án mới (chưa có code): bỏ qua bước này, chỉ giữ khung. Architect đặt quy chuẩn ở task đầu tiên.
 8. **Ghi `release-notes.md`** (tạo nếu chưa có), mục `Release notes - DD/MM/YYYY`: đã cài agent team, file nào được thêm, key mới (`LINT_CMD`, `FORMAT_CMD`, `COST_TIER`, `LESSONS_PATH`).
-9. Báo user: danh sách file đã tạo/sửa, các `TODO` cần điền, phần KB còn `Unverified`. **Không commit**, để user xem trước. Cuối cùng: đúng 1 việc làm tiếp (≤ 2 phút), vd chạy `/agent-team:run <task đầu tiên>`.
+9. Báo user: danh sách file đã tạo/sửa, các `TODO` cần điền, kết quả `kb-check.py` (đạt/tổng), phần KB chưa quét và còn `Unverified`. **Không commit**, để user xem trước. Cuối cùng: đúng 1 việc làm tiếp (≤ 2 phút), vd chạy `/agent-team:run <task đầu tiên>`.

@@ -161,6 +161,8 @@ cases += [
     ("dev python3 code-graph build", "Bash", {"command": "python3 .claude/agent-team/code-graph.py build"}, "backend-dev", zp, B),
     ("dev code-graph explain", "Bash", {"command": ".claude/agent-team/code-graph.py explain User"}, "backend-dev", zp, OK),
     ("Lead code-graph build", "Bash", {"command": ".claude/agent-team/code-graph.py build"}, None, zp, OK),
+    ("scout chạy kb-check", "Bash", {"command": ".claude/agent-team/kb-check.py"}, "scout", zp, OK),
+    ("scout python3 kb-check --json", "Bash", {"command": "python3 .claude/agent-team/kb-check.py --json"}, "scout", zp, B),
     ("dev sửa spec khi chưa có config", "Edit", {"file_path": "spec/a_spec.rb"}, "backend-dev", tempfile.mkdtemp(), OK),
 ]
 
