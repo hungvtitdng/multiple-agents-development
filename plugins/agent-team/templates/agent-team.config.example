@@ -16,6 +16,10 @@ BE_PATHS="app lib config db/migrate"
 FE_PATHS="frontend"
 TEST_PATHS="spec test e2e"
 
+# Lệnh lint/format (init tự nhận diện). Dev chạy trước khi commit; Lead chỉ sang S5 khi pass. Để trống = bỏ qua.
+LINT_CMD=
+FORMAT_CMD=
+
 # 1 = dùng code graph (Lead build bằng .claude/agent-team/code-graph.py build)
 USE_CODE_GRAPH=1
 

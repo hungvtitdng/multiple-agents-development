@@ -1,122 +1,128 @@
-# Agent Team - đội 12 agent debate để chọn best solution
+# Agent Team - debate 4 người chọn best solution, rồi code, test, review
 
-Plugin cho Claude Code. Đưa 1 task → team tự debate, chọn best solution, code, test, review, push lên branch riêng.
+Plugin cho Claude Code. Đưa 1 task → Lead + BA + Architect + Test Design debate, Lead chốt best solution (chọn một hoặc gộp ý), team code, test, review, push lên branch riêng. Thiết kế đầy đủ: `docs/design.md`.
 
 ## Cấu trúc
 
 ```
-03.Multiple-Agents/
-├── .claude-plugin/marketplace.json      ← marketplace local
+├── .claude-plugin/marketplace.json
 ├── plugins/agent-team/
 │   ├── .claude-plugin/plugin.json
-│   ├── agents/          ← 11 role (Lead = session chính, nằm trong commands/run.md)
+│   ├── agents/          ← 10 role (Lead = session chính, nằm trong commands/run.md)
 │   ├── commands/
-│   │   ├── run.md       ← /agent-team:run  - playbook của Lead
-│   │   └── init.md      ← /agent-team:init - cài cho 1 project
-│   ├── hooks/
-│   │   ├── hooks.json   ← đăng ký guard
-│   │   └── guard.py     ← chặn thật (secret, git, DB, role chỉ đọc)
-│   ├── scripts/agent-db-clone.sh   ← DB clone để migrate/test
-│   └── templates/       ← TASK.md, POST.md, SUMMARY.md, config, mục CLAUDE.md
-├── tests/test_guard.py
+│   │   ├── run.md       ← /agent-team:run    - playbook của Lead
+│   │   ├── resume.md    ← /agent-team:resume - làm tiếp task dang dở (hết quota, lỗi)
+│   │   └── init.md      ← /agent-team:init   - cài cho 1 project, dựng KB
+│   ├── hooks/           ← hooks.json, guard.py (chặn thật), show_post.py
+│   ├── scripts/         ← agent-db-clone.sh, code-graph.py
+│   └── templates/       ← TASK, SUMMARY, POST, CONTEXT, config, mục CLAUDE.md, kb/ (khung docs/)
+├── docs/design.md       ← thiết kế
+├── tests/
 └── release-notes.md
 ```
 
-## Debate Board: nơi làm việc chung
+## Đội hình (10 agent)
 
-```
-docs/agent-tasks/<task-id>/
-├── TASK.md                       ← kết quả cuối (chỉ Lead ghi)
-└── board/
-    ├── SUMMARY.md                ← Lead tóm tắt từng vòng (chỉ Lead ghi)
-    └── S2-R2-security-1.md       ← bài post: S<giai đoạn>-R<vòng>-<role>-<n>
-```
-
-- Mỗi vòng, mỗi role đọc **SUMMARY + toàn bộ bài post của vòng hiện tại**, góp ý cho **tất cả** phương án.
-- `@role` = bắt buộc trả lời ở vòng sau.
-- Đã post thì không sửa, chỉ post thêm. Không debate qua tin nhắn.
-- Điểm V4 gửi **riêng cho Lead** (không file, không board). Lead ghi bảng điểm vào TASK.md.
-- Khi chốt, Lead tổng hợp ý kiến **từng role** (kể cả ý kiến bị bác) vào TASK.md.
+| Nhóm | Role | Model |
+|---|---|---|
+| **Debate** | Lead, business-analyst, solution-architect (Architect), test-designer | opus |
+| Chuẩn bị | scout | sonnet |
+| Làm | backend-dev, frontend-dev, test-executor | sonnet |
+| Kiểm | code-reviewer | sonnet |
+| Kiểm | security (bắt buộc mọi task) | opus |
+| Task LỚN | technical-architect (tách khỏi Architect) | opus |
 
 ## Luồng 1 task
 
 ```
 /agent-team:run <task>
-        │
-        ▼
- LEAD (session chính) ─► tạo branch agent/<task-id> ─► phân loại NHỎ/VỪA/LỚN
-        │
- ① YÊU CẦU    BA viết AC ─► mơ hồ? ─► cả team debate ─► Requirement Reviewer APPROVED
- ② SOLUTION   đề xuất A/B/C ─► phản biện ─► đối đáp ─► chấm điểm độc lập
-              🔐 Security soi từng phương án ─► Solution Reviewer APPROVED
- ③ CODE       BE ◄─► FE ─► migration trên DB clone ─► commit + push
- ④ TEST       Tester (AC + test bảo mật) trên DB clone ─► commit + push
- ⑤ REVIEW     Code │ Solution │ Test │ Requirement │ 🔐 Security  ─► issue? về ③/④
- ⑥ ĐÓNG       TASK.md hoàn chỉnh ─► xoá DB clone ─► push ─► báo link branch
+   │
+ Lead phân loại NHỎ / VỪA / LỚN, tạo branch agent/<task-id>
+   │
+   ├─ NHỎ (Fast Track): Lead viết tiêu chí nghiệm thu → Dev → test → Code Reviewer ∥ Security
+   │
+   └─ VỪA / LỚN
+       Scout đọc KB + repo MỘT lần → CONTEXT.md
+       DEBATE (subagent, mỗi lượt chạy song song, kết quả chỉ về Lead)
+         Lượt 1: Architect đưa A/B/C │ BA viết AC
+         Lượt 2: BA │ Architect │ Test Design phản biện mọi phương án + chấm điểm kín
+         Lượt 3 (chỉ khi cần): bất đồng lớn, Security Critical/High, gộp ý
+       Lead chốt: chọn một HOẶC gộp ý các phương án → TASK.md
+       Security duyệt nhanh solution (kể cả giải pháp gộp)
+       CODE  BE ∥ FE  →  TEST (Test Design viết case, Test Execution chạy)
+       REVIEW Code Reviewer ∥ Security  →  cập nhật KB  →  ĐÓNG, push
 ```
 
-Bế tắc (cùng 1 issue tranh luận 2 lần, không có lập luận mới) → Lead phán quyết.
-**Lead không được override lỗi Security Critical/High.**
+- **Không hỏi user.** Thiếu business rule: Lead chọn best solution, ghi `Assumption`, liệt kê ở báo cáo cuối.
+- Giới hạn: debate 3 lượt, sửa 3 vòng/issue rồi Lead phán quyết. Lỗi Security Critical/High không ai override (không xử lý được → `BLOCKED`).
+- Agent là **subagent**: trả kết quả (≤ 15 dòng) cho Lead, không nhắn nhau, không ghi board/TASK.md. Lead chép vào `board/` để bạn đọc lại.
 
-## Model theo vai trò
+## Knowledge Base (`docs/`)
 
-| Model | Role | Lý do |
-|---|---|---|
-| **opus** | Lead, Solution Architect, Technical Architect, Security, Solution Reviewer, Requirement Reviewer | Quyết định thiết kế, rủi ro cao |
-| **sonnet** | BA, Backend, Frontend, Tester, Code Reviewer, Test Reviewer | Làm theo design đã chốt |
-
-Cách giảm token thêm:
-- Task NHỎ/VỪA chỉ gọi role liên quan (Security luôn có mặt)
-- Chỉ tạo teammate cho giai đoạn hiện tại, xong thì cho nghỉ
-- Mỗi vòng chỉ đọc SUMMARY các vòng trước + bài của vòng hiện tại, không đọc lại cả board
+```
+docs/
+├── project-overview, architecture, tech-stack, domain-model, business-rules,
+│   roles-and-permissions, glossary (.md)
+├── engineering/   quy chuẩn code + checklist clean code
+├── api/ database/ integrations/ decisions/ modules/<tên>/
+├── testing/       strategy, cases/<task-id>.md, coverage-matrix, test-report
+├── security/      findings, permission-decisions
+└── agent-tasks/<task-id>/   TASK.md, CONTEXT.md, board/
+```
+- Mỗi thư mục có chủ ghi riêng (hook chặn), nhãn `Verified/Unverified/Planned/Deprecated`, `verified-at: <commit>`.
+- `/agent-team:init` dự án có sẵn code: Scout dựng luôn nháp KB + quy chuẩn code (`Observed`), tất cả `Unverified`. `--skip-kb` để bỏ qua.
+- Task đổi API/DB/rule/màn hình mà chưa cập nhật KB → không sang S6.
+- Quy chuẩn code lấy từ pattern đang dùng nhiều nhất; Code Reviewer review theo `docs/engineering/`. Dev chạy `LINT_CMD`/`FORMAT_CMD` trước khi commit.
 
 ## Chặn thật bằng hook (guard.py)
 
 | Áp dụng | Chặn |
 |---|---|
 | Mọi agent | Đọc/sửa `.env*`, `*.key`, `*.pem`, dump DB. `printenv`, `docker inspect`, `docker compose config` |
-| Mọi agent | Push vào main/master/develop, force push, xoá branch, `reset --hard`, `clean -f` |
-| Mọi agent | Commit/merge khi đang ở main/develop. Push khi diff có secret hoặc file nhạy cảm |
-| Mọi agent | `db:migrate`, `db:drop`... không chạy qua `agent-db-clone.sh` |
-| BA, SA, TA, 4 Reviewer, Security | Sửa code (đã bỏ `Edit` khỏi `tools`; `Write` chỉ còn để post board, guard chặn ghi ngoài board). Bash ngoài danh sách đọc/test/lint. Redirect `>`, `tee`, `sed -i`, `--fix`, `-a` |
-| backend-dev, frontend-dev, tester | Sửa file ngoài vùng của mình: BE↔FE↔test (theo `BE_PATHS`/`FE_PATHS`/`TEST_PATHS`, kèm file `*_spec.*`, `*.test.*`, `__tests__/`) |
-| Mọi role (trừ Lead) | Post bằng tên role khác, sửa/ghi đè bài đã post, ghi TASK.md/SUMMARY.md, ghi board bằng Bash |
-| Mọi role (trừ Lead) | Đọc/ghi `.agent-team/` (state DB clone) |
-| Mọi role trừ BA và Lead | Ghi knowledge base `docs/domain/` (kể cả bằng Bash) |
+| Mọi agent | Push vào main/master/develop, force push, xoá branch, `reset --hard`, `clean -f`. Push khi diff có secret |
+| Mọi agent | `db:migrate`, `db:drop`... không qua `agent-db-clone.sh` |
+| Project có agent-team | Commit không đúng một dòng `[role] task-id: mô tả`, có body/trailer (`Co-authored-by`, `Signed-off-by`), `--signoff` |
+| BA, Architect, TA, Test Design, Code Reviewer, Security, Scout | Sửa code; Bash ngoài danh sách đọc/test/lint; redirect, `tee`, `sed -i`, `--fix`. Chỉ ghi KB của mình |
+| backend-dev, frontend-dev, test-executor | Sửa file ngoài vùng của mình (`BE_PATHS`/`FE_PATHS`/`TEST_PATHS`, kèm `*_spec.*`, `*.test.*`, `__tests__/`) |
+| Mọi role (trừ Lead) | Ghi `docs/agent-tasks/` (TASK, board) trừ Scout ghi `CONTEXT.md`; ghi KB của role khác (xem bảng chủ ghi trong `docs/README.md`) |
+| Mọi role (trừ Lead) | Đọc/ghi `.agent-team/` |
+| Lead | Đổi giai đoạn khi TASK.md chưa đủ điều kiện (xem dưới) |
+
+### Gate chuyển giai đoạn (Lead ghi `.agent-team/stage`, hook kiểm TASK.md)
+
+| Sang | Cần trong TASK.md |
+|---|---|
+| S3 | `Loại`; NHỎ: `Tiêu chí nghiệm thu`; VỪA/LỚN: `Phương án chốt` + `Security duyệt solution: APPROVED` |
+| S5 | `Kết quả test: PASS`, `Lint/format: PASS` hoặc `N/A` |
+| S6 | `Code review: APPROVED`, `Security review: APPROVED`, `Cập nhật KB: YES` hoặc `KHÔNG CẦN` |
 
 ## Chặn ghi sai vùng: 3 lớp
 
 ```
-1. PreToolUse   chặn trước theo mẫu lệnh / đường dẫn       (cần agent_type)
+1. PreToolUse   chặn trước theo mẫu lệnh / đường dẫn       (cần agent_type, đã kiểm chứng với subagent)
 2. PostToolUse  so diff sau mỗi lệnh Bash, file sai vùng → hoàn tác ngay
-3. Giai đoạn    Lead ghi .agent-team/stage: S3 chỉ ghi code, S4 chỉ ghi test
-                → không cần biết ai gọi (lớp 1, 2 cũng dùng luật này)
+3. Giai đoạn    Lead ghi .agent-team/stage: S1-S2 chỉ tài liệu, S3 chỉ code, S4 chỉ test
 ```
-Xem debate trực tiếp: hook `show_post.py` hiện mỗi bài post trên board vào chat (`[role · S2-R1]`).
-Bật log để xem hook có nhận `agent_type` không: `AGENT_TEAM_DEBUG=1` → `.agent-team/guard.log`.
+Bật log xem hook nhận `agent_type`: `AGENT_TEAM_DEBUG=1` → `.agent-team/guard.log`. Hook `show_post.py` hiện mỗi bài Lead ghi trên board vào chat.
 
 ## Nhiều repo (BE và FE là 2 repo riêng)
 
-Chọn **1 repo chính** (thường là API/BE) chứa `.claude/`, `docs/`, `CLAUDE.md`. Repo còn lại tham chiếu bằng đường dẫn từ repo chính.
+Chọn **1 repo chính** (thường API/BE) chứa `.claude/`, `docs/`, `CLAUDE.md`.
 ```
 3.KidTime/                  (thư mục cha, plugin không tạo gì ở đây)
 ├── API/  ← repo chính, mở Claude Code ở đây
-│   ├── .claude/agent-team.config   REPOS=". ../FrontEnd"  FE_PATHS="../FrontEnd"
-│   ├── docs/domain/        knowledge base (BA ghi, mọi role đọc)
-│   └── docs/agent-tasks/   board chung của BE và FE
+│   ├── .claude/agent-team.config   REPOS=". ../FrontEnd"  FE_PATHS="../FrontEnd"  BASE_BRANCHES="../FrontEnd=master"
+│   └── docs/               KB + agent-tasks
 └── FrontEnd/ ← repo thứ hai, thêm bằng /add-dir ../FrontEnd
 ```
-- Một team, một board; API contract chốt ngay trên board. Mỗi repo có branch `agent/<task-id>` riêng, commit/push trong từng repo (`git -C ../FrontEnd ...`).
-- `/agent-team:init` hỏi chọn repo chính khi thấy ≥ 2 repo.
-- Guard chặn commit/push vào main/develop ở từng repo (hiểu `git -C` và `cd`), hoàn tác diff theo từng repo, khóa vùng cả với đường dẫn `../FrontEnd`.
-- `REPOS` trống = 1 repo, chạy như cũ.
+- Mỗi repo có branch `agent/<task-id>` riêng, commit/push trong từng repo (`git -C ../FrontEnd ...`). Nhánh gốc theo repo (`BASE_BRANCHES`).
+- `/agent-team:init` hỏi chọn repo chính khi thấy ≥ 2 repo. `REPOS` trống = 1 repo.
 
 ## Code graph (tự có, không cài gói ngoài)
 
-- `scripts/code-graph.py` quét file đã commit, tạo `code-graph-out/GRAPH_REPORT.md` + `graph.json`: file nào dùng file nào (rb, py, js/ts, go, java, php, vue).
-- Cạnh `EXTRACTED` = import/require tường minh. Cạnh `INFERRED` = tên class/module xuất hiện trong file khác (gợi ý, không phải parser đầy đủ).
-- BA, SA, TA, Code Reviewer, Security đọc báo cáo trước khi grep, query bằng `who-uses`, `uses`, `explain` (guard chỉ cho 3 lệnh này). Lead chạy `build` đầu task và sau S3, S4. Graph cũ so với HEAD thì query in cảnh báo.
-- Giới hạn: quan hệ ở mức file/class, không tới mức hàm gọi hàm. Thay đổi chưa commit không có trong graph.
+- `scripts/code-graph.py` quét file đã commit, tạo `code-graph-out/GRAPH_REPORT.md` + `graph.json` (rb, py, js/ts, go, java, php, vue). Cạnh `EXTRACTED` = import tường minh, `INFERRED` = gợi ý theo tên.
+- Role đọc báo cáo trước khi grep, query `who-uses`, `uses`, `explain`. Lead chạy `build` đầu task và sau S3, S4.
+- Giới hạn: quan hệ ở mức file/class; thay đổi chưa commit không có trong graph.
 
 ## Nguồn bên thứ ba
 
@@ -124,27 +130,26 @@ Checklist bảo mật, quy tắc trả lời ngắn và nguyên tắc code ít n
 
 ## Cài đặt
 
-Xem `release-notes.md`. Tóm tắt:
-
 ```
-1. ~/.claude/settings.json  → bật CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
-2. Trong Claude Code:
-   /plugin marketplace add /Users/hung.vo/Kevin/Projects/03.Multiple-Agents
+1. Trong Claude Code:
+   /plugin marketplace add hungvtitdng/multiple-agents-development
    /plugin install agent-team@kevin-agent-team
-3. Mở project → /agent-team:init → kiểm tra .claude/agent-team.config
-4. /agent-team:run <task>
+2. Mở project → /agent-team:init → kiểm tra .claude/agent-team.config
+3. /agent-team:run <task>      (dang dở: /agent-team:resume <task-id>)
 ```
+Cập nhật: `/plugin marketplace update kevin-agent-team`, khởi động lại Claude Code. Không còn cần `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`.
 
 ## Kiểm tra sau khi cài
 
-1. `python3 tests/test_guard.py` → 99/99 passed
-2. Trong project, nhờ Claude gọi subagent `agent-team:code-reviewer` sửa 1 file code → phải bị guard chặn.
-   - Nếu **không bị chặn**: đặt `AGENT_TEAM_DEBUG=1`, chạy lại, xem `.agent-team/guard.log`. `agent_type` trống → rule theo role không có hiệu lực, còn lớp chặn theo giai đoạn (lớp 3) vẫn chạy.
+1. `python3 tests/test_guard.py` → toàn bộ pass (185 case)
+2. Trong project, nhờ Claude gọi subagent `agent-team:business-analyst` ghi 1 file ngoài KB của BA → phải bị guard chặn.
 3. `.claude/agent-team/agent-db-clone.sh up test1` → `verify test1` → `down test1`
 
 ## Giới hạn
 
-- Guard là lớp chặn dựa trên mẫu lệnh, không phải sandbox. Agent cố tình lách vẫn có thể lách được, vì vậy vẫn cần review cuối trên branch.
-- Agent Teams đang là tính năng thử nghiệm. Nếu không bật, `run.md` tự chuyển sang chế độ subagent (Lead chuyển lời giữa các role).
-- Nhiều repo (`REPOS`) mới kiểm thử bằng test tự động với repo giả, chưa chạy trên dự án thật. Task xuyên nhiều repo cần Lead nhớ commit/push từng repo.
+- Guard dựa trên mẫu lệnh, không phải sandbox. Agent cố tình lách vẫn có thể lách; vẫn cần review cuối trên branch.
+- Gate chuyển giai đoạn đọc các dòng Lead tự điền trong TASK.md, chặn quên bước chứ không chứng minh việc đã làm.
+- Lead là điểm tập trung ý kiến (subagent không nhắn nhau). Giảm thiên kiến bằng bảng điểm và ghi ý kiến thiểu số.
+- Chưa có: chia task nhỏ chạy song song bằng worktree riêng (để bản sau); plugin không tự chạy lại khi hết quota, dùng `/agent-team:resume`.
+- Nhiều repo (`REPOS`) mới kiểm thử bằng repo giả, chưa chạy trên dự án thật. Giảm 50-70% token so với 0.8 là ước lượng, chưa đo.
 - `agent-db-clone.sh` hỗ trợ Postgres và MySQL/MariaDB chạy bằng docker compose.

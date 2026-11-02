@@ -1,25 +1,37 @@
 # <task-id>: <tên task>
 
+> Chỉ Lead ghi. Hook đọc mục "Điều kiện chuyển giai đoạn" để cho phép Lead sang S3/S5/S6. Điền `TODO` → giá trị thật khi đạt.
+
 | | |
 |---|---|
 | Branch | `agent/<task-id>` (nhiều repo: liệt kê repo + branch từng repo) |
-| Loại task | NHỎ / VỪA / LỚN, lý do: |
-| Thành viên | (role nào tham gia, role nào bỏ qua + lý do) |
-| Chế độ | A. Agent Teams / B. Subagent |
-| Trạng thái | ① / ② / ③ / ④ / ⑤ / DONE |
+| Trạng thái | ANALYZING / READY / IN_PROGRESS / TESTING / IN_REVIEW / FIX_REQUIRED / BLOCKED / DONE |
+| Giai đoạn | S1 / S2 / S3 / S4 / S5 / S6 |
+| Thành viên | (role tham gia; role bỏ qua + lý do) |
+
+## Điều kiện chuyển giai đoạn (Lead cập nhật, hook kiểm)
+- Loại: TODO (NHỎ / VỪA / LỚN)
+- Tiêu chí nghiệm thu: TODO (chỉ cần cho NHỎ, vd AC ngắn do Lead viết)
+- Phương án chốt: TODO (tên/mô tả; VỪA/LỚN)
+- Security duyệt solution: TODO (APPROVED / N/A)
+- Kết quả test: TODO (PASS / FAIL)
+- Lint/format: TODO (PASS / N/A)
+- Code review: TODO (APPROVED)
+- Security review: TODO (APPROVED)
+- Cập nhật KB: TODO (YES / KHÔNG CẦN)
 
 ## 1. Yêu cầu & Acceptance Criteria (BA)
 - AC-1: Given ... When ... Then ...
 
-## 2. Điểm mơ hồ & cách hiểu được chọn
-| Điểm mơ hồ | Cách hiểu X / Y / Z | Chọn | Vì sao |
+## 2. Giả định (Assumption) cần user xem lại
+| Điểm chưa rõ | Cách hiểu đã chọn (best solution) | Lý do | Ai đề xuất |
 |---|---|---|---|
 
-## 3. Các phương án
+## 3. Các phương án (A/B/C)
 ### A. <tên>
-- Tổng thể (SA):
-- Kỹ thuật (TA):
-- Ưu / Nhược:
+- Tổng thể + kỹ thuật:
+- API contract:
+- Ưu / Nhược / Rủi ro:
 
 ### B. <tên>
 
@@ -27,7 +39,7 @@
 | Phương án | Role | Rủi ro / lỗ hổng | Mức | Trả lời / xử lý |
 |---|---|---|---|---|
 
-## 5. Bảng chấm điểm (Lead tổng hợp từ điểm các role gửi riêng, mỗi role chấm độc lập)
+## 5. Bảng chấm điểm (Lead tổng hợp từ điểm các role, mỗi role chấm độc lập)
 | Tiêu chí | Trọng số | A | B | C |
 |---|---|---|---|---|
 | Đáp ứng AC | ×3 | | | |
@@ -38,26 +50,23 @@
 | Công sức | ×1 | | | |
 | **Tổng** | | | | |
 
-## 6. Phương án được chọn
-- **Chọn:** ... , **vì sao:** ...
-- **Loại:** ... , **vì sao:** ...
-- Solution Reviewer: APPROVED / REJECTED
+## 6. Phương án được chốt
+- **Cách chốt:** chọn một / gộp
+- **Giải pháp:** ...
+- **Nếu gộp:** ý nào lấy từ phương án nào, ai đề xuất, vì sao lấy, vì sao bỏ phần còn lại:
+- **Phân loại NHỎ/VỪA/LỚN:** ... , **vì sao:** ...
+- **Security duyệt nhanh:** APPROVED / REJECTED (ghi lại ở mục điều kiện)
 
-## 7. Tổng hợp ý kiến theo role (Lead ghi khi chốt, bắt buộc)
-> Chi tiết từng vòng: `board/SUMMARY.md` và các bài post trong `board/`.
-
-| Role | Ủng hộ | Ý kiến chính | Bài post | Chấp nhận / Bác | Lý do |
-|---|---|---|---|---|---|
-| BA | | | | | |
-| Solution Architect | | | | | |
-| Technical Architect | | | | | |
-| Backend | | | | | |
-| Frontend | | | | | |
-| Tester | | | | | |
-| Code Reviewer | | | | | |
-| Solution Reviewer | | | | | |
-| Test Reviewer | | | | | |
-| Security | | | | | |
+## 7. Tổng hợp ý kiến theo role (bắt buộc khi chốt)
+| Role | Ủng hộ | Ý kiến chính | Chấp nhận / Bác | Lý do |
+|---|---|---|---|---|
+| BA | | | | |
+| Architect (SA/TA) | | | | |
+| Test Design | | | | |
+| Security | | | | |
+| Backend | | | | |
+| Frontend | | | | |
+| Code Reviewer | | | | |
 
 Ý kiến thiểu số bị bác (ghi đủ, không bỏ):
 
@@ -66,24 +75,26 @@
 |---|---|---|---|
 
 ## 9. Thay đổi code & migration
-- File đã đổi:
+- File đã đổi (mỗi repo):
 - Migration: (verify migrate → rollback → migrate: OK/FAIL)
 - ENV / lệnh mới (đã ghi release-notes.md):
 
-## 10. Kết quả test
-| AC | Test | Kết quả |
+## 10. Kết quả test (Test Execution, chỉ kết quả đã chạy thật)
+| AC | Test | PASS / FAIL / BLOCKED / NOT RUN |
 |---|---|---|
 
 ## 11. Kết quả review
 | Loại | Critical | High | Medium | Low | Kết luận |
 |---|---|---|---|---|---|
 | Code | | | | | |
-| Solution | | | | | |
-| Test | | | | | |
 | Security | | | | | |
 
 Issue còn để lại + lý do:
 
-## 12. Khi merge vào develop cần làm
+## 12. KB đã cập nhật
+- File trong `docs/`:
+
+## 13. Khi merge vào nhánh gốc cần làm
 - [ ] Chạy migration
 - [ ] Thêm ENV mới
+- [ ] Xem lại các Assumption ở mục 2

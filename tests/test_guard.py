@@ -56,11 +56,11 @@ cases = [
     ("rm -rf .", "Bash", {"command": "rm -rf ."}, None, None, B),
     ("reviewer git diff", "Bash", {"command": "git diff develop...HEAD"}, "code-reviewer", None, OK),
     ("reviewer grep hash rocket", "Bash", {"command": "grep -rn \"=> \" app/ | head -20"}, "code-reviewer", None, OK),
-    ("reviewer rspec trong docker", "Bash", {"command": "docker compose exec -T app bundle exec rspec spec/models"}, "test-reviewer", None, OK),
+    ("reviewer rspec trong docker", "Bash", {"command": "docker compose exec -T app bundle exec rspec spec/models"}, "test-designer", None, OK),
     ("reviewer rubocop -a", "Bash", {"command": "bundle exec rubocop -a"}, "code-reviewer", None, B),
     ("reviewer ghi file bằng >", "Bash", {"command": "echo x > app/a.rb"}, "code-reviewer", None, B),
     ("reviewer sed -i", "Bash", {"command": "sed -i 's/a/b/' app/a.rb"}, "security", None, B),
-    ("reviewer git commit", "Bash", {"command": "git commit -m x"}, "solution-reviewer", None, B),
+    ("reviewer git commit", "Bash", {"command": "git commit -m x"}, "scout", None, B),
     ("reviewer Edit code", "Edit", {"file_path": "/p/app/a.rb"}, "code-reviewer", "/p", B),
     ("reviewer ghi ngoài board", "Write", {"file_path": "/p/docs/agent-tasks/T1/notes/code-reviewer.md"}, "code-reviewer", "/p", B),
     ("security brakeman", "Bash", {"command": "bundle exec brakeman -q"}, "security", None, OK),
@@ -105,21 +105,25 @@ os.makedirs(board)
 open(os.path.join(board, "S2-R1-security-1.md"), "w").write("x")
 os.makedirs(os.path.join(proj, ".agent-team/clones"))
 open(os.path.join(proj, ".agent-team/clones/T1.state"), "w").write("x")
+os.makedirs(os.path.join(proj, ".claude"))
+open(os.path.join(proj, ".claude/agent-team.config"), "w").write('BE_PATHS="app"\nFE_PATHS="frontend"\nTEST_PATHS="spec"\n')
 bp = "docs/agent-tasks/T1/board/"
 sp = ".agent-team/clones/"
 cases += [
-    ("post bài của mình", "Write", {"file_path": bp + "S2-R1-security-2.md"}, "security", proj, OK),
-    ("dev post bài của mình", "Write", {"file_path": bp + "S2-R2-backend-dev-1.md"}, "backend-dev", proj, OK),
-    ("post bằng tên role khác", "Write", {"file_path": bp + "S2-R1-backend-dev-1.md"}, "security", proj, B),
-    ("ghi đè bài đã post", "Write", {"file_path": bp + "S2-R1-security-1.md"}, "security", proj, B),
-    ("sửa bài đã post", "Edit", {"file_path": bp + "S2-R1-security-1.md"}, "security", proj, B),
+    # v0.3: agent trả kết quả cho Lead, chỉ Lead ghi board/TASK; Scout ghi CONTEXT.md
+    ("security ghi board bị chặn", "Write", {"file_path": bp + "S2-R1-security-2.md"}, "security", proj, B),
+    ("dev ghi board bị chặn", "Write", {"file_path": bp + "S2-R2-backend-dev-1.md"}, "backend-dev", proj, B),
+    ("role sửa bài trên board", "Edit", {"file_path": bp + "S2-R1-security-1.md"}, "security", proj, B),
     ("role ghi SUMMARY.md", "Write", {"file_path": bp + "SUMMARY.md"}, "solution-architect", proj, B),
     ("role sửa TASK.md", "Edit", {"file_path": "docs/agent-tasks/T1/TASK.md"}, "backend-dev", proj, B),
     ("Lead ghi SUMMARY.md", "Write", {"file_path": bp + "SUMMARY.md"}, None, proj, OK),
-    ("đọc board", "Read", {"file_path": bp + "S2-R1-security-1.md"}, "tester", proj, OK),
+    ("Lead ghi bài trên board", "Write", {"file_path": bp + "S2-R1-security-3.md"}, None, proj, OK),
+    ("scout ghi CONTEXT.md", "Write", {"file_path": "docs/agent-tasks/T1/CONTEXT.md"}, "scout", proj, OK),
+    ("scout ghi TASK.md bị chặn", "Write", {"file_path": "docs/agent-tasks/T1/TASK.md"}, "scout", proj, B),
+    ("đọc board", "Read", {"file_path": bp + "S2-R1-security-1.md"}, "test-executor", proj, OK),
     ("ghi vào .agent-team", "Write", {"file_path": sp + "x.state"}, "security", proj, B),
     ("đọc state .agent-team", "Read", {"file_path": sp + "T1.state"}, "security", proj, B),
-    ("grep .agent-team", "Grep", {"path": ".agent-team"}, "tester", proj, B),
+    ("grep .agent-team", "Grep", {"path": ".agent-team"}, "test-executor", proj, B),
     ("cat .agent-team bằng Bash", "Bash", {"command": "cat .agent-team/clones/*.state"}, "backend-dev", proj, B),
     ("Lead đọc .agent-team", "Read", {"file_path": sp + "T1.state"}, None, proj, OK),
     ("ghi board bằng Bash", "Bash", {"command": "echo hi > docs/agent-tasks/T1/board/S2-R1-backend-dev-9.md"}, "backend-dev", proj, B),
@@ -139,17 +143,17 @@ cases += [
     ("FE dev sửa frontend", "Edit", {"file_path": "frontend/x.ts"}, "frontend-dev", zp, OK),
     ("FE dev sửa app", "Edit", {"file_path": "app/a.rb"}, "frontend-dev", zp, B),
     ("FE dev sửa file .test.ts", "Edit", {"file_path": "frontend/src/a.test.ts"}, "frontend-dev", zp, B),
-    ("Tester sửa spec", "Write", {"file_path": "spec/a_spec.rb"}, "tester", zp, OK),
-    ("Tester sửa .test.ts trong frontend", "Write", {"file_path": "frontend/src/a.test.ts"}, "tester", zp, OK),
-    ("Tester sửa app", "Edit", {"file_path": "app/a.rb"}, "tester", zp, B),
+    ("Tester sửa spec", "Write", {"file_path": "spec/a_spec.rb"}, "test-executor", zp, OK),
+    ("Tester sửa .test.ts trong frontend", "Write", {"file_path": "frontend/src/a.test.ts"}, "test-executor", zp, OK),
+    ("Tester sửa app", "Edit", {"file_path": "app/a.rb"}, "test-executor", zp, B),
     ("dev sửa release-notes", "Edit", {"file_path": "release-notes.md"}, "backend-dev", zp, OK),
     ("dev ghi spec bằng >", "Bash", {"command": "echo x > spec/a_spec.rb"}, "backend-dev", zp, B),
-    ("Tester sed -i code", "Bash", {"command": "sed -i 's/a/b/' app/a.rb"}, "tester", zp, B),
+    ("Tester sed -i code", "Bash", {"command": "sed -i 's/a/b/' app/a.rb"}, "test-executor", zp, B),
     ("dev cat spec", "Bash", {"command": "cat spec/a_spec.rb"}, "backend-dev", zp, OK),
     ("dev chạy rspec", "Bash", {"command": "bundle exec rspec 2>&1 | tail -5"}, "backend-dev", zp, OK),
-    ("Tester ghi /tmp", "Bash", {"command": "echo x > /tmp/o"}, "tester", zp, OK),
+    ("Tester ghi /tmp", "Bash", {"command": "echo x > /tmp/o"}, "test-executor", zp, OK),
     ("Lead sửa spec", "Edit", {"file_path": "spec/a_spec.rb"}, None, zp, OK),
-    ("requirement-reviewer sửa code", "Edit", {"file_path": "app/a.rb"}, "requirement-reviewer", zp, B),
+    ("requirement-reviewer sửa code", "Edit", {"file_path": "app/a.rb"}, "test-designer", zp, B),
     ("dev chmod mở khóa", "Bash", {"command": "chmod -R u+w spec"}, "backend-dev", zp, B),
     ("reviewer code-graph who-uses", "Bash", {"command": ".claude/agent-team/code-graph.py who-uses User"}, "code-reviewer", zp, OK),
     ("security code-graph uses", "Bash", {"command": ".claude/agent-team/code-graph.py uses app/a.rb"}, "security", zp, OK),
@@ -200,11 +204,11 @@ post_case("post: dev tạo spec mới bị xoá", "backend-dev", lambda: w("spec
           lambda: r("spec/new_spec.rb") is None)
 post_case("post: dev sửa app thì giữ", "backend-dev", lambda: w("app/a.rb", "a = 2\n"), OK,
           lambda: r("app/a.rb") == "a = 2\n")
-post_case("post: dev sửa tiếp spec đã dirty sẵn của tester", "tester", lambda: w("spec/a_spec.rb", "T1\n"), OK,
+post_case("post: dev sửa tiếp spec đã dirty sẵn của tester", "test-executor", lambda: w("spec/a_spec.rb", "T1\n"), OK,
           lambda: r("spec/a_spec.rb") == "T1\n")
 post_case("post: dev ghi đè spec đang dirty, trả về bản của tester", "backend-dev", lambda: w("spec/a_spec.rb", "HACK2\n"), B,
           lambda: r("spec/a_spec.rb") == "T1\n")
-post_case("post: tester sửa app bị hoàn tác", "tester", lambda: w("app/a.rb", "TESTER\n"), B,
+post_case("post: tester sửa app bị hoàn tác", "test-executor", lambda: w("app/a.rb", "TESTER\n"), B,
           lambda: r("app/a.rb") == "a = 1\n" or r("app/a.rb") == "a = 2\n")
 post_case("post: reviewer ghi file ngoài board bị xoá", "code-reviewer", lambda: w("notes.txt", "x\n"), B,
           lambda: r("notes.txt") is None)
@@ -232,17 +236,21 @@ def at_stage(stage, desc, tool, ti, role, exp):
 
 
 at_stage("S3", "dev sửa app", "Edit", {"file_path": "app/a.rb"}, "backend-dev", OK)
-at_stage("S3", "tester sửa spec bị chặn", "Edit", {"file_path": "spec/a_spec.rb"}, "tester", B)
+at_stage("S3", "tester sửa spec bị chặn", "Edit", {"file_path": "spec/a_spec.rb"}, "test-executor", B)
 at_stage("S3", "dev sửa spec bị chặn", "Write", {"file_path": "spec/a_spec.rb"}, "backend-dev", B)
 at_stage("S3", "agent không rõ role sửa spec bị chặn", "Write", {"file_path": "spec/a_spec.rb"}, None, B)
 at_stage("S3", "Bash ghi spec bằng >, không rõ role", "Bash", {"command": "echo x > spec/a_spec.rb"}, None, B)
 at_stage("S3", "Bash python ghi spec: vẫn qua Pre (Post sẽ hoàn tác)", "Bash", {"command": "python3 w.py"}, None, OK)
 at_stage("S3", "sửa release-notes", "Edit", {"file_path": "release-notes.md"}, None, OK)
-at_stage("S4", "tester sửa spec", "Write", {"file_path": "spec/a_spec.rb"}, "tester", OK)
+at_stage("S4", "tester sửa spec", "Write", {"file_path": "spec/a_spec.rb"}, "test-executor", OK)
 at_stage("S4", "dev sửa app bị chặn", "Edit", {"file_path": "app/a.rb"}, "backend-dev", B)
 at_stage("S4", "không rõ role sửa app bị chặn", "Edit", {"file_path": "app/a.rb"}, None, B)
 at_stage("S1", "dev sửa app khi debate bị chặn", "Edit", {"file_path": "app/a.rb"}, "backend-dev", B)
-at_stage("S1", "post board vẫn được", "Write", {"file_path": "docs/agent-tasks/T1/board/S1-R1-backend-dev-1.md"}, "backend-dev", OK)
+at_stage("S1", "BA ghi KB vẫn được", "Write", {"file_path": "docs/business-rules.md"}, "business-analyst", OK)
+at_stage("S1", "dev ghi board bị chặn", "Write", {"file_path": "docs/agent-tasks/T1/board/S1-R1-backend-dev-1.md"}, "backend-dev", B)
+at_stage("S3", "scout không ghi KB khi đang có task", "Write", {"file_path": "docs/architecture.md"}, "scout", B)
+at_stage(None, "scout dựng nháp KB khi init (chưa có stage)", "Write", {"file_path": "docs/architecture.md"}, "scout", OK)
+at_stage(None, "scout không ghi code khi init", "Write", {"file_path": "app/a.rb"}, "scout", B)
 at_stage("S5", "S5 không giới hạn theo giai đoạn", "Edit", {"file_path": "app/a.rb"}, "backend-dev", OK)
 at_stage(None, "không có file stage", "Edit", {"file_path": "spec/a_spec.rb"}, None, OK)
 
@@ -273,7 +281,7 @@ mcases = [
     ("multi: BE dev sửa be/app", "Edit", {"file_path": "be/app/a.rb"}, "backend-dev", mr, OK),
     ("multi: BE dev sửa fe/", "Edit", {"file_path": "fe/src/a.ts"}, "backend-dev", mr, B),
     ("multi: FE dev sửa be/", "Edit", {"file_path": "be/app/a.rb"}, "frontend-dev", mr, B),
-    ("multi: Tester sửa be/spec", "Write", {"file_path": "be/spec/a_spec.rb"}, "tester", mr, OK),
+    ("multi: Tester sửa be/spec", "Write", {"file_path": "be/spec/a_spec.rb"}, "test-executor", mr, OK),
     ("multi: dev sửa be/spec", "Write", {"file_path": "be/spec/a_spec.rb"}, "backend-dev", mr, B),
     ("multi: git -C be commit trên develop", "Bash", {"command": "git -C be commit -m x"}, "backend-dev", mr, B),
     ("multi: cd fe && git push origin develop", "Bash", {"command": "cd fe && git push origin develop"}, "frontend-dev", mr, B),
@@ -282,8 +290,8 @@ mcases = [
     ("domain: BA ghi", "Write", {"file_path": "docs/domain/glossary.md"}, "business-analyst", mr, OK),
     ("domain: BA Edit", "Edit", {"file_path": "docs/domain/glossary.md"}, "business-analyst", mr, OK),
     ("domain: dev ghi bị chặn", "Write", {"file_path": "docs/domain/glossary.md"}, "backend-dev", mr, B),
-    ("domain: tester ghi bị chặn", "Write", {"file_path": "docs/domain/rules.md"}, "tester", mr, B),
-    ("domain: reviewer ghi bị chặn", "Write", {"file_path": "docs/domain/rules.md"}, "requirement-reviewer", mr, B),
+    ("domain: tester ghi bị chặn", "Write", {"file_path": "docs/domain/rules.md"}, "test-executor", mr, B),
+    ("domain: reviewer ghi bị chặn", "Write", {"file_path": "docs/domain/rules.md"}, "test-designer", mr, B),
     ("domain: security ghi bị chặn", "Write", {"file_path": "docs/domain/rules.md"}, "security", mr, B),
     ("domain: dev ghi bằng Bash bị chặn", "Bash", {"command": "echo x > docs/domain/glossary.md"}, "backend-dev", mr, B),
     ("domain: Lead ghi", "Write", {"file_path": "docs/domain/glossary.md"}, None, mr, OK),
@@ -331,7 +339,7 @@ scases = [
     ("sibling: BE dev sửa ../FrontEnd bị chặn", "Edit", {"file_path": "../FrontEnd/src/a.ts"}, "backend-dev", api, B),
     ("sibling: FE dev sửa app của API bị chặn", "Edit", {"file_path": "app/a.rb"}, "frontend-dev", api, B),
     ("sibling: FE dev sửa .test.ts ở FrontEnd bị chặn", "Edit", {"file_path": "../FrontEnd/src/a.test.ts"}, "frontend-dev", api, B),
-    ("sibling: tester sửa .test.ts ở FrontEnd", "Write", {"file_path": "../FrontEnd/src/a.test.ts"}, "tester", api, OK),
+    ("sibling: tester sửa .test.ts ở FrontEnd", "Write", {"file_path": "../FrontEnd/src/a.test.ts"}, "test-executor", api, OK),
     ("sibling: dev sửa file _test ngoài mọi repo thì không chặn", "Write", {"file_path": "/tmp/x_test.py"}, "backend-dev", api, OK),
     ("sibling: reviewer sửa ../FrontEnd bị chặn", "Write", {"file_path": "../FrontEnd/src/a.ts"}, "code-reviewer", api, B),
     ("sibling: git -C ../FrontEnd push develop", "Bash", {"command": "git -C ../FrontEnd push origin develop"}, "frontend-dev", api, B),
@@ -358,6 +366,90 @@ def sib_post(desc, role, path, text, exp_code, expect):
 fe_file = os.path.join(sib, "FrontEnd/src/a.ts")
 sib_post("sibling post: BE dev ghi FrontEnd bị hoàn tác", "backend-dev", fe_file, "HACK\n", B, lambda: open(fe_file).read() == "x\n")
 sib_post("sibling post: FE dev ghi FrontEnd thì giữ", "frontend-dev", fe_file, "y\n", OK, lambda: open(fe_file).read() == "y\n")
+
+# ---- v0.3: sở hữu knowledge base theo thư mục ----
+kb = [
+    ("kb: BA ghi business-rules", "docs/business-rules.md", "business-analyst", OK),
+    ("kb: BA ghi architecture bị chặn", "docs/architecture.md", "business-analyst", B),
+    ("kb: Architect ghi architecture/", "docs/architecture/overview.md", "solution-architect", OK),
+    ("kb: Architect ghi engineering/", "docs/engineering/coding-standards.md", "solution-architect", OK),
+    ("kb: TA ghi api/", "docs/api/endpoints.md", "technical-architect", OK),
+    ("kb: BE dev ghi api/", "docs/api/endpoints.md", "backend-dev", OK),
+    ("kb: BE dev ghi database/", "docs/database/schema.md", "backend-dev", OK),
+    ("kb: BE dev ghi engineering bị chặn", "docs/engineering/x.md", "backend-dev", B),
+    ("kb: FE dev ghi modules/", "docs/modules/trip/README.md", "frontend-dev", OK),
+    ("kb: FE dev ghi api bị chặn", "docs/api/x.md", "frontend-dev", B),
+    ("kb: Test Design ghi testing/", "docs/testing/coverage-matrix.md", "test-designer", OK),
+    ("kb: Test Execution ghi testing/", "docs/testing/test-report.md", "test-executor", OK),
+    ("kb: Test Execution ghi security bị chặn", "docs/security/findings.md", "test-executor", B),
+    ("kb: Security ghi security/", "docs/security/findings.md", "security", OK),
+    ("kb: Security ghi testing bị chặn", "docs/testing/x.md", "security", B),
+    ("kb: Code Reviewer ghi docs bị chặn", "docs/modules/trip/README.md", "code-reviewer", B),
+    ("kb: Lead ghi design.md", "docs/design.md", None, OK),
+    ("kb: BA ghi file chưa phân chủ bị chặn", "docs/design.md", "business-analyst", B),
+    ("kb: dev ghi docs/README.md bị chặn", "docs/README.md", "backend-dev", B),
+    ("kb: BA ghi docs/domain cũ", "docs/domain/glossary.md", "business-analyst", OK),
+]
+for desc, p, role, exp in kb:
+    check(desc, "Write", {"file_path": p}, role, mr, exp)
+total += len(kb)
+
+# ---- v0.3: commit một dòng, không trailer (chỉ khi project có agent-team.config) ----
+cr = make_repo()
+sh(cr, "git", "checkout", "-qb", "agent/c1")
+os.makedirs(os.path.join(cr, ".claude"))
+open(os.path.join(cr, ".claude/agent-team.config"), "w").write('BE_PATHS="app"\n')
+commits = [
+    ("commit đúng format", 'git commit -m "[backend-dev] T1: add validation"', OK),
+    ("commit -am đúng format", 'git commit -am "[lead] T1: update stage"', OK),
+    ("commit thiếu role", 'git commit -m "add validation"', B),
+    ("commit hai -m (có body)", 'git commit -m "[backend-dev] T1: add x" -m "body"', B),
+    ("commit có trailer trong 1 dòng", 'git commit -m "[lead] T1: x Co-Authored-By: Claude"', B),
+    ("commit --signoff", 'git commit -s -m "[lead] T1: x"', B),
+    ("commit không có -m", "git commit", B),
+    ("commit heredoc nhiều dòng", "git commit -m \"$(cat <<'EOF'\n[lead] T1: x\n\nbody\nEOF\n)\"", B),
+]
+for desc, cmd, exp in commits:
+    check(desc, "Bash", {"command": cmd}, None, cr, exp)
+total += len(commits)
+
+# ---- v0.3: Lead đổi giai đoạn phải đủ điều kiện trong TASK.md ----
+gp = tempfile.mkdtemp()
+os.makedirs(os.path.join(gp, ".claude"))
+os.makedirs(os.path.join(gp, "docs/agent-tasks/T1"))
+open(os.path.join(gp, ".claude/agent-team.config"), "w").write('BE_PATHS="app"\n')
+
+
+def gate(desc, text, tool, ti, role, exp):
+    global fail, total
+    open(os.path.join(gp, "docs/agent-tasks/T1/TASK.md"), "w").write(text)
+    got = run(tool, ti, role, gp)
+    fail += got != exp
+    total += 1
+    print(f"{'PASS' if got == exp else 'FAIL'}  gate: {desc}  (expect {exp}, got {got})")
+
+
+S3 = {"command": "echo S3 > .agent-team/stage"}
+S5 = {"command": "echo S5 > .agent-team/stage"}
+S6 = {"command": "echo S6 > .agent-team/stage"}
+gate("S3 khi TASK còn TODO", "- Loại: TODO (NHỎ/VỪA/LỚN)\n", "Bash", S3, None, B)
+gate("S3 VỪA thiếu phương án", "- Loại: VỪA\n- Phương án chốt: TODO\n", "Bash", S3, None, B)
+gate("S3 VỪA thiếu Security duyệt", "- Loại: VỪA\n- Phương án chốt: A+B\n- Security duyệt solution: TODO\n", "Bash", S3, None, B)
+gate("S3 VỪA đủ", "- Loại: VỪA\n- Phương án chốt: A+B\n- Security duyệt solution: APPROVED\n", "Bash", S3, None, OK)
+gate("S3 NHỎ thiếu tiêu chí", "- Loại: NHỎ\n", "Bash", S3, None, B)
+gate("S3 NHỎ đủ", "- Loại: NHỎ\n- Tiêu chí nghiệm thu: sửa text nút Lưu\n", "Bash", S3, None, OK)
+gate("S3 qua Write tool khi thiếu", "- Loại: TODO\n", "Write", {"file_path": ".agent-team/stage", "content": "S3\n"}, None, B)
+gate("S3 qua Write tool khi đủ", "- Loại: NHỎ\n- Tiêu chí nghiệm thu: x\n", "Write", {"file_path": ".agent-team/stage", "content": "S3\n"}, None, OK)
+gate("S5 test FAIL", "- Kết quả test: FAIL\n- Lint/format: PASS\n", "Bash", S5, None, B)
+gate("S5 thiếu lint", "- Kết quả test: PASS\n", "Bash", S5, None, B)
+gate("S5 đủ", "- Kết quả test: PASS\n- Lint/format: N/A\n", "Bash", S5, None, OK)
+gate("S6 thiếu Security review", "- Code review: APPROVED\n- Cập nhật KB: YES\n", "Bash", S6, None, B)
+gate("S6 thiếu KB", "- Code review: APPROVED\n- Security review: APPROVED\n", "Bash", S6, None, B)
+gate("S6 đủ", "- Code review: APPROVED\n- Security review: APPROVED\n- Cập nhật KB: KHÔNG CẦN\n", "Bash", S6, None, OK)
+gate("S2 không có điều kiện", "- Loại: TODO\n", "Bash", {"command": "echo S2 > .agent-team/stage"}, None, OK)
+gate("xoá stage khi đóng", "- Loại: TODO\n", "Bash", {"command": "rm .agent-team/stage"}, None, OK)
+gate("ghi stage không đúng dạng", "- Loại: TODO\n", "Bash", {"command": "echo done > .agent-team/stage"}, None, B)
+gate("agent ghi stage bị chặn", "- Loại: NHỎ\n- Tiêu chí nghiệm thu: x\n", "Bash", S3, "backend-dev", B)
 
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

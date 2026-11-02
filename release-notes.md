@@ -1,3 +1,27 @@
+# Release notes - 02/11/2026 (v0.9.0)
+
+## Thay đổi
+- **Lean Debate**: chỉ 4 người debate (Lead, BA, Architect, Test Design, đều opus), 2 lượt song song + lượt 3 khi cần. Bỏ Agent Teams, chạy bằng subagent trả kết quả cho Lead (điểm chấm kín tự nhiên, không cần file).
+- 10 agent: thêm `scout` (đọc repo một lần → `CONTEXT.md`), `test-designer` (opus), `test-executor` (sonnet). Gộp SA+TA thành `solution-architect` (LỚN mới gọi thêm `technical-architect`). Bỏ `requirement-reviewer`, `solution-reviewer`, `test-reviewer`, `tester`.
+- Lead được **chọn một hoặc gộp ý** các phương án. Thiếu business rule: **không hỏi user**, Lead chọn best solution, ghi `Assumption`, liệt kê ở báo cáo cuối.
+- Task NHỎ: Fast Track (không Scout, không debate). Security luôn có mặt, duyệt nhanh solution trước khi code và review đầy đủ sau khi code.
+- Giới hạn: debate 3 lượt, sửa 3 vòng/issue rồi Lead phán quyết; sửa xong chỉ reviewer đã báo lỗi review lại.
+- Knowledge Base đầy đủ trong `docs/` (domain, architecture, engineering, api, database, testing, security, modules, decisions); mỗi thư mục có chủ ghi riêng (guard chặn), nhãn Verified/Unverified, `verified-at`. Template ở `templates/kb/` (thay `templates/domain/`).
+- `/agent-team:init` dự án có sẵn code: Scout dựng luôn nháp KB + quy chuẩn code (`docs/engineering/`, nhãn `Observed`). `--skip-kb` để bỏ qua.
+- Quy chuẩn code (clean code) nằm trong KB; dev chạy lint/format; Code Reviewer review theo `docs/engineering/`.
+- Lệnh mới `/agent-team:resume <task-id>`: làm tiếp task dang dở (hết quota, lỗi) từ TASK.md, stage, board, trên branch cũ.
+- Guard: chặn commit không đúng một dòng `[role] task-id: mô tả` / có trailer / `--signoff` (chỉ project có `.claude/agent-team.config`); Lead đổi giai đoạn phải đủ điều kiện trong TASK.md (S3, S5, S6); bỏ luật post board theo tên role; thêm quyền ghi KB theo chủ sở hữu.
+- Đã kiểm chứng: `agent_type` tới được hook khi chạy subagent (BA ghi ngoài KB bị chặn).
+- Tài liệu thiết kế: `docs/design.md`.
+
+## Key mới trong `.claude/agent-team.config`
+- `LINT_CMD`, `FORMAT_CMD` (để trống = bỏ qua; init tự nhận diện).
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update kevin-agent-team`, khởi động lại Claude Code. Không còn cần `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`.
+- Project đã init bản cũ: thêm `LINT_CMD`, `FORMAT_CMD` vào config; copy `templates/kb/` vào `docs/` (không ghi đè file có sẵn); copy lại `TASK.md`, `SUMMARY.md`, `POST.md`, `CONTEXT.md` vào `.claude/agent-team/templates/`; thay mục "Agent Team" trong `CLAUDE.md` bằng `templates/claude-md-section.md` mới. Hoặc chạy lại `/agent-team:init`.
+- `docs/domain/` bản cũ vẫn dùng được (BA vẫn ghi được).
+
 # Release notes - 01/11/2026 (v0.8.2)
 
 ## Thay đổi

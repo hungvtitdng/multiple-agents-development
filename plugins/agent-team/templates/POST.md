@@ -1,14 +1,15 @@
-<!-- Tên file: S<giai đoạn>-R<vòng>-<role>-<n>.md. Đã post thì không sửa. -->
-**Role:** <role>  **Giai đoạn/Vòng:** S2-R2  **Trả lời:** S2-R1-xxx-1  **Gọi:** @role-a @role-b
+<!-- Mẫu kết quả mỗi agent trả về cho Lead: ≤ 15 dòng. Lead chép vào board/S<giai đoạn>-R<lượt>-<role>-<n>.md. -->
+**Role:** <role>  **Task:** <task-id>  **Lượt:** S2-R2  **Gọi:** @role-a @role-b
 
 ## Ý kiến theo từng phương án
-### A
-- Ủng hộ / Phản đối:
-- Lập luận cụ thể (file, màn hình, query, số liệu):
-- Đề xuất:
+- **A:** ủng hộ / phản đối. Rủi ro cụ thể (file, màn hình, query, số liệu). Đề xuất. Điểm: AC=_ Code cũ=_ Bảo mật=_ Hiệu năng=_ Maintain=_ Công sức=_
+- **B:** ...
 
-### B
-- ...
+## @ cần trả lời
+- @<role>: ...
 
-## Trả lời các @ gọi tên mình
-- @<role> (bài S2-R1-xxx-1): đồng ý / không đồng ý vì ...
+## Assumption
+- <điều chưa chắc> → chọn <cách> vì <lý do>
+
+## Kết luận
+<1-2 dòng>

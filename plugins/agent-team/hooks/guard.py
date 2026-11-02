@@ -12,11 +12,30 @@ import time
 PROTECTED_BRANCHES = {"main", "master", "develop"}
 READONLY_ROLES = {
     "business-analyst", "solution-architect", "technical-architect",
-    "code-reviewer", "solution-reviewer", "test-reviewer", "requirement-reviewer", "security",
+    "test-designer", "code-reviewer", "security", "scout",
 }
 DOCS_DIR = "docs/agent-tasks/"
-DOMAIN_DIR = "docs/domain/"
-OWNER_ZONE = {"backend-dev": "be", "frontend-dev": "fe", "tester": "test"}
+OWNER_ZONE = {"backend-dev": "be", "frontend-dev": "fe", "test-executor": "test"}
+_BA = {"business-analyst"}
+_ARCH = {"solution-architect", "technical-architect"}
+# Knowledge base: thư mục/file -> role được ghi. Lead ghi được tất cả. Không nằm trong danh sách = chỉ Lead.
+KB_OWNERS = [
+    ("docs/domain/", _BA), ("docs/business-rules.md", _BA), ("docs/domain-model.md", _BA),
+    ("docs/roles-and-permissions.md", _BA), ("docs/glossary.md", _BA),
+    ("docs/project-overview.md", _ARCH), ("docs/architecture.md", _ARCH), ("docs/tech-stack.md", _ARCH),
+    ("docs/architecture/", _ARCH), ("docs/engineering/", _ARCH), ("docs/decisions/", _ARCH),
+    ("docs/integrations/", _ARCH),
+    ("docs/api/", _ARCH | {"backend-dev"}), ("docs/database/", _ARCH | {"backend-dev"}),
+    ("docs/modules/", _BA | _ARCH | {"backend-dev", "frontend-dev"}),
+    ("docs/testing/", {"test-designer", "test-executor"}),
+    ("docs/security/", {"security"}),
+]
+COMMIT_MSG_RE = re.compile(r"^\[[a-z][a-z-]*\] [\w.-]+: \S.*$")
+TRAILER_RE = re.compile(r"(?i)signed-off-by|co-authored-by|reviewed-by|generated-by|generated with")
+STAGE_WRITE_RE = re.compile(r">+\s*['\"]?\S*\.agent-team/stage")
+STAGE_VALUE_RE = re.compile(r"(?:echo|printf)\s+(?:-\w+\s+)*['\"]?(S[1-6])\b")
+# Điều kiện (đọc từ TASK.md) trước khi Lead sang giai đoạn mới
+GATE_CLASS = {"NHỎ", "VỪA", "LỚN"}
 TEST_FILE_RE = re.compile(r"(^|/)(__tests__|__mocks__)/|(_spec|_test)\.\w+$|\.(spec|test)\.\w+$|(^|/)test_[^/]+\.py$")
 STAGE_ZONES = {"S1": set(), "S2": set(), "S3": {"be", "fe"}, "S4": {"test"}}
 CODE_GRAPH = "code-graph.py"
@@ -192,7 +211,35 @@ def git_target(tk, cwd):
     return d, (tk[i] if i < len(tk) else ""), tk[i + 1:]
 
 
+def check_commit_msg(args):
+    """Project có agent-team: commit đúng 1 dòng `[role] task-id: mô tả`, không trailer/chữ ký."""
+    msgs, i = [], 0
+    while i < len(args):
+        a = args[i]
+        if a in ("-s", "--signoff"):
+            block("commit không được có chữ ký (--signoff)")
+        if a in ("-m", "--message") and i + 1 < len(args):
+            msgs.append(args[i + 1])
+            i += 2
+            continue
+        if a.startswith("--message="):
+            msgs.append(a.split("=", 1)[1])
+        elif re.match(r"^-[a-z]*m$", a) and len(a) > 2 and i + 1 < len(args):
+            msgs.append(args[i + 1])
+            i += 2
+            continue
+        elif a.startswith("-m") and len(a) > 2:
+            msgs.append(a[2:])
+        i += 1
+    if len(msgs) != 1:
+        block("commit cần đúng 1 `-m \"[role] task-id: mô tả\"` (một dòng, không body)")
+    m = msgs[0]
+    if "\n" in m or TRAILER_RE.search(m) or not COMMIT_MSG_RE.match(m):
+        block("commit message phải một dòng `[role] task-id: mô tả`, không body, không Co-authored-by/Signed-off-by")
+
+
 def check_git(cmd, cwd):
+    hook_cwd = cwd
     cur = cwd
     for tk in parse(cmd):
         if first_cmd(tk) == "cd" and len(tk) > 1:
@@ -217,6 +264,8 @@ def check_git(cmd, cwd):
             if branch in PROTECTED_BRANCHES:
                 block(f"không {sub} trên '{branch}', hãy dùng branch agent/*")
             if sub == "commit":
+                if find_root(hook_cwd):
+                    check_commit_msg(args)
                 _, staged = git(cwd, "diff", "--cached", "--name-only")
                 for n in staged.splitlines():
                     if is_secret_path(n):
@@ -325,18 +374,49 @@ def full_path(path, cwd):
     return os.path.normpath(os.path.join(cwd, path)).replace("\\", "/") if path else ""
 
 
+def docs_rel(path, cwd):
+    """Đường dẫn tương đối trong docs/ của repo chính, None nếu không thuộc docs/ (hoặc chưa init)."""
+    root = find_root(cwd)
+    if not root or not path:
+        return None
+    rel = os.path.relpath(full_path(path, cwd), root).replace("\\", "/")
+    return rel if rel.startswith("docs/") else None
+
+
+def kb_owners(rel):
+    for pre, roles in KB_OWNERS:
+        if rel == pre or (pre.endswith("/") and rel.startswith(pre)):
+            return roles
+    return None
+
+
+def docs_verdict(rel, role, cwd):
+    """None nếu role được ghi rel trong docs/, ngược lại là lý do chặn."""
+    if rel.startswith(DOCS_DIR):
+        if role == "scout" and os.path.basename(rel) == "CONTEXT.md":
+            return None
+        return "docs/agent-tasks (TASK, board) chỉ Lead ghi. Trả kết quả cho Lead, không tự ghi"
+    if role == "scout" and stage_value(cwd) is None:
+        return None  # init: Scout dựng nháp KB khi chưa có task
+    owners = kb_owners(rel)
+    if owners is None:
+        return f"'{rel}' chỉ Lead được ghi"
+    if role not in owners:
+        return f"role '{role}' không sở hữu '{rel}' (chủ: {', '.join(sorted(owners))}). Báo Lead"
+    return None
+
+
+def check_docs(path, cwd, role):
+    rel = docs_rel(path, cwd)
+    if role and rel is not None:
+        why = docs_verdict(rel, role, cwd)
+        if why:
+            block(why)
+
+
 def check_readonly_write(path, cwd, role):
-    full = full_path(path, cwd) + "/"
-    if role == "business-analyst" and "/" + DOMAIN_DIR in full:
-        return
-    if "/" + DOCS_DIR not in full:
-        block(f"role '{role}' chỉ được post vào board")
-
-
-def check_domain(path, cwd, role):
-    """docs/domain (knowledge base): chỉ BA và Lead được ghi."""
-    if role and role != "business-analyst" and "/" + DOMAIN_DIR in full_path(path, cwd) + "/":
-        block(f"role '{role}' không được sửa knowledge base docs/domain. Post lên board và @business-analyst")
+    if docs_rel(path, cwd) is None:
+        block(f"role '{role}' chỉ được ghi tài liệu KB của mình trong docs/")
 
 
 # ---------- khóa vùng ghi: dev chỉ sửa BE/FE của mình, Tester chỉ sửa test ----------
@@ -430,16 +510,73 @@ def bash_write_targets(cmd):
 
 # ---------- chặn theo giai đoạn: không cần biết ai gọi ----------
 
-def stage_zones(cwd):
-    """Vùng được ghi ở giai đoạn hiện tại (file .agent-team/stage do Lead ghi). None = không giới hạn."""
+def stage_value(cwd):
+    """Giai đoạn hiện tại (S1..S6), None nếu chưa có file stage."""
     root = find_root(cwd)
     if not root:
         return None
     try:
-        st = open(os.path.join(root, ".agent-team", "stage"), encoding="utf-8").read().strip().upper()
+        return open(os.path.join(root, ".agent-team", "stage"), encoding="utf-8").read().strip().upper() or None
     except OSError:
         return None
-    return STAGE_ZONES.get(st)
+
+
+def stage_zones(cwd):
+    """Vùng được ghi ở giai đoạn hiện tại (file .agent-team/stage do Lead ghi). None = không giới hạn."""
+    return STAGE_ZONES.get(stage_value(cwd))
+
+
+def task_field(text, name):
+    """Giá trị dòng `- <name>: <giá trị>` trong TASK.md ('' nếu thiếu hoặc còn TODO)."""
+    m = re.search(rf"(?im)^[\s>*-]*{re.escape(name)}\s*:\s*(.*)$", text)
+    v = re.sub(r"[`*_]", "", m.group(1)).strip() if m else ""
+    return "" if v.upper().startswith("TODO") or v.startswith("<") else v
+
+
+def gate_missing(stage, text):
+    """Điều kiện còn thiếu trong TASK.md để sang `stage`."""
+    f = lambda n: task_field(text, n)
+    first = lambda n: (f(n).split() or [""])[0].upper()
+    miss = []
+    if stage == "S3":
+        if first("Loại") not in GATE_CLASS:
+            miss.append("Loại (NHỎ/VỪA/LỚN)")
+        if first("Loại") == "NHỎ":
+            if not f("Tiêu chí nghiệm thu"):
+                miss.append("Tiêu chí nghiệm thu")
+        else:
+            if not f("Phương án chốt"):
+                miss.append("Phương án chốt")
+            if first("Security duyệt solution") not in ("APPROVED", "N/A"):
+                miss.append("Security duyệt solution: APPROVED")
+    elif stage == "S5":
+        if first("Kết quả test") != "PASS":
+            miss.append("Kết quả test: PASS")
+        if first("Lint/format") not in ("PASS", "N/A"):
+            miss.append("Lint/format: PASS hoặc N/A")
+    elif stage == "S6":
+        if first("Code review") != "APPROVED":
+            miss.append("Code review: APPROVED")
+        if first("Security review") != "APPROVED":
+            miss.append("Security review: APPROVED")
+        if first("Cập nhật KB") not in ("YES", "KHÔNG"):
+            miss.append("Cập nhật KB: YES hoặc KHÔNG CẦN")
+    return miss
+
+
+def check_stage_change(new_stage, cwd):
+    """Lead đổi giai đoạn: TASK.md (task mới nhất) phải đủ điều kiện."""
+    root = find_root(cwd)
+    if not root or not new_stage:
+        return
+    tasks = [os.path.join(root, DOCS_DIR, d, "TASK.md") for d in os.listdir(os.path.join(root, DOCS_DIR))
+             if os.path.isfile(os.path.join(root, DOCS_DIR, d, "TASK.md"))] if os.path.isdir(os.path.join(root, DOCS_DIR)) else []
+    if not tasks:
+        return
+    latest = max(tasks, key=os.path.getmtime)
+    miss = gate_missing(new_stage, open(latest, encoding="utf-8", errors="ignore").read())
+    if miss:
+        block(f"chưa đủ điều kiện sang {new_stage}. Thiếu trong {os.path.relpath(latest, root)}: {'; '.join(miss)}")
 
 
 def check_stage(path, cwd):
@@ -530,11 +667,9 @@ def path_allowed(rel, role, cwd):
         return False
     if not role:
         return True
+    if rel.startswith("docs/"):
+        return docs_verdict(rel, role, cwd) is None
     if role in READONLY_ROLES:
-        if role == "business-analyst" and rel.startswith(DOMAIN_DIR):
-            return True
-        return "/" + DOCS_DIR in "/" + rel and "/board/" in rel
-    if rel.startswith(DOMAIN_DIR):
         return False
     return z is None or z == OWNER_ZONE.get(role)
 
@@ -589,21 +724,6 @@ def post_check(data, role, cwd):
         block(msg + " Post lên board và @chủ vùng sửa.")
 
 
-# ---------- debate board (mọi role, trừ Lead) ----------
-
-def check_board(tool, path, cwd, role):
-    full = full_path(path, cwd)
-    if "/" + DOCS_DIR in full + "/":
-        if "/board/" not in full:
-            block("TASK.md và file ngoài board/ chỉ Lead được ghi")
-        if tool != "Write":
-            block("không sửa bài đã post, hãy post bài mới")
-        if not re.match(rf"^S[1-6]-R\d+-{re.escape(role)}-\d+\.md$", os.path.basename(full)):
-            block(f"tên bài post phải là S<giai đoạn>-R<vòng>-{role}-<n>.md (chỉ post bằng tên mình)")
-        if os.path.exists(full):
-            block("bài post đã tồn tại, không ghi đè, tăng <n> lên")
-
-
 def touches_hidden(text):
     return bool(HIDDEN_RE.search(text or ""))
 
@@ -647,7 +767,12 @@ def main():
             block("không được đụng .agent-team/ (state DB clone)")
         if role and "agent-tasks" in cmd and (
                 re.search(r">|\btee\b|\bsed\s+(-\w*\s+)*-i|\b(mv|cp|rm|touch|truncate)\b", unquoted(cmd))):
-            block("board chỉ được post bằng Write tool, không ghi/xoá bằng Bash")
+            block("docs/agent-tasks (TASK, board) chỉ Lead ghi, trả kết quả cho Lead")
+        if not role and STAGE_WRITE_RE.search(cmd):
+            m = STAGE_VALUE_RE.search(cmd)
+            if not m:
+                block("ghi giai đoạn theo dạng `echo S<n> > .agent-team/stage`")
+            check_stage_change(m.group(1), cwd)
         check_secret_tokens(cmd)
         check_env_dump(cmd)
         check_db(cmd)
@@ -658,17 +783,18 @@ def main():
         for tgt in bash_write_targets(cmd):
             check_stage(tgt, cwd)
             check_owner(tgt, cwd, role)
-            check_domain(tgt, cwd, role)
+            check_docs(tgt, cwd, role)
 
     if tool in ("Edit", "Write", "MultiEdit", "NotebookEdit"):
         check_stage(path, cwd)
+        if not role and tool == "Write" and path.replace("\\", "/").endswith(".agent-team/stage"):
+            check_stage_change((ti.get("content") or "").strip().upper(), cwd)
 
     if role and tool in ("Edit", "Write", "MultiEdit", "NotebookEdit"):
         if role in READONLY_ROLES:
             check_readonly_write(path, cwd, role)
         check_owner(path, cwd, role)
-        check_domain(path, cwd, role)
-        check_board(tool, path, cwd, role)
+        check_docs(path, cwd, role)
 
     if tool == "Bash" and watched(role, cwd):
         take_snapshot(data, role, cwd)
