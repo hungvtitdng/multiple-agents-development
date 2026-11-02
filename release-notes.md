@@ -1,3 +1,11 @@
+# Release notes - 02/11/2026 (v0.9.3)
+
+## Thay đổi
+- Sửa mô tả plugin (`plugin.json`) còn ghi "Đội 12 agent" của bản cũ: nay là Lead + 11 agent theo thiết kế mới.
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update kevin-agent-team`, khởi động lại Claude Code.
+
 # Release notes - 02/11/2026 (v0.9.2)
 
 ## Thay đổi

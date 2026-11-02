@@ -1,8 +1,16 @@
 {
   "name": "agent-team",
-  "version": "0.9.2",
-  "description": "Đội 12 agent (Lead, BA, SA, TA, BE, FE, Tester, 4 Reviewer, Security) debate để chọn best solution rồi tự code, test, review. Chọn model theo vai trò để giảm token.",
-  "author": { "name": "Kevin" },
+  "version": "0.9.3",
+  "description": "Lead + 11 agent: BA, Architect (SA/TA), Test Design debate chọn best solution; Scout, BE, FE, Test Execution, Code Reviewer, Challenger, Security làm, kiểm. Model theo vai trò và COST_TIER để giảm token.",
+  "author": {
+    "name": "Kevin"
+  },
   "license": "MIT",
-  "keywords": ["agent-team", "debate", "code-review", "security", "sdlc"]
+  "keywords": [
+    "agent-team",
+    "debate",
+    "code-review",
+    "security",
+    "sdlc"
+  ]
 }
