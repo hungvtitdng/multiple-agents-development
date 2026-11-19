@@ -1,7 +1,7 @@
 {
   "name": "agent-team",
-  "version": "0.10.0",
-  "description": "Lead + 12 agent: BA, Architect (SA/TA), Test Design, UI Designer (khi có UI) debate hỏi WHY tới khi cả team đồng ý; Scout, BE, FE, Test Execution, Code Reviewer, Challenger, Security làm, kiểm. Board chat SQLite, workflow + wireframe đen trắng, báo cáo HTML cho client. Model theo vai trò và COST_TIER. 10 skill chung.",
+  "version": "0.11.0",
+  "description": "Lead + 12 agent: BA, Architect (SA/TA), Test Design, UI Designer (khi có UI) debate hỏi WHY tới khi cả team đồng ý; Scout, BE, FE, Test Execution, Code Reviewer, Challenger, Security làm, kiểm. Board chat SQLite, workflow + wireframe đen trắng, báo cáo HTML cho client. App Mode (/agent-team:app): từ ý tưởng hỏi owner cho hết, dựng tài liệu + wireframe, gap-check, owner duyệt rồi build từng module. Model theo vai trò và COST_TIER. 10 skill chung.",
   "author": {
     "name": "Kevin"
   },

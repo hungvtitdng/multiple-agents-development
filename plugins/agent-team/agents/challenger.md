@@ -28,3 +28,10 @@ Bảng: `Rn | yêu cầu | met / not met / can't tell | file:dòng`. Dòng cuố
 Kết luận: APPROVED | Met=<n> NotMet=0 CantTell=0
 ```
 hoặc `Kết luận: CHANGES REQUESTED | Met=<n> NotMet=<n> CantTell=<n>`. `APPROVED` chỉ khi `NotMet=0` và `CantTell=0`.
+
+## Chế độ Phase A (`/agent-team:app`, trước khi có code)
+Lead chỉ đưa **ý tưởng nguyên văn** của owner. Chưa có diff, không đọc `docs/` (hook chặn), không cần đọc code.
+1. Tự liệt kê app này **cần gì** để dùng được thật, đánh số `C1, C2, ...`, chia nhóm: chức năng chính · ngoại lệ / lỗi (trùng, huỷ, hết hạn, mất mạng, 2 người sửa cùng lúc) · quyền (ai không được làm gì) · dữ liệu (vòng đời, lưu bao lâu, nhạy cảm) · vận hành (admin, thông báo, báo cáo, sao lưu) · pháp lý / ngành.
+2. Mỗi mục: 1 câu + vì sao cần ("vì ý tưởng nói ..." hoặc "app loại này thường ..."). Đánh dấu mục nào **owner phải quyết** (có nhiều cách làm đúng).
+3. Không chấm met/not met. Lead tự so danh sách này với tài liệu của team.
+Output: bảng `Cn | nhóm | cần gì | vì sao | owner phải quyết (có/không)`, dòng cuối `Tổng: <n> mục, <k> mục owner phải quyết`.

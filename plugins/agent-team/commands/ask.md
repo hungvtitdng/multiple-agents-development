@@ -28,7 +28,7 @@ $ARGUMENTS
 - Khi gọi agent: nêu câu hỏi nguyên văn, danh sách nguồn ở mục 3, yêu cầu trả lời ≤ 15 dòng theo mục 4, **chỉ đọc**.
 
 ## 3. Nguồn, theo thứ tự (dừng khi đã đủ, nhưng luôn đối chiếu code ở bước 4)
-1. `docs/` (Knowledge Base): `business-rules.md`, `glossary.md`, `roles-and-permissions.md`, `domain-model.md`, `modules/<tên>/`, `api/`, `database/`, `architecture/`, `decisions/`, `testing/`, `security/`.
+1. `docs/` (Knowledge Base): `business-rules.md`, `glossary.md`, `roles-and-permissions.md`, `domain-model.md`, `modules/<tên>/`, `api/`, `database/`, `architecture/`, `decisions/`, `testing/`, `security/`. Dự án làm bằng App Mode: đọc `docs/product/SPEC.md` trước (toàn bộ tài liệu app: yêu cầu `R-n`, flow `F-n`, màn `S-n`, dữ liệu, câu trả lời của owner), chi tiết ở các file trong `docs/product/`.
 2. `docs/LESSONS.md`: lỗi đã từng mắc liên quan.
 3. `docs/agent-tasks/*/TASK.md` (quyết định, Assumption, phán quyết của Lead) của các task liên quan.
 4. **Code** để đối chiếu và dẫn `file:dòng`. Có `graphify-out/` (Graphify): đọc `GRAPH_REPORT.md`, query `graphify explain "<Tên|file>"` (ai gọi, gọi ai, `file:dòng`) · `graphify affected "<Tên>"` (sửa thì ảnh hưởng đâu) · `graphify query "<câu hỏi>"` · `graphify path "A" "B"`. Nhiều repo: thêm `--graph graphify-out/merged-graph.json`. Cạnh `INFERRED` chỉ là gợi ý.

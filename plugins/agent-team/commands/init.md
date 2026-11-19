@@ -16,6 +16,9 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
    - Branch gốc (develop/main/master) của **từng repo** (`git symbolic-ref --short refs/remotes/origin/HEAD`). Giống nhau → `BASE_BRANCH`. Repo nào khác → `BASE_BRANCHES="<repo>=<nhánh>"`.
    - **Có mấy repo git?** Tìm repo ở thư mục hiện tại và thư mục con cấp 1 (`.git`). Thư mục hiện tại là repo thì hỏi thêm user có repo khác đi kèm không (vd `../FrontEnd`).
    - **Có code sẵn không?** `git ls-files` có file mã nguồn (rb, py, js/ts, go, java, php, vue...) → dự án có sẵn code.
+2a. **Dự án mới (App Mode):**
+   - Chưa có git → `git init -b main`, `BASE_BRANCH=main`. Chưa có code nên `BE_PATHS`, `FE_PATHS`, `TEST_PATHS`, lệnh test/lint để `TODO`: Architect điền sau khi chốt stack (`/agent-team:app` mục 9).
+   - Không có remote (`git remote` rỗng) → `PUSH=0` (không fetch/push, branch nằm ở máy). Có remote → `PUSH=1`.
 2b. **Nhiều repo → chọn repo chính** (chỉ hỏi khi ≥ 2 repo, 1 câu hỏi duy nhất bằng AskUserQuestion):
    - Câu hỏi: "Chọn repo chính, nơi chứa `.claude/`, `docs/`, `CLAUDE.md`". Mỗi lựa chọn là tên 1 repo tìm thấy. Gợi ý đầu tiên: repo BE/API.
    - Mọi file init tạo **trong repo chính**. **Không tạo gì ở thư mục cha.**
@@ -27,6 +30,7 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
    - `templates/TASK.md`, `POST.md`, `SUMMARY.md`, `CONTEXT.md` → `.claude/agent-team/templates/`
    - `scripts/kb-check.py` → `.claude/agent-team/kb-check.py` (chmod +x)
    - `scripts/board.py` → `.claude/agent-team/board.py` (chmod +x). Board chat SQLite, dữ liệu ở `.agent-team/board.db` (đã gitignore).
+   - `scripts/gap-check.py` → `.claude/agent-team/gap-check.py` (chmod +x). Kiểm tài liệu sản phẩm `docs/product/` của App Mode.
 5. **CLAUDE.md**: chưa có mục "## Agent Team" thì thêm nội dung `templates/claude-md-section.md` vào cuối. Không sửa phần khác.
 5a. **Vẽ sơ đồ trong báo cáo**: kiểm `mmdc --version` (Mermaid CLI). Chưa có → báo user lệnh cài `npm i -g @mermaid-js/mermaid-cli` (không tự cài). Không có thì REPORT.html vẫn tạo được, sơ đồ hiện dạng văn bản.
 5b. **Code graph = Graphify (tùy chọn)**: hỏi user có muốn dùng không. Không → `USE_CODE_GRAPH=0`, bỏ qua.
@@ -54,6 +58,6 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
    3. Mọi mục gắn nhãn (`Observed`/`Unverified`/`Assumption`), có `file:dòng` và `verified-at: <commit>`. Business rule suy từ code không bao giờ là Confirmed.
    4. Lệnh lint/format Scout báo → điền `LINT_CMD`, `FORMAT_CMD` nếu bước 2 chưa nhận diện được.
    5. **Không có lối thoát "quá dài thì bỏ qua".** Chưa đọc hết thì ghi rõ trong `docs/README.md` mục "Tình trạng KB" (đã quét / chưa quét / vì sao) và báo user chạy `/agent-team:kb <module>` để làm tiếp.
-   6. Dự án mới (chưa có code): bỏ qua bước này, chỉ giữ khung. Architect đặt quy chuẩn ở task đầu tiên.
+   6. Dự án mới (chưa có code): bỏ qua bước này, chỉ giữ khung. Architect đặt quy chuẩn ở task đầu tiên. Làm app từ ý tưởng: `/agent-team:app <ý tưởng>` (tự copy `templates/product/` → `docs/product/`).
 8. **Ghi `release-notes.md`** (tạo nếu chưa có), mục `Release notes - DD/MM/YYYY`: đã cài agent team, file nào được thêm, key mới (`LINT_CMD`, `FORMAT_CMD`, `COST_TIER`, `LESSONS_PATH`).
-9. Báo user: danh sách file đã tạo/sửa, các `TODO` cần điền, kết quả `kb-check.py` (đạt/tổng), phần KB chưa quét và còn `Unverified`. **Không commit**, để user xem trước. Cuối cùng: đúng 1 việc làm tiếp (≤ 2 phút), vd chạy `/agent-team:run <task đầu tiên>`.
+9. Báo user: danh sách file đã tạo/sửa, các `TODO` cần điền, kết quả `kb-check.py` (đạt/tổng), phần KB chưa quét và còn `Unverified`. **Không commit**, để user xem trước. Cuối cùng: đúng 1 việc làm tiếp (≤ 2 phút), vd chạy `/agent-team:run <task đầu tiên>` (dự án mới: `/agent-team:app <ý tưởng>`).

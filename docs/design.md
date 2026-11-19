@@ -10,6 +10,7 @@ Khung chính: `kien-truc-doi-ngu-ai-agent-claude-code-v2.md`. Phần lấy thêm
 | **[+D]** | Vận hành thực tế (nhiều repo, resume, DB clone...) |
 | **[+E]** | Quy chuẩn code / clean code nằm trong KB |
 | **[+F]** | Board chat SQLite + skill chung của plugin (v0.10); workflow + wireframe đen trắng (ui-designer) + báo cáo HTML cho client |
+| **[+G]** | App Mode (v0.11): làm cả app từ ý tưởng, hỏi owner, `docs/product/` + SPEC.md, catalog, gap-check (mục 19) |
 
 Trạng thái: **ĐÃ CHỐT thiết kế, chưa áp dụng vào code plugin.**
 
@@ -674,6 +675,10 @@ Thiếu điều kiện bắt buộc → ghi rõ phần thiếu, không đánh d�
 | Gate chuyển stage (AC xong, test pass, lint/format pass, KB cập nhật) | Thêm mới |
 | Code theo quy chuẩn `engineering/` | Hướng dẫn cho dev + Code Reviewer chặn ở S5 (lint do Lead gate) |
 | Tự chốt khi thiếu rule + Assumption, giới hạn vòng, gộp phương án, nhãn thông tin | Hướng dẫn trong `run.md` (không enforce) |
+| **[+G]** Không code trước khi tài liệu app đủ + owner duyệt; SPEC.md khớp tài liệu | Hook chạy `gap-check.py --gate --spec-check` ở S3 (task APP) và S6 (mọi task khi có `docs/product/APP.md`); module chặn S3 khi chưa `Owner duyệt: APPROVED` |
+| **[+G]** Chủ ghi `docs/product/` | Hook (`KB_OWNERS`) |
+| **[+G]** `Cập nhật KB: YES` phải có file KB đổi thật | Hook ở S6: `git diff` + file mới so với `BASE_BRANCH` (không tính `agent-tasks/`, `testing/`, `LESSONS.md`, `SPEC.md`); không xác định được nhánh gốc thì bỏ qua |
+| **[+G]** Tài liệu (KB, `docs/product/`) khớp code | `code-reviewer` ở S5: lệch diff = High (hook không đọc được nghĩa của code) |
 
 ---
 
@@ -696,3 +701,41 @@ Thiếu điều kiện bắt buộc → ghi rõ phần thiếu, không đánh d�
 ## 18. Kết luận
 
 Mỗi task chỉ chạy quy trình tối thiểu cần thiết để đạt chất lượng. Lead điều phối và chịu trách nhiệm trạng thái cuối. Quyết định giải pháp qua debate 4 người, chốt best solution, ghi lại ý kiến từng role. Task lớn chia nhỏ, mỗi task nhỏ một worktree + branch. Chỉ song song khi dependency cho phép. Dev kiểm code và chạy test trước khi báo xong; Code Reviewer và Security review độc lập; Tester không báo PASS khi chưa chạy. KB cập nhật theo code thực tế, phân quyền để giảm conflict. Commit một dòng, không signature; không tự merge, force push, rewrite lịch sử, xóa worktree. Giới hạn vòng lặp; không tiến triển thì dừng. Chỉ DONE khi đủ tiêu chí. Quy tắc quan trọng được hook thi hành.
+
+---
+
+## 19. App Mode: làm cả app từ ý tưởng **[+G]**
+
+Lệnh `/agent-team:app <ý tưởng>`, playbook `commands/app.md`. Tầng thứ 4 cạnh NHỎ / VỪA / LỚN.
+
+```
+PHASE A (S1-S2, chỉ tài liệu)
+ A0 Intake → A1 Vấn đề + 12 góc nhìn → A2 Giải pháp (debate) → A3 Nghiệp vụ
+ → A3b Wireframe → A4 Săn gap → ⛔ Owner duyệt → A5 Chia module
+PHASE B
+ M-0 khung project (S3-S6 của task APP) → M-1..n: mỗi module 1 /agent-team:run, lần lượt
+```
+
+### 19.1 Khác với `run`
+| Điểm | `run` | App Mode |
+|---|---|---|
+| Thiếu thông tin | Lead chọn + `Assumption` | Phase A: Lead **hỏi owner** (`AskUserQuestion`, ≤ 4 câu/lượt, có đề xuất, hỏi bằng tình huống). CAO bắt buộc trả lời, THẤP được giả định. Agent vẫn không hỏi |
+| Owner | Đọc REPORT.html | Không đọc tài liệu: bấm chọn, xem wireframe + sơ đồ flow |
+| Tài liệu | `docs/agent-tasks/<id>/` | Thêm `docs/product/` (cột cố định) + `SPEC.md` gộp toàn bộ |
+| Debate | Mỗi task VỪA/LỚN | A2 (kiến trúc, stack) + module VỪA/LỚN; không debate ở bước hỏi / wireframe / săn gap |
+
+### 19.2 Chống sót ý (3 loại thiếu, 6 lớp)
+- Owner biết nhưng quên → 12 góc nhìn (`coverage.md`, không ô trống).
+- Owner không nghĩ tới → `catalog/` mặc định theo loại app, owner chọn GIỮ / BỎ / KHÁC.
+- Không ai nghĩ tới → challenger mù (chỉ đọc ý tưởng gốc), test-designer, security, BA đi "1 ngày của vai trò" + "vòng đời dữ liệu".
+- Kiểm máy: `gap-check.py`: truy vết B → R → S, R không nguồn, câu CAO còn mở, flow thiếu nhánh lỗi, màn mồ côi, vai trò × màn, Dữ liệu × CRUD, vòng đời trạng thái.
+- Phần còn sót: thiết kế dễ sửa + GAP khi code + bài học + đề xuất bổ sung catalog.
+
+### 19.3 Tài liệu luôn đúng
+- Module đổi yêu cầu / GAP → BA, ui-designer sửa `docs/product/`; Lead sinh lại `SPEC.md` (`gap-check.py --spec`).
+- Hook chặn S6 khi tài liệu thiếu hoặc SPEC cũ hơn tài liệu.
+- `gap-check` chỉ kiểm tài liệu khớp nhau, không so với code. So với code: `code-reviewer` (diff đổi hành vi mà `docs/product/` không đổi = High, kể cả task sửa bug).
+
+### 19.4 Chưa làm
+- REPORT.html cấp app (owner duyệt qua `AskUserQuestion` + mở file wireframe).
+- Test E2E Playwright so màn thật với wireframe (dự kiến v0.12).

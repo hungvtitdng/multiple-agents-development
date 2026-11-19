@@ -1,6 +1,8 @@
 # Agent team config cho project. KHÔNG ghi password/KEY vào file này.
 
 BASE_BRANCH=develop
+# 1 = có remote: fetch + push branch agent/*. 0 = repo chỉ ở máy (dự án mới chưa có remote): không fetch/push.
+PUSH=1
 # Repo nào có nhánh gốc khác BASE_BRANCH thì ghi ở đây (repo=nhánh, cách nhau bằng dấu cách). Chỉ cần khi có REPOS.
 # Ví dụ: BASE_BRANCH=main  BASE_BRANCHES="../FrontEnd=master"
 BASE_BRANCHES=

@@ -10,7 +10,7 @@
 | Thành viên | (role tham gia; role bỏ qua + lý do) |
 
 ## Điều kiện chuyển giai đoạn (Lead cập nhật, hook kiểm)
-- Loại: TODO (NHỎ / VỪA / LỚN)
+- Loại: TODO (NHỎ / VỪA / LỚN / APP = /agent-team:app, cổng ở docs/product/APP.md)
 - Tiêu chí nghiệm thu: TODO (chỉ cần cho NHỎ, vd AC ngắn do Lead viết)
 - Phương án chốt: TODO (tên/mô tả; VỪA/LỚN)
 - Workflow: TODO (YES = có design/workflow.md / N/A)

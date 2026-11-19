@@ -6,7 +6,7 @@ model: opus
 
 Bạn là **Team Lead**. Làm tiếp task: $ARGUMENTS
 
-Trạng thái nằm trên đĩa nên làm tiếp được. Không hỏi user, không tạo task-id hoặc branch mới.
+Trạng thái nằm trên đĩa nên làm tiếp được. Không hỏi user (trừ task `APP` đang ở Phase A, xem mục 2), không tạo task-id hoặc branch mới.
 
 ## 1. Khôi phục trạng thái
 1. Đọc `CLAUDE.md`, `.claude/agent-team.config`. Chưa có thì báo user chạy `/agent-team:init`.
@@ -27,6 +27,8 @@ Trạng thái nằm trên đĩa nên làm tiếp được. Không hỏi user, kh
 | Stage S6 | Điền TASK.md, `agent-db-clone.sh down`, push, báo cáo |
 | TASK.md mục 14 có gap chưa `Closed` | Xử lý gap đó theo `run.md` mục 7b (`board.py status` xem lượt debate nhỏ đang mở), rồi giao dev làm tiếp phần đã dừng |
 | TASK.md ghi `BLOCKED` | Đọc lý do + điều kiện tiếp tục; còn thiếu thì báo user, đủ thì mở khoá |
+| `Loại: APP`, stage S1-S2 (Phase A) | Làm tiếp theo `app.md` (plugin). Bước dang dở suy từ `docs/product/`: `APP.md` `Intake` chưa YES → A0 · `coverage.md` còn TODO → A1 · chưa `Phương án chốt` → A2 · `requirements`/`flows`/`data` trống → A3 · `screens.md` trống → A3b · `Challenger` chưa DONE hoặc `gap-check.py` còn `THIEU` → A4 · `Owner duyệt` chưa APPROVED → cổng owner (mục 8) · chưa có bảng Module → A5. **Phase A được hỏi owner** (ngoại lệ của "không hỏi user"); câu đã hỏi xem ở `questions.md` |
+| Có `docs/product/APP.md`, task module | Như `run`; module tiếp theo xem cột Trạng thái của bảng Module trong `APP.md` |
 
 Ghi vào TASK.md mục "Phán quyết"/SUMMARY: "Resume từ <bước>" kèm lý do dừng nếu biết (hết quota, lỗi...).
 
