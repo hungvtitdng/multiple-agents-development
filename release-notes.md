@@ -1,3 +1,45 @@
+# Release notes - 20/11/2026 (v0.13.0)
+
+## Thay đổi
+- **App Mode: câu nghiệp vụ gửi owner bằng form, không hỏi dev.** Trước đây Lead hỏi bằng `AskUserQuestion`, nên người chạy lệnh (thường là dev) phải trả lời thay owner. Nay `questions.md` có cột `Ai trả lời`: `DEV` (stack, hosting, git) hỏi người chạy lệnh; `OWNER` (nghiệp vụ, quy tắc, tiền, quyền, mặc định) gom vào form.
+- **Script mới `scripts/owner-form.py`** (copy vào `.claude/agent-team/`, cần `gap-check.py` cùng thư mục, không cần thư viện ngoài, chạy được Python 3.9+):
+  - `build` → `docs/product/owner-form-<n>.xlsx`: tên app + 1 bảng `# · Câu hỏi · Đề xuất của team · Owner duyệt / góp ý` (cột cuối để trống, mã câu ở cột E ẩn). Gồm câu `OWNER` đang `MỞ` / `CHỜ OWNER` (CAO lên đầu) + mặc định chưa chốt. Đổi trạng thái sang `CHỜ OWNER`. Câu thiếu đề xuất → từ chối sinh form. Mở bằng Excel, Numbers hoặc tải lên Google Sheet.
+  - `import <file .xlsx|.csv>`: `OK` / đồng ý / duyệt → `ĐÃ TRẢ LỜI` (mặc định: `GIỮ`); `không` / không cần / bỏ → `MỞ`, BA đề xuất lại lượt sau (mặc định: `BỎ`); chữ khác → góp ý ghi nguyên văn (mặc định: `KHÁC` + ghi chú); để trống → vẫn chờ. Đọc được file Excel / Google Sheet lưu lại (sharedStrings) và CSV; mất cột mã thì khớp theo câu hỏi.
+- **Mỗi câu gửi owner chỉ 1 đề xuất best solution** của team (kèm 1 câu "vì sao"), không liệt kê phương án khác. Owner ghi OK hoặc góp ý.
+- `templates/product/questions.md` thêm cột `Đề xuất của team`, `Vì sao`, `Ai trả lời`; trạng thái mới `CHỜ OWNER`. `defaults.md`: `Mục` viết thành câu hỏi, trạng thái `CHỜ OWNER`.
+- `app.md`: gom ít lượt nhất (lượt 1 = câu A0, A1 + toàn bộ mặc định, gửi trước khi BA viết yêu cầu; lượt sau chỉ câu owner ghi "không" + câu mới từ A4). Chờ owner: task `BLOCKED`, A2 kiến trúc làm song song. **Chốt logic trước, wireframe sau**: owner không xem wireframe, chốt bằng form là đủ; A3b vẽ sau khi logic chốt.
+- `gap-check.py`: câu `OWNER` thiếu đề xuất → thiếu; câu CAO `CHỜ OWNER` hoặc `GIẢ ĐỊNH` → thiếu.
+- `resume.md`: `/agent-team:resume <task-id> <file trả lời>` tự `import` rồi làm tiếp. `business-analyst`: mỗi câu trả về Lead đủ 5 trường (câu hỏi tình huống, đề xuất, vì sao, mức, ai trả lời); owner ghi "không" thì đề xuất cách khác.
+- Mẫu: `examples/owner-form-sample.xlsx` (sinh bằng script), `examples/owner-form-sample.html` (bản xem trên trình duyệt).
+- Test mới `tests/test_owner_form.py` (43 case: build, import Excel / CSV, lượt 2, mất cột mã, lỗi dữ liệu, đọc chữ owner, gap-check).
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update kevin-agent-team`, khởi động lại Claude Code.
+- Project đã init: copy `scripts/owner-form.py` → `.claude/agent-team/owner-form.py` (chmod +x). Copy lại `templates/claude-md-section.md` vào mục "Agent Team" của `CLAUDE.md`.
+- App đang làm dở: thay bảng trong `docs/product/questions.md` bằng bảng mới của `templates/product/questions.md` (thêm 3 cột `Đề xuất của team`, `Vì sao`, `Ai trả lời`), nếu không `owner-form.py build` báo "bản cũ".
+- Không có key config mới.
+
+# Release notes - 19/11/2026 (v0.12.0)
+
+## Thay đổi
+- **Responsive xuyên suốt, nguồn duy nhất là `VIEWPORTS`** (config, vd `"375 768 1280"`; chỉ máy tính `"1280"`):
+  - Wireframe (skill `wireframe`, `ui-designer`): có chiều rộng < 768 thì **mọi màn bắt buộc có tab `Mobile`** (`data-s="mobile"`, 375px). `gap-check.py` báo thiếu (khi `intake.md` ghi `Responsive: CÓ` hoặc `VIEWPORTS` có < 768).
+  - Test case (skill `test-case-design`, `test-designer`): trạng thái × chiều rộng; kiểm không cuộn ngang, nút chính ≥ 44px, menu ☰, bảng không làm trang cuộn ngang. Mẫu test case thêm cột `Chiều rộng`.
+  - `frontend-dev`: dùng breakpoint của dự án, không width cố định cho khung nội dung, thêm `data-testid` khi cần cho E2E.
+  - `code-reviewer`: lỗi responsive = High, đối chiếu ảnh E2E.
+  - App Mode: `intake.md` thêm `Responsive`, catalog hỏi bằng tình huống kèm 375 / 768 / 1280px; A5 ghi `VIEWPORTS`; M-0 dựng Playwright; module cuối **M-E2E** chạy lại toàn bộ luồng "1 ngày của vai trò" ở mọi chiều rộng.
+- **E2E trình duyệt: `agent-db-clone.sh e2e <task-id> [args]`**: chạy app (`APP_START_CMD`) trong container `APP_SERVICE` nối DB clone, mở cổng `E2E_PORT`, chờ app lên; FE tách repo thì chạy `E2E_FE_START_CMD` trên máy (nhận `API_URL`); rồi chạy `E2E_CMD` trên máy với `BASE_URL`, `VIEWPORTS`, `EVIDENCE_DIR=docs/testing/evidence/<task-id>/`, `TASK_ID`; xong (pass hay fail) đều tắt app và FE. Exit code = exit code của E2E.
+- Skill `test-automation` mục 1b: khung `playwright.config.ts` (mỗi chiều rộng 1 project `vp-<rộng>`), helper `shot()` (ảnh `<TC>-<trạng thái>-<rộng>.png`) và `expectResponsive()`, test mẫu. `automation-guide.md` thêm mục E2E.
+- **Guard S5:** TASK.md thêm dòng `- E2E:` (PASS / N/A). Chặn khi chưa điền, khi `UI mockup: YES` mà ghi `N/A`, hoặc PASS mà thiếu ảnh ở một chiều rộng trong `VIEWPORTS`. Role chỉ đọc được chạy `agent-db-clone.sh e2e`.
+- Test: `test_guard.py` thêm 7 case E2E (296), case "S5 đủ" cũ thêm `E2E: N/A`; `test_gap_check.py` thêm 5 case responsive (43). `agent-db-clone.sh e2e` đã chạy thử với `docker` giả lập: pass, fail (vẫn tắt app), FE tách riêng, thiếu config.
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update kevin-agent-team`, khởi động lại Claude Code.
+- **Key mới trong `.claude/agent-team.config`:** `VIEWPORTS`, `E2E_CMD`, `APP_START_CMD`, `APP_PORT`, `E2E_PORT`, `E2E_FE_START_CMD`, `E2E_FE_URL` (xem `templates/agent-team.config.example`). Lệnh có `$` để trong nháy **đơn** vì config được nạp bằng shell. Copy lại `scripts/agent-db-clone.sh` → `.claude/agent-team/agent-db-clone.sh`.
+- **Cài Playwright** trong repo FE (mỗi dự án, không tự cài): `npm i -D @playwright/test && npx playwright install chromium`. Cần `curl` trên máy (chờ app lên).
+- Task đang làm dở: thêm dòng `- E2E: N/A` (hoặc PASS khi đã có ảnh) vào TASK.md, nếu không hook chặn sang S5. Copy lại `templates/TASK.md`.
+- Chưa có: so ảnh tự động (visual diff) giữa màn thật và wireframe; code-reviewer so bằng mắt.
+
 # Release notes - 19/11/2026 (v0.11.0)
 
 ## Thay đổi

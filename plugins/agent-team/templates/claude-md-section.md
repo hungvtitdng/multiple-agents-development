@@ -8,6 +8,7 @@ Project dùng plugin `agent-team`. Chạy task: `/agent-team:run <task>`. Làm c
 - Tài liệu mỗi task: `docs/agent-tasks/<task-id>/` gồm `TASK.md`, `CONTEXT.md` (Scout), `board/` (Lead ghi)
 - Migration/test DB: chỉ qua `.claude/agent-team/agent-db-clone.sh` (DB clone, không đụng DB hiện tại). File migration **chỉ sinh** bằng `agent-db-clone.sh generate` (generator trong container), không tự tạo/đổi tên (guard chặn).
 - Báo cáo mỗi task: `docs/agent-tasks/<task-id>/REPORT.html` (gửi client) + `REPORT.md` (`board.py report`).
+- Giao diện phải dùng được ở mọi chiều rộng trong `VIEWPORTS` (config). Task có UI: E2E Playwright bằng `agent-db-clone.sh e2e <task-id>`, ảnh bằng chứng mỗi chiều rộng ở `docs/testing/evidence/<task-id>/` (hook kiểm trước S5).
 - Thiết kế mỗi task: `docs/agent-tasks/<task-id>/design/`: `workflow.md`, `state.md` (BA), `sequence.md` (Architect), `mockup-<màn>.html` (ui-designer, **wireframe đen trắng đủ chức năng + trạng thái**). FE code đủ chức năng của wireframe nhưng dùng màu, font, component của dự án.
 
 ### Quy chuẩn chung (mọi agent)
@@ -17,7 +18,7 @@ Project dùng plugin `agent-team`. Chạy task: `/agent-team:run <task>`. Làm c
 - Không sửa code cũ khi không cần thiết, không refactor ngoài phạm vi. Comment ngắn, chỉ khi cần.
 - Theo đúng stack, convention và `docs/engineering/`. Chạy lint/format (`LINT_CMD`, `FORMAT_CMD`) trước khi commit.
 - Thêm ENV/lệnh chạy mới → ghi `release-notes.md` (chỉ tên biến).
-- **Không hỏi user.** Thiếu business rule: Lead chọn best solution, ghi nhãn `Assumption`, báo ở cuối. Kỹ thuật: team tự quyết. Ngoại lệ App Mode (Phase A): Lead hỏi owner câu mức CAO trước khi code; agent vẫn không hỏi, trả câu hỏi về Lead.
+- **Không hỏi user.** Thiếu business rule: Lead chọn best solution, ghi nhãn `Assumption`, báo ở cuối. Kỹ thuật: team tự quyết. Ngoại lệ App Mode: câu nghiệp vụ gom vào form `.xlsx` gửi owner (mỗi câu 1 đề xuất của team, owner ghi OK hoặc góp ý; `owner-form.py build` / `import`), câu kỹ thuật hỏi dev; câu mức CAO phải có câu trả lời của owner trước khi code. Agent vẫn không hỏi, trả câu hỏi về Lead.
 - Security bắt buộc mọi task. Critical/High phải sửa, Lead không được override.
 - Debate bằng subagent trên **board chat SQLite** (`.claude/agent-team/board.py`): mỗi lượt agent đọc tóm tắt lượt trước + toàn bộ lượt đang mở, post bằng tên mình (≤ 15 dòng), `@role` = phải trả lời. Chỉ Lead mở/đóng lượt, tóm tắt, export. Điểm chấm không post, chỉ trả về Lead. Không ghi TASK.md.
 - Skill chung của plugin (`agent-team:debate-board`, `acceptance-criteria`, `test-case-design`, `security-review`, `migration-safety`, `test-automation`, `code-review`, `decision-record`): agent tự nạp khi cần. Kiến thức riêng của dự án nằm trong KB `docs/`.

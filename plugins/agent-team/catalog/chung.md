@@ -19,7 +19,7 @@
 | Bấm 2 lần / gửi trùng | Không ai nghĩ tới | Mạng chậm, người dùng bấm Lưu 2 lần thì sao? | Chặn trùng, chỉ tạo 1 · Cho phép |
 | Hai người sửa cùng lúc | Hiếm nên bị quên | Hai người cùng sửa 1 bản ghi thì sao? | Người sau được báo dữ liệu đã đổi · Người sau ghi đè |
 | Đa ngôn ngữ | Nghĩ chỉ có 1 thị trường | Có người dùng nước ngoài không? | Chỉ tiếng Việt · Việt + Anh |
-| Responsive / mobile | Chỉ nghĩ dùng trên máy tính | Có ai dùng trên điện thoại không? | Có, giao diện co giãn · Chỉ máy tính · App mobile riêng |
+| Responsive / mobile | Chỉ nghĩ dùng trên máy tính | Nhân viên / khách mở app trên điện thoại thì sao? | Co giãn đủ điện thoại, tablet, máy tính (375 / 768 / 1280px) · Chỉ máy tính · App mobile riêng |
 | Sao lưu, khôi phục | Chỉ nghĩ tới khi mất dữ liệu | Mất dữ liệu thì chấp nhận mất tối đa bao lâu? | Sao lưu hằng ngày · Hằng giờ · Không cần |
 | Dữ liệu cá nhân nhạy cảm | Không biết luật bảo vệ dữ liệu | App có lưu CCCD, lương, sức khoẻ, số tài khoản không? | Có, cần mã hoá + giới hạn người xem · Không |
 | Nhật ký hệ thống | Chỉ cần khi có sự cố | Lỗi xảy ra thì ai biết, xem ở đâu? | Ghi log + báo admin · Chỉ ghi log |

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Salon Tóc Mây</title>
+<style>
+:root{--bg:#fff;--ink:#1d1d1b;--muted:#6b6b66;--line:#e3e2dd;--head:#f5f5f2;--accent:#2b5fd9;--bad:#c0392b}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1a1a19;--ink:#ecebe6;--muted:#a3a29b;--line:#34332f;--head:#232321;--accent:#7aa2ff;--bad:#ff7b6b}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1000px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:20px;margin:0 0 16px}
+table{width:100%;border-collapse:collapse}
+th,td{border:1px solid var(--line);padding:10px;text-align:left;vertical-align:top}
+th{background:var(--head);font-size:13px}
+td.n{width:36px;text-align:center;color:var(--muted)}
+.why{color:var(--muted);font-size:13px}
+td.own{min-width:200px;min-height:44px;outline:none}
+td.own:focus{box-shadow:inset 0 0 0 2px var(--accent)}
+@media (max-width:767px){
+  table,tbody,tr,td{display:block;width:100%}
+  thead{display:none}
+  tr{border:1px solid var(--line);border-radius:8px;margin-bottom:12px;overflow:hidden}
+  td{border:0;border-bottom:1px solid var(--line)}
+  td.n{width:100%;text-align:left;font-weight:600;color:var(--ink)}
+  td:last-child{border-bottom:0}
+  td.own{min-height:60px}
+  td.own::before{content:"Owner duyệt / góp ý";display:block;font-size:12px;color:var(--muted)}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Salon Tóc Mây</h1>
+<table>
+  <thead><tr><th>#</th><th style="width:32%">Câu hỏi</th><th style="width:40%">Đề xuất của team</th><th>Owner duyệt / góp ý</th></tr></thead>
+  <tbody id="t"></tbody>
+</table>
+</div>
+<script>
+// Bản thật: owner-form.py sinh từ docs/product/questions.md + defaults.md
+const R=[
+ ["Q-1","Khách đã đặt lịch muốn huỷ thì sao?","Cho huỷ trước 2 giờ, sau đó không huỷ online được","Giữ chỗ trống cho khách khác."],
+ ["Q-2","Khách đặt mà không đến (no-show)?","Đánh dấu no-show; quá 3 lần thì phải đặt cọc mới đặt được",""],
+ ["Q-3","Khách có được chọn thợ không?","Được chọn thợ, hoặc chọn 'Thợ nào cũng được'",""],
+ ["Q-4","Nhắc lịch khách thế nào?","Tin Zalo trước 1 ngày và trước 2 giờ",""],
+ ["Q-5","Giữa 2 khách có nghỉ dọn dẹp không?","Có, 10 phút",""],
+ ["D-1","Khách vãng lai (đến không đặt trước)?","Lễ tân tạo lịch tại quầy trên app",""],
+ ["D-2","Có lưu lịch sử khách không?","Có, ghi chú từng lần làm (màu nhuộm, kiểu cắt)",""],
+ ["D-3","Tính hoa hồng thợ?","Báo cáo doanh thu theo thợ, xuất Excel cuối tháng",""],
+ ["D-4","Dùng trên điện thoại?","Có, co giãn đủ điện thoại, tablet, máy tính",""]];
+document.getElementById("t").innerHTML=R.map(([id,q,s,why],i)=>`<tr data-id="${id}">
+ <td class="n">${i+1}</td><td>${q}</td>
+ <td>${s}${why?`<div class="why">${why}</div>`:""}</td>
+ <td class="own" contenteditable="true"></td></tr>`).join("");
+</script>
+</body>
+</html>

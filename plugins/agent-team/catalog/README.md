@@ -14,7 +14,7 @@ Mục đích: bù phần owner **không nghĩ tới**. BA chép mục vào `docs
 | Mục | Tính năng / quy tắc |
 | Vì sao hay thiếu | Lý do owner hay quên |
 | Câu hỏi tình huống | Hỏi bằng tình huống cụ thể, không hỏi trừu tượng |
-| Lựa chọn | 2-4 lựa chọn, lựa chọn đầu là đề xuất mặc định (dùng thẳng cho AskUserQuestion) |
+| Lựa chọn | Lựa chọn đầu là **đề xuất** gửi owner (cột "Đề xuất mặc định" trong `defaults.md`); các lựa chọn sau để BA tham khảo khi owner ghi "không" |
 
 ## Thêm loại app mới
 1. Tạo `<loai-app>.md` (tên không dấu, gạch nối), đúng 4 cột trên.

@@ -13,5 +13,6 @@
 
 | M | Module | Gồm R | Phụ thuộc | Loại | Branch gốc | Task-id | Trạng thái |
 |---|---|---|---|---|---|---|---|
-| M-0 | Khung project (scaffold, CI, Docker, env) | | | VỪA | | | TODO |
+| M-0 | Khung project (scaffold, CI, Docker, env, Playwright + e2e/) | | | VỪA | | | TODO |
 | M-1 | | | M-0 | | | | TODO |
+| M-E2E | E2E toàn app: mọi luồng "1 ngày của <vai trò>" × mọi VIEWPORTS | tất cả | mọi module | VỪA | | | TODO |

@@ -11,6 +11,8 @@ Usage: agent-db-clone.sh <command> <task-id> [args]
   rollback <task-id>          chạy ROLLBACK_CMD trên clone
   verify   <task-id>          migrate -> rollback -> migrate
   test     <task-id> [args]   chạy TEST_CMD trên clone
+  e2e      <task-id> [args]   chạy app (APP_START_CMD) trên clone rồi E2E_CMD trên máy, theo VIEWPORTS;
+                              ảnh bằng chứng ở docs/testing/evidence/<task-id>/
   generate <task-id> <args>   sinh file migration bằng MIGRATION_GEN_CMD, chạy TRONG container app
   down     <task-id>          xoá clone
   status                      liệt kê clone đang chạy
@@ -140,19 +142,59 @@ generate_migration() {
   echo "File mới:"; comm -13 <(echo "$before") <(echo "$after")
 }
 
-run_on_clone() {
+clone_envs() {
+  # điền ENVS=(-e K=V ...) trỏ app vào DB clone (tạo clone nếu chưa có)
   [ -f "$STATE" ] || clone_up
   # shellcheck disable=SC1090
   . "$STATE"
-  local envs=() pair v
+  local pair v
+  ENVS=()
   for pair in $CLONE_ENV; do
     v="${pair//\{host\}/$CLONE_HOST}"; v="${v//\{port\}/$CLONE_PORT}"
     v="${v//\{user\}/$CLONE_USER}"; v="${v//\{password\}/$CLONE_PASSWORD}"
     v="${v//\{db\}/$DB_NAME}"; v="${v//\{url\}/$CLONE_URL}"
-    envs+=(-e "$v")
+    ENVS+=(-e "$v")
   done
+}
+
+run_on_clone() {
+  clone_envs
   echo ">> [$NAME] $1"
-  dc run --rm --no-deps "${envs[@]}" "$APP_SERVICE" sh -c "$1"
+  dc run --rm --no-deps "${ENVS[@]}" "$APP_SERVICE" sh -c "$1"
+}
+
+wait_url() {
+  local _
+  for _ in $(seq 1 "${E2E_WAIT:-120}"); do
+    curl -s -o /dev/null "$1" && return 0; sleep 1
+  done
+  die "app không lên ở $1 sau ${E2E_WAIT:-120}s (xem log: docker logs $APP_RUN)"
+}
+
+e2e_run() {
+  # App chạy trong container nối DB clone → (FE trên máy nếu có) → E2E_CMD trên máy, lặp VIEWPORTS
+  [ -n "${E2E_CMD:-}" ] || die "thiếu E2E_CMD trong config (vd \"npx playwright test\")"
+  [ -n "${APP_START_CMD:-}" ] || die "thiếu APP_START_CMD trong config"
+  local port="${E2E_PORT:-3999}" base evid
+  APP_RUN="agent-e2e-$SAFE" FE_PID=""  # toàn cục: trap EXIT chạy sau khi hàm kết thúc
+  clone_envs
+  docker rm -f "$APP_RUN" >/dev/null 2>&1 || true
+  trap 'docker rm -f "$APP_RUN" >/dev/null 2>&1 || true; [ -z "$FE_PID" ] || { pkill -P "$FE_PID" 2>/dev/null; kill "$FE_PID" 2>/dev/null; } || true' EXIT
+  echo ">> [$APP_RUN] $APP_START_CMD (localhost:$port → ${APP_PORT:-3000})"
+  dc run -d --rm --no-deps --name "$APP_RUN" -p "$port:${APP_PORT:-3000}" "${ENVS[@]}" "$APP_SERVICE" sh -c "$APP_START_CMD" >/dev/null
+  base="http://localhost:$port"
+  wait_url "$base"
+  if [ -n "${E2E_FE_START_CMD:-}" ]; then
+    [ -n "${E2E_FE_URL:-}" ] || die "có E2E_FE_START_CMD thì cần E2E_FE_URL"
+    (cd "$ROOT" && API_URL="$base" exec sh -c "$E2E_FE_START_CMD") >/dev/null 2>&1 &
+    FE_PID=$!
+    base="$E2E_FE_URL"
+    wait_url "$base"
+  fi
+  evid="$ROOT/docs/testing/evidence/$TASK"
+  mkdir -p "$evid"
+  echo ">> E2E $base | VIEWPORTS=${VIEWPORTS:-1280} | ảnh: docs/testing/evidence/$TASK/"
+  (cd "$ROOT" && BASE_URL="$base" VIEWPORTS="${VIEWPORTS:-1280}" EVIDENCE_DIR="$evid" TASK_ID="$TASK" sh -c "$E2E_CMD $*")
 }
 
 case "$CMD" in
@@ -170,6 +212,10 @@ case "$CMD" in
   test)
     shift 2
     run_on_clone "$TEST_CMD $*"
+    ;;
+  e2e)
+    shift 2
+    e2e_run "$@"
     ;;
   down)
     docker rm -f "$NAME" >/dev/null 2>&1 || true

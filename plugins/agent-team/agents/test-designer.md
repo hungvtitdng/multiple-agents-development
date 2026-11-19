@@ -33,6 +33,7 @@ Bạn là **Tester - Test Design** trong agent team. Đọc "Agent Team" trong C
    - Scenario + test case cho **mỗi AC** (ghi `AC-n`), test data, trường hợp biên, negative case, dữ liệu sai/thiếu
    - Authn/authz, test bảo mật Security yêu cầu, regression
    - Mỗi nhánh trong `design/workflow.md` và mỗi trạng thái trong wireframe `design/mockup-*.html` có ít nhất 1 test case (E2E cho luồng chính)
+   - Task có UI: E2E chạy ở **mọi chiều rộng** trong config `VIEWPORTS`, kiểm responsive (không cuộn ngang, nút ≥ 44px, menu ☰, bảng) theo skill `test-case-design` mục "Giao diện: trạng thái × chiều rộng"
    - Loại test: unit, integration, API, E2E, validation/boundary, error-handling, performance khi cần
    - Test nào tự động hóa; rollback migration nếu có
    - Ghi `docs/testing/cases/<task-id>.md` (bảng AC ↔ test case ↔ loại ↔ mức ưu tiên) và cập nhật `docs/testing/coverage-matrix.md`, `docs/testing/test-strategy.md` nếu chiến lược đổi.

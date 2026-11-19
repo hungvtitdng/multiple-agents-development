@@ -19,6 +19,7 @@
 - Kết quả test: TODO (PASS / FAIL)
 - Lint/format: TODO (PASS / N/A)
 - Gap còn mở: TODO (số gap chưa đóng ở mục 14; 0 mới sang S5)
+- E2E: TODO (PASS = đã chạy ở mọi VIEWPORTS, có ảnh docs/testing/evidence/<task-id>/*-<rộng>.png / N/A khi task không có UI)
 - Code review: TODO (APPROVED)
 - Security review: TODO (APPROVED)
 - Cập nhật KB: TODO (YES / KHÔNG CẦN)
