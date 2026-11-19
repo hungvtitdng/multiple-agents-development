@@ -97,6 +97,22 @@ code, rows = run(fresh({"APP.md": GOOD["APP.md"].replace("APPROVED", "TODO")}), 
 check("--gate: owner chưa duyệt -> thiếu", (code, bad(rows, "APP.md")), (1, True))
 check("không --gate: bỏ qua APP.md", run(fresh({"APP.md": "- Owner duyệt: TODO\n"}))[0], 0)
 
+# ---- responsive: wireframe có tab Mobile ----
+MOB = '<button data-s="mobile">Mobile</button>'
+RESP = {"intake.md": GOOD["intake.md"] + "- Responsive: CÓ (375 768 1280)\n"}
+code, rows = run(fresh(RESP))
+check("responsive CÓ, wireframe thiếu tab Mobile -> thiếu", (code, bad(rows, "responsive")), (1, True))
+code, rows = run(fresh({**RESP, "design/mockup-dat-lich.html": MOB, "design/mockup-lich-ngay.html": MOB}))
+check("responsive CÓ, mọi wireframe có tab Mobile -> đạt", code, 0)
+code, rows = run(fresh({**RESP, "design/mockup-dat-lich.html": MOB}))
+check("responsive CÓ, 1 màn thiếu tab Mobile -> thiếu", (code, bad(rows, "responsive")), (1, True))
+code, rows = run(fresh({"intake.md": GOOD["intake.md"] + "- Responsive: KHÔNG (chỉ máy tính)\n"}))
+check("responsive KHÔNG -> không đòi tab Mobile", (code, "responsive: wireframe có tab Mobile" in rows), (0, False))
+vp = fresh()
+open(os.path.join(vp, ".claude", "agent-team.config"), "a").write('VIEWPORTS="375 1280"\n')
+code, rows = run(vp)
+check("config VIEWPORTS có 375 -> đòi tab Mobile", (code, bad(rows, "responsive")), (1, True))
+
 # ---- SPEC.md ----
 root = fresh({"APP.md": "# Tiệm tóc\n" + GOOD["APP.md"] + "\n## Module\n| M | Module |\n|---|---|\n| M-0 | Khung |\n"})
 spec = os.path.join(root, "docs", "product", "SPEC.md")

@@ -27,6 +27,7 @@ Bạn là **UI Designer** trong agent team. Đọc "Agent Team" trong CLAUDE.md 
 1. **Lượt 1:** liệt kê màn hình task đụng tới (mới / sửa), vẽ wireframe cho từng màn theo skill `agent-team:wireframe`:
    - **Đen trắng**, đơn giản, **đủ chức năng**: mọi nút, ô nhập, bảng, thông báo mà AC cần; gắn nhãn `AC-n`.
    - **Đủ trạng thái**: bình thường, rỗng, đang tải, lỗi, không có quyền (+ trạng thái riêng của task).
+   - **Responsive** (config `VIEWPORTS` có chiều rộng < 768): mọi màn có tab `Mobile` (skill `wireframe` mục 8).
    - Hành vi ghi bằng chú thích (bấm → gọi gì → hiện gì).
    - Sửa màn cũ: giữ bố cục màn hiện có (vị trí menu, header, vùng nội dung).
    - Ghi `docs/agent-tasks/<task-id>/design/mockup-<tên-màn>.html`, một màn một file.

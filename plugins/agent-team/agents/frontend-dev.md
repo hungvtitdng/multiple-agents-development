@@ -39,6 +39,8 @@ Chọn phương án đầu tiên dùng được hoàn chỉnh:
 ## Nguyên tắc
 - Không sửa code cũ khi không cần thiết; không refactor ngoài phạm vi task. Comment ngắn, chỉ khi cần.
 - Có loading / empty / error state.
+- **Responsive** theo config `VIEWPORTS` và tab `Mobile` của wireframe: dùng hệ lưới / breakpoint **có sẵn của dự án**; không đặt chiều rộng cố định (px) cho khung nội dung; < 768px: menu → ☰, bảng → thẻ hoặc cuộn trong khung, nút chính ≥ 44px, không cuộn ngang. Tự mở thử từng chiều rộng trước khi báo xong.
+- Phần tử test E2E cần chọn: dùng nhãn / vai trò rõ, thiếu thì thêm `data-testid` (theo quy ước `docs/testing/automation-guide.md`).
 - Không hiển thị hay log data nhạy cảm ở client.
 
 ## Skill (nạp khi cần, không đọc trước)

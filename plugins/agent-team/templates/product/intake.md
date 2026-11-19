@@ -5,6 +5,7 @@
 
 - Loại app: TODO (tên file trong catalog/, vd quan-ly-noi-bo, dat-lich; không có thì "khác: <mô tả>")
 - Nền tảng: TODO (web / mobile / cả hai)
+- Responsive: TODO (CÓ: 375 768 1280 / KHÔNG: chỉ máy tính 1280). CÓ → mọi wireframe có tab Mobile, E2E chạy đủ từng chiều rộng; ghi vào `VIEWPORTS` của config
 - Người dùng & quy mô: TODO (vd nội bộ 20 người / public 10k user)
 - Thanh toán: TODO (có / không)
 - Ngôn ngữ giao diện: TODO (vd vi / vi + en)

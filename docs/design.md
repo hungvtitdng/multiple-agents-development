@@ -678,6 +678,7 @@ Thiếu điều kiện bắt buộc → ghi rõ phần thiếu, không đánh d�
 | **[+G]** Không code trước khi tài liệu app đủ + owner duyệt; SPEC.md khớp tài liệu | Hook chạy `gap-check.py --gate --spec-check` ở S3 (task APP) và S6 (mọi task khi có `docs/product/APP.md`); module chặn S3 khi chưa `Owner duyệt: APPROVED` |
 | **[+G]** Chủ ghi `docs/product/` | Hook (`KB_OWNERS`) |
 | **[+G]** `Cập nhật KB: YES` phải có file KB đổi thật | Hook ở S6: `git diff` + file mới so với `BASE_BRANCH` (không tính `agent-tasks/`, `testing/`, `LESSONS.md`, `SPEC.md`); không xác định được nhánh gốc thì bỏ qua |
+| **[+G]** Task có UI phải có E2E ở mọi `VIEWPORTS` | Hook S5: `E2E: PASS` (không N/A khi `UI mockup: YES`) + ảnh `docs/testing/evidence/<task-id>/*-<rộng>.png` đủ mọi chiều rộng |
 | **[+G]** Tài liệu (KB, `docs/product/`) khớp code | `code-reviewer` ở S5: lệch diff = High (hook không đọc được nghĩa của code) |
 
 ---
@@ -719,8 +720,8 @@ PHASE B
 ### 19.1 Khác với `run`
 | Điểm | `run` | App Mode |
 |---|---|---|
-| Thiếu thông tin | Lead chọn + `Assumption` | Phase A: Lead **hỏi owner** (`AskUserQuestion`, ≤ 4 câu/lượt, có đề xuất, hỏi bằng tình huống). CAO bắt buộc trả lời, THẤP được giả định. Agent vẫn không hỏi |
-| Owner | Đọc REPORT.html | Không đọc tài liệu: bấm chọn, xem wireframe + sơ đồ flow |
+| Thiếu thông tin | Lead chọn + `Assumption` | Câu nghiệp vụ → **form `.xlsx` gửi owner** (`owner-form.py`): mỗi câu 1 đề xuất của team, owner ghi OK / không / góp ý; câu kỹ thuật hỏi dev. CAO bắt buộc owner trả lời, THẤP được giả định. Agent vẫn không hỏi |
+| Owner | Đọc REPORT.html | Không đọc tài liệu, không xem wireframe: chốt logic bằng 1 bảng `# · Câu hỏi · Đề xuất của team · Owner duyệt / góp ý` |
 | Tài liệu | `docs/agent-tasks/<id>/` | Thêm `docs/product/` (cột cố định) + `SPEC.md` gộp toàn bộ |
 | Debate | Mỗi task VỪA/LỚN | A2 (kiến trúc, stack) + module VỪA/LỚN; không debate ở bước hỏi / wireframe / săn gap |
 
@@ -736,6 +737,12 @@ PHASE B
 - Hook chặn S6 khi tài liệu thiếu hoặc SPEC cũ hơn tài liệu.
 - `gap-check` chỉ kiểm tài liệu khớp nhau, không so với code. So với code: `code-reviewer` (diff đổi hành vi mà `docs/product/` không đổi = High, kể cả task sửa bug).
 
-### 19.4 Chưa làm
+### 19.4 Responsive + E2E (v0.12)
+- `VIEWPORTS` (config) là nguồn duy nhất: wireframe (tab Mobile bắt buộc khi có chiều rộng < 768), test case (trạng thái × chiều rộng), frontend-dev, code-reviewer (High), E2E.
+- `agent-db-clone.sh e2e`: app trong container nối DB clone, Playwright trên máy, mỗi chiều rộng 1 project, ảnh bằng chứng.
+- Hook S5: task có wireframe thì `E2E: PASS` bắt buộc, có ảnh cho mọi chiều rộng.
+- App Mode: M-0 dựng Playwright, module cuối M-E2E chạy lại toàn bộ luồng "1 ngày của vai trò".
+
+### 19.5 Chưa làm
 - REPORT.html cấp app (owner duyệt qua `AskUserQuestion` + mở file wireframe).
-- Test E2E Playwright so màn thật với wireframe (dự kiến v0.12).
+- So ảnh tự động (visual diff) giữa màn thật và wireframe: hiện code-reviewer so bằng mắt.

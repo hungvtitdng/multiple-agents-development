@@ -15,7 +15,7 @@ Mục tiêu: thống nhất **chức năng và luồng**, không phải giao di�
 5. **Hành vi ghi bằng chú thích** cạnh phần tử: "Bấm → hỏi xác nhận → gọi POST /…; thành công → toast …".
 6. Dữ liệu mẫu giống thật (tên, số tiền, ngày) để client hình dung, không dùng "lorem ipsum".
 7. Bố cục bám màn hình hiện có của dự án nếu sửa màn cũ (Scout đã ghi file màn trong CONTEXT.md): giữ vị trí menu, header, vùng nội dung.
-8. Màn có bản mobile khác desktop: thêm tab `Mobile` (khung rộng 375px).
+8. **Responsive** (config `VIEWPORTS` có chiều rộng < 768, hoặc `docs/product/intake.md` ghi `Responsive: CÓ`): **mọi màn bắt buộc có tab `Mobile`** (`data-s="mobile"`, khung 375px), vẽ đúng cách màn co lại: menu → nút ☰, bảng → thẻ hoặc cuộn trong khung, nút chính dễ bấm (≥ 44px), không cuộn ngang. `gap-check.py` báo thiếu nếu không có tab này. Không responsive: chỉ thêm khi màn mobile khác desktop.
 
 ## Khung mẫu
 ```html
@@ -30,12 +30,15 @@ body{margin:0;font:14px/1.5 system-ui,sans-serif;color:#000;background:#fff}
 .btn.primary{background:#000;color:#fff}.ph{background:#f2f2f2;border:1px dashed #999;color:#666;padding:20px;text-align:center}
 .ac{font-size:11px;border:1px solid #999;color:#666;padding:0 4px;margin-left:4px}.note{font-size:12px;color:#666;border-left:3px solid #999;padding-left:8px;margin:4px 0}
 table{border-collapse:collapse;width:100%}th,td{border:1px solid #999;padding:6px;text-align:left}
+.mobile{width:375px;margin:0 auto;border:2px solid #000;min-height:600px}
 </style></head><body>
 <div class="tabs"><button class="on" data-s="normal">Bình thường</button><button data-s="empty">Rỗng</button>
-<button data-s="loading">Đang tải</button><button data-s="error">Lỗi</button><button data-s="denied">Không có quyền</button></div>
+<button data-s="loading">Đang tải</button><button data-s="error">Lỗi</button><button data-s="denied">Không có quyền</button>
+<button data-s="mobile">Mobile</button></div>
 <div class="state on" id="normal">… màn đầy đủ dữ liệu, mọi nút + chú thích hành vi + nhãn AC …</div>
 <div class="state" id="empty">…</div><div class="state" id="loading">…</div>
 <div class="state" id="error">…</div><div class="state" id="denied">…</div>
+<div class="state" id="mobile"><div class="mobile">… màn ở 375px: ☰ menu, bảng thành thẻ, nút ≥ 44px …</div></div>
 <script>document.querySelectorAll('.tabs button').forEach(function(b){b.onclick=function(){
 document.querySelectorAll('.tabs button,.state').forEach(function(x){x.classList.remove('on')});
 b.classList.add('on');document.getElementById(b.dataset.s).classList.add('on');};});</script>

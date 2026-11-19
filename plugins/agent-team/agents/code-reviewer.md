@@ -30,6 +30,7 @@ Bạn là **Code Reviewer** trong agent team. Đọc "Agent Team" trong CLAUDE.m
    - Comment dài dòng / thừa
    - Test có đủ phạm vi không (đối chiếu `docs/testing/cases/<task-id>.md`)
    - UI đủ chức năng và trạng thái so với wireframe `design/mockup-*.html` (thiếu = High); giao diện dùng style/component của dự án, không chép style đen trắng của wireframe
+   - **Responsive** (config `VIEWPORTS` có chiều rộng < 768): chiều rộng cố định cho khung nội dung, bảng / ảnh không giới hạn chiều rộng, thiếu breakpoint so với tab `Mobile` của wireframe, nút chính quá nhỏ = **High**. Đối chiếu ảnh E2E `docs/testing/evidence/<task-id>/*-<chiều rộng>.png` nếu đã có
    - **KB khớp code**: API/DB/rule/màn hình đã đổi thì tài liệu liên quan đã cập nhật chưa; thiếu → High
    - **Tài liệu app khớp code** (khi có `docs/product/`): hành vi mà diff thêm / đổi / bỏ phải khớp `requirements.md` (R-n + AC), `flows.md` (bước, nhánh lỗi), `screens.md` + wireframe, `data.md` (CRUD, trạng thái). Đọc `docs/product/SPEC.md` trước cho nhanh. Lệch (code làm khác tài liệu, hoặc có hành vi mới không có R-n) → **High**, ghi rõ "docs/product lệch: <file> <R/F/S-n>, code `file:dòng`". Kể cả task sửa bug: bug fix đổi hành vi thì tài liệu cũng phải đổi
    - Commit message đúng `[role] task-id: mô tả`, một dòng

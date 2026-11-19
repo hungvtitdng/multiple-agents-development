@@ -427,7 +427,7 @@ def readonly_segment_ok(tk):
     if any(t in FIX_FLAGS for t in tk[1:]):
         return False
     if cmd.startswith(CLONE_SCRIPT):
-        return len(tk) > 1 and tk[1] in ("status", "test")
+        return len(tk) > 1 and tk[1] in ("status", "test", "e2e")
     if cmd in GRAPHIFY:
         return len(tk) > 1 and tk[1] in GRAPHIFY_READ
     if cmd == "kb-check.py":
@@ -683,6 +683,10 @@ def gate_missing(stage, text):
             miss.append("Lint/format: PASS hoặc N/A")
         if first("Gap còn mở") != "0":
             miss.append("Gap còn mở: 0 (đóng hết gap ở mục 14)")
+        if first("E2E") not in ("PASS", "N/A"):
+            miss.append("E2E: PASS hoặc N/A")
+        elif first("E2E") == "N/A" and first("UI mockup") == "YES":
+            miss.append("E2E: task có UI (UI mockup: YES) thì phải PASS, không được N/A")
     elif stage == "S6":
         if first("Code review") != "APPROVED":
             miss.append("Code review: APPROVED")
@@ -741,6 +745,16 @@ def kb_changed(root):
     return any(is_kb_file(f) for f in changed.splitlines() + new.splitlines())
 
 
+def e2e_evidence_missing(root, task):
+    """E2E: PASS phải có ảnh ở mọi chiều rộng trong VIEWPORTS: docs/testing/evidence/<task>/*-<rộng>.png."""
+    rel = f"docs/testing/evidence/{task}"
+    d = os.path.join(root, rel)
+    files = os.listdir(d) if os.path.isdir(d) else []
+    widths = cfg_value(root, "VIEWPORTS", "1280").split() or ["1280"]
+    lack = [w for w in widths if not any(f.endswith(f"-{w}.png") for f in files)]
+    return [f"E2E: PASS nhưng thiếu ảnh chiều rộng {', '.join(lack)} trong {rel}/ (<TC>-<trạng thái>-<rộng>.png)"] if lack else []
+
+
 def run_gap_check(root):
     """gap-check --gate --spec-check: [] nếu sạch, ngược lại 1 dòng lý do."""
     if not os.path.isfile(GAP_CHECK):
@@ -794,6 +808,10 @@ def check_stage_change(new_stage, cwd):
         if yes("UI mockup") and not has(r"^mockup-.+\.html$"):
             miss.append("UI mockup: YES nhưng chưa có design/mockup-<màn>.html")
         miss += product_gate(root, "S3", (task_field(text, "Loại").split() or [""])[0].upper() == "APP")
+    if new_stage == "S5":
+        text = open(latest, encoding="utf-8", errors="ignore").read()
+        if (task_field(text, "E2E").split() or [""])[0].upper() == "PASS":
+            miss += e2e_evidence_missing(root, os.path.basename(os.path.dirname(latest)))
     if new_stage == "S6":
         text = open(latest, encoding="utf-8", errors="ignore").read()
         # "Cập nhật KB: YES" phải có file KB đổi thật (không chỉ lời khai)

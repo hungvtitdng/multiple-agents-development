@@ -22,6 +22,21 @@ TEST_PATHS="spec test e2e"
 LINT_CMD=
 FORMAT_CMD=
 
+# Responsive: các chiều rộng màn hình (px) phải dùng được. Chỉ máy tính: "1280". Có điện thoại: "375 768 1280".
+# Wireframe vẽ tab Mobile, test case + E2E chạy đủ từng chiều rộng, code-reviewer kiểm.
+VIEWPORTS="375 768 1280"
+
+# ---- E2E trình duyệt (Playwright), chạy bằng agent-db-clone.sh e2e <task-id> trên DB clone ----
+# Để trống E2E_CMD = dự án chưa có E2E (task có UI vẫn phải có, xem release-notes).
+# Lệnh có dấu $ thì để trong nháy ĐƠN ('...'), vì file này được nạp bằng shell.
+E2E_CMD=                    # vd "npx playwright test", chạy trên máy (host), nhận BASE_URL, VIEWPORTS, EVIDENCE_DIR
+APP_START_CMD=              # vd "bin/rails s -b 0.0.0.0 -p 3000", chạy trong container APP_SERVICE, nối DB clone
+APP_PORT=3000               # cổng app trong container
+E2E_PORT=3999               # cổng mở ra máy cho E2E (khác cổng app đang chạy để không đụng nhau)
+# FE tách riêng (SPA): lệnh chạy FE trên máy, nhận API_URL=http://localhost:$E2E_PORT; E2E dùng E2E_FE_URL
+E2E_FE_START_CMD=
+E2E_FE_URL=
+
 # Mức model: economy | standard | max (mặc định standard). Lead chọn model theo bảng trong run.md mục 2.
 COST_TIER=standard
 

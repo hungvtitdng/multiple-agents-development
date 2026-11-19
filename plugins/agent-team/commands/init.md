@@ -12,6 +12,7 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
    - Stack BE/FE/test: Gemfile, package.json, thư mục spec/test
    - Lệnh lint/format đang có (rubocop, eslint, prettier, ruff...) → `LINT_CMD`, `FORMAT_CMD`
    - Thư mục migration → `MIGRATION_PATHS`; lệnh generator migration của framework (chạy trong container app) → `MIGRATION_GEN_CMD`. Không chắc → `TODO`.
+   - **E2E / responsive:** có `@playwright/test` trong package.json → `E2E_CMD="npx playwright test"`; lệnh chạy server app trong container → `APP_START_CMD`, cổng → `APP_PORT`; FE tách repo (SPA) → `E2E_FE_START_CMD`, `E2E_FE_URL`. Có CSS media query / framework responsive → `VIEWPORTS="375 768 1280"`, chỉ máy tính → `"1280"`. Không chắc → `TODO`. Chưa cài Playwright → báo user lệnh cài (không tự cài): `npm i -D @playwright/test && npx playwright install chromium`.
    - docker-compose: file nằm trong repo hay repo khác, tên service DB và app, loại DB (postgres/mysql)
    - Branch gốc (develop/main/master) của **từng repo** (`git symbolic-ref --short refs/remotes/origin/HEAD`). Giống nhau → `BASE_BRANCH`. Repo nào khác → `BASE_BRANCHES="<repo>=<nhánh>"`.
    - **Có mấy repo git?** Tìm repo ở thư mục hiện tại và thư mục con cấp 1 (`.git`). Thư mục hiện tại là repo thì hỏi thêm user có repo khác đi kèm không (vd `../FrontEnd`).
@@ -31,6 +32,7 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
    - `scripts/kb-check.py` → `.claude/agent-team/kb-check.py` (chmod +x)
    - `scripts/board.py` → `.claude/agent-team/board.py` (chmod +x). Board chat SQLite, dữ liệu ở `.agent-team/board.db` (đã gitignore).
    - `scripts/gap-check.py` → `.claude/agent-team/gap-check.py` (chmod +x). Kiểm tài liệu sản phẩm `docs/product/` của App Mode.
+   - `scripts/owner-form.py` → `.claude/agent-team/owner-form.py` (chmod +x, cần `gap-check.py` cùng thư mục). Sinh form `.xlsx` gửi owner và nhập câu trả lời.
 5. **CLAUDE.md**: chưa có mục "## Agent Team" thì thêm nội dung `templates/claude-md-section.md` vào cuối. Không sửa phần khác.
 5a. **Vẽ sơ đồ trong báo cáo**: kiểm `mmdc --version` (Mermaid CLI). Chưa có → báo user lệnh cài `npm i -g @mermaid-js/mermaid-cli` (không tự cài). Không có thì REPORT.html vẫn tạo được, sơ đồ hiện dạng văn bản.
 5b. **Code graph = Graphify (tùy chọn)**: hỏi user có muốn dùng không. Không → `USE_CODE_GRAPH=0`, bỏ qua.

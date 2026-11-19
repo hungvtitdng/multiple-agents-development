@@ -18,7 +18,7 @@ ID_RE = re.compile(r"\b([BGDRSFQ])-(\d+)\b")
 EMPTY = {"", "-", "—", "..."}
 COVERAGE_OK = {"RÕ", "LOẠI", "CHƯA BIẾT"}
 CHOICES = {"GIỮ", "BỎ", "KHÁC"}
-Q_STATES = {"MỞ", "ĐÃ TRẢ LỜI", "GIẢ ĐỊNH"}
+Q_STATES = {"MỞ", "CHỜ OWNER", "ĐÃ TRẢ LỜI", "GIẢ ĐỊNH"}
 
 
 def find_root(start):
@@ -95,6 +95,18 @@ def first_word(v):
     return (clean(v).split() or [""])[0].upper()
 
 
+def responsive(root):
+    """Dự án cần chạy trên điện thoại: intake ghi Responsive: CÓ, hoặc config VIEWPORTS có chiều rộng < 768."""
+    if first_word(fields(read(root, "intake.md") or "").get("Responsive", "")) == "CÓ":
+        return True
+    try:
+        cfg = open(os.path.join(root, ".claude", "agent-team.config"), encoding="utf-8", errors="ignore").read()
+    except OSError:
+        return False
+    m = re.search(r"(?m)^\s*VIEWPORTS=['\"]?([\d ]+)", cfg)
+    return bool(m) and any(int(w) < 768 for w in m.group(1).split())
+
+
 def check(root, gate=False):
     rows = []
     def add(item, why):
@@ -129,11 +141,17 @@ def check(root, gate=False):
             continue
         qids.add(q)
         lvl, st = clean(r[m["mức"]]).upper(), clean(r[m["trạng thái"]]).upper()
+        if first_word(col(r, "ai trả lời")) == "OWNER" and empty(col(r, "đề xuất")):
+            why.append(f"{q} gửi owner nhưng chưa có Đề xuất của team")
         if st not in Q_STATES:
             why.append(f"{q} trạng thái '{st or 'trống'}'")
+        elif st == "GIẢ ĐỊNH" and lvl == "CAO":
+            why.append(f"{q} mức CAO không được GIẢ ĐỊNH, phải hỏi owner")
+        elif lvl == "CAO" and st == "CHỜ OWNER":
+            why.append(f"{q} mức CAO đang chờ owner trả lời form")
         elif lvl == "CAO" and st != "ĐÃ TRẢ LỜI":
             why.append(f"{q} mức CAO chưa được owner trả lời")
-        elif st != "MỞ" and empty(r[m["trả lời"]]):
+        elif st not in ("MỞ", "CHỜ OWNER") and empty(r[m["trả lời"]]):
             why.append(f"{q} thiếu câu trả lời")
     add("questions.md: sổ câu hỏi", why if m else ["thiếu bảng Q | Mức | Trạng thái | Trả lời"])
 
@@ -231,7 +249,7 @@ def check(root, gate=False):
         ch = first_word(r[dm["owner chọn"]])
         note = col(r, "ghi chú")
         if ch not in CHOICES:
-            why.append(f"{d} owner chưa chọn")
+            why.append(f"{d} owner chưa chọn" + (" (đang chờ form)" if clean(r[dm["owner chọn"]]).upper() == "CHỜ OWNER" else ""))
         elif ch == "KHÁC" and empty(note):
             why.append(f"{d} KHÁC nhưng không ghi cách khác")
         elif ch in ("GIỮ", "KHÁC") and d not in used_src:
@@ -258,6 +276,15 @@ def check(root, gate=False):
     if not screens:
         why.append("chưa có màn S-n")
     add("screens.md: màn + mockup", why)
+
+    # 10b. responsive: mọi wireframe có tab Mobile
+    if responsive(root):
+        why = []
+        for s, r in screens.items():
+            mk = os.path.join(root, P, "design", os.path.basename(clean(col(r, "mockup"))))
+            if os.path.isfile(mk) and 'data-s="mobile"' not in (read_raw(mk) or ""):
+                why.append(f"{s} thiếu tab Mobile")
+        add("responsive: wireframe có tab Mobile", why)
 
     # 11. vai trò × màn
     why = []

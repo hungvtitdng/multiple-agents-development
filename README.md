@@ -105,24 +105,48 @@ Skill chỉ chứa **nguyên tắc chung, không gắn framework**. Cách làm r
 
 Agent đọc file của dự án trước; thiếu mẫu thì làm theo nguyên tắc chung và đề xuất bổ sung. Ví dụ nội dung cho dự án Rails + JS: `examples/rails-js/`.
 
+## Responsive + E2E trình duyệt (Playwright)
+
+```
+VIEWPORTS="375 768 1280" (config; chỉ máy tính: "1280")
+   │
+   ├─ wireframe: mọi màn có tab Mobile        (gap-check báo thiếu)
+   ├─ test case: trạng thái × chiều rộng       (không cuộn ngang, nút ≥ 44px, menu ☰, bảng)
+   ├─ frontend-dev: breakpoint của dự án, không width cố định
+   ├─ code-reviewer: lỗi responsive = High
+   └─ agent-db-clone.sh e2e <task-id>
+        app (APP_START_CMD) chạy trong container nối DB clone → (FE trên máy nếu tách repo)
+        → E2E_CMD trên máy, mỗi chiều rộng 1 project Playwright
+        → ảnh docs/testing/evidence/<task-id>/<TC>-<trạng thái>-<rộng>.png → tắt app
+```
+Hook chặn S5 khi task có UI mà `E2E` không PASS, hoặc thiếu ảnh ở một chiều rộng. Khung `playwright.config.ts` + helper `shot`, `expectResponsive`: skill `test-automation` mục 1b.
+
 ## Làm cả app từ ý tưởng (`/agent-team:app <ý tưởng>`)
 
 ```
 PHASE A: chỉ tài liệu (stage S1-S2)
- A0 Intake        Lead tách ý owner B-n, điền phiếu (nền tảng, stack...), thiếu thì HỎI owner
- A1 Vấn đề        BA: mục tiêu G-n + 12 góc nhìn (không ô trống)
- A2 Giải pháp     debate như run (WHY, chấm điểm, Security): kiến trúc + stack
- A3 Nghiệp vụ     owner tick mặc định từ catalog/ → BA: requirements R-n, flows F-n, data
- A3b Wireframe    ui-designer: mọi màn S-n, đen trắng, 5 trạng thái
- A4 Săn gap       challenger (chỉ đọc ý tưởng gốc) ∥ test-designer ∥ security ∥ BA + gap-check.py
- ⛔ Owner duyệt   owner xem wireframe + flow, bấm Đúng ý / Chưa đúng (không phải đọc tài liệu)
- A5 Chia module   APP.md: M-0 khung project, M-1..n theo phụ thuộc
+ A0 Intake        Lead tách ý owner B-n, điền phiếu; câu kỹ thuật hỏi dev, câu nghiệp vụ ghi sổ cho owner
+ A1 Vấn đề        BA: mục tiêu G-n + 12 góc nhìn (không ô trống), mỗi câu hỏi có 1 đề xuất
+ A2 Giải pháp     debate như run (WHY, chấm điểm, Security): kiến trúc + stack (làm trong lúc chờ owner)
+ A3 Nghiệp vụ     mặc định từ catalog/ → FORM lượt 1 gửi owner → BA: requirements R-n, flows F-n, data
+ A4 Săn gap       challenger (chỉ đọc ý tưởng gốc) ∥ test-designer ∥ security ∥ BA → câu mới → form lượt sau
+ ⛔ Owner chốt    logic chốt bằng form (owner không đọc tài liệu, không xem wireframe)
+ A3b Wireframe    ui-designer: mọi màn S-n, đen trắng, 5 trạng thái + gap-check --spec
+ A5 Chia module   APP.md: M-0 khung project, M-1..n theo phụ thuộc, M-E2E
 PHASE B: M-0 trong task app (S3-S6), M-1..n mỗi module 1 /agent-team:run, lần lượt
 ```
 
+**Form gửi owner** (`owner-form.py build` → `docs/product/owner-form-<n>.xlsx`, mở bằng Excel hoặc Google Sheet):
+
+| # | Câu hỏi | Đề xuất của team | Owner duyệt / góp ý |
+|---|---|---|---|
+| 1 | Khách đã đặt lịch muốn huỷ thì sao? | Cho huỷ trước 2 giờ, sau đó không huỷ online được | *(owner ghi `OK` hoặc góp ý)* |
+
+Owner gửi lại file → `owner-form.py import <file .xlsx|.csv>`: `OK` = duyệt đề xuất · `không` = BA đề xuất lại lượt sau · chữ khác = góp ý, ghi nguyên văn · để trống = vẫn chờ. Mẫu: `examples/owner-form-sample.xlsx`, `examples/owner-form-sample.html`.
+
 | Khác `run` | Chi tiết |
 |---|---|
-| Được hỏi owner | Chỉ Lead hỏi, bằng `AskUserQuestion` (≤ 4 câu/lượt, có lựa chọn đề xuất, hỏi bằng tình huống). Câu mức CAO phải được trả lời; THẤP được giả định |
+| Hỏi owner | Câu nghiệp vụ (`OWNER`) **không hỏi dev**: gom vào form, mỗi câu 1 đề xuất best solution, gom ít lượt nhất. Câu kỹ thuật (`DEV`) hỏi người chạy lệnh. Câu mức CAO phải có câu trả lời của owner; THẤP được giả định. Chờ owner: task `BLOCKED`, nhận file rồi `/agent-team:resume <task-id> <file>` |
 | Tài liệu sản phẩm | `docs/product/` (mẫu ở `templates/product/`, cột cố định) |
 | Chống sót ý | 12 góc nhìn · `catalog/` mặc định theo loại app · flow có cột "Nếu lỗi" · Dữ liệu × CRUD · vòng đời trạng thái · vai trò × màn · truy vết B → R → S · challenger mù |
 | Cổng | Hook chặn S3 của task APP khi `gap-check.py --gate` còn thiếu; chặn S3 của mọi module khi `APP.md` chưa `Owner duyệt: APPROVED` |
@@ -189,7 +213,7 @@ docs/
 | S3 | `Loại`; NHỎ: `Tiêu chí nghiệm thu`; VỪA/LỚN: `Phương án chốt` + `Security duyệt solution: APPROVED` + `Workflow`, `UI mockup` (file có thật); không còn WHY chưa thống nhất |
 | S3 (APP) | `Phương án chốt` + `Security duyệt solution`; hook **chạy** `gap-check.py --gate --spec-check`: tài liệu app đủ, owner đã duyệt, SPEC.md khớp |
 | S3 (module, có `docs/product/APP.md`) | Như VỪA/LỚN + `APP.md` có `Owner duyệt: APPROVED` |
-| S5 | `Kết quả test: PASS`, `Lint/format: PASS` hoặc `N/A`, `Gap còn mở: 0` |
+| S5 | `Kết quả test: PASS`, `Lint/format: PASS` hoặc `N/A`, `Gap còn mở: 0`, `E2E: PASS` hoặc `N/A`. Có wireframe (`UI mockup: YES`) thì phải PASS; PASS thì hook kiểm có ảnh `docs/testing/evidence/<task-id>/*-<rộng>.png` cho **mọi** chiều rộng trong `VIEWPORTS` |
 | S6 | `Code review: APPROVED`, `Security review: APPROVED`, `Cập nhật KB: YES` hoặc `KHÔNG CẦN`, `Bài học: YES` hoặc `KHÔNG CÓ`. `Cập nhật KB: YES` mà không có file KB nào trong `docs/` đổi so với nhánh gốc → chặn. Có App Mode: hook chạy lại `gap-check.py --gate --spec-check` |
 
 Gate chủ yếu đọc các dòng Lead tự điền: chặn quên bước, không kiểm chứng việc đã làm. Ngoại lệ có kiểm thật: file trong `design/`, WHY trên board, `Cập nhật KB: YES` (git diff so với nhánh gốc), và App Mode (hook chạy `gap-check.py` trên tài liệu). Tài liệu khớp **code** thì do `code-reviewer` kiểm (KB và `docs/product/` lệch diff = High).
