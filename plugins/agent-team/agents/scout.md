@@ -18,7 +18,7 @@ Mục tiêu: các agent khác **không phải tự quét lại repo**. Bash ch�
 6. Câu hỏi còn mở (nhãn `Assumption`).
 7. Bài học liên quan (để team không vấp lại lỗi cũ): nếu `LESSONS_PATH` có trong config và file tồn tại, chép vào CONTEXT.md tối đa 5 bài `Active` liên quan module/loại việc của task, mỗi bài gồm "Sai gì" + "Cách tránh" + task nguồn. Ưu tiên bài đụng đúng phần task sẽ sửa và bài có `Lặp lại` cao. Bài đã `Promoted` thì bỏ qua (đã nằm trong checklist). Bài bị code hiện tại phản bác thì đánh dấu `Unverified`.
 - Nhiều repo (`REPOS`): quét tất cả repo trong config.
-- Có `code-graph-out/`: đọc `GRAPH_REPORT.md`, query `.claude/agent-team/code-graph.py who-uses|uses|explain`. Cạnh INFERRED chỉ là gợi ý.
+- Có `graphify-out/` (Graphify): đọc `GRAPH_REPORT.md`, query `graphify explain "<Tên|file>"` (ai gọi, gọi ai, `file:dòng`) · `graphify affected "<Tên>"` (sửa thì ảnh hưởng đâu) · `graphify query "<câu hỏi>"` · `graphify path "A" "B"`. Nhiều repo: thêm `--graph graphify-out/merged-graph.json`. Cạnh INFERRED chỉ là gợi ý.
 - Trả lại Lead: đường dẫn CONTEXT.md + 3 dòng tóm tắt.
 
 ## Việc 2: dựng KB từ code có sẵn (`/agent-team:init` hoặc `/agent-team:kb`, chưa có `.agent-team/stage`)
@@ -55,11 +55,12 @@ Routes/pages → màn hình; component quan trọng; chỗ gọi API (màn hình
 |---|---|
 | Bản đồ | Liệt kê repo, module/thư mục chính, entry point, lệnh chạy; trả cho Lead (không ghi file) |
 | Module (một nhóm ≤ 5 module) | Chỉ `modules/<tên>/README.md` của các module được giao: chức năng, API, bảng DB, **bảng quy tắc `BR-<tên>-<n>`**, quyền, test liên quan |
-| Kiến trúc + API + DB | `project-overview.md`, `architecture.md`, `tech-stack.md`, `api/endpoints.md`, `database/schema.md`, `integrations/` |
+| Kiến trúc + API + DB | `project-overview.md`, `architecture.md`, `tech-stack.md`, `api/endpoints.md`, `database/schema.md`, `database/migration-rules.md`, `integrations/` |
 | Frontend | Chỉ file mới `modules/<tên>/screens/*.md`, `actions/*.md` (không sửa `README.md` của module) |
-| Quy chuẩn + test | `engineering/coding-standards.md`, `testing/test-strategy.md` |
+| Quy chuẩn + test | `engineering/coding-standards.md`, `engineering/review-checklist.md` (mục "Mẫu tìm lỗi theo stack"), `testing/test-strategy.md`, `testing/automation-guide.md`, `security/review-patterns.md` |
 | Tổng hợp nghiệp vụ (chạy sau khi các mảng module xong) | `domain-model.md`, `business-rules.md`, `roles-and-permissions.md`, `glossary.md`: đọc `modules/*/README.md` đã có, gộp quy tắc thành bảng chung (giữ nguồn `file:dòng`), đọc thêm policy/guard để hoàn thiện quyền, bỏ trùng |
 
+**File theo stack** (`database/migration-rules.md`, `testing/automation-guide.md`, `security/review-patterns.md`, mục "Mẫu tìm lỗi theo stack" của `engineering/review-checklist.md`): ghi cách làm **của chính dự án** (công cụ, cú pháp, mẫu grep, cách kiểm quyền), mỗi dòng có ví dụ `file:dòng` lấy từ code thật, nhãn `Observed`. Không chép kiến thức chung của framework; nguyên tắc chung đã nằm trong skill của plugin.
 - Tài liệu có sẵn của dự án (README, wiki, docs cũ) là nguồn đối chiếu, **không ghi đè, không di chuyển**. Mâu thuẫn giữa tài liệu và code: tin code, ghi chỗ lệch.
 - Business rule suy từ code chỉ ghi `Assumption` hoặc `Observed`, không ghi Confirmed.
 - Nhiều scout chạy song song: **mỗi file chỉ một scout ghi**, nên ghi đúng file được giao, không chạm file của scout khác.

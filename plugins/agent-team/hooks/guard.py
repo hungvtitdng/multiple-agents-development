@@ -12,8 +12,14 @@ import time
 PROTECTED_BRANCHES = {"main", "master", "develop"}
 READONLY_ROLES = {
     "business-analyst", "solution-architect", "technical-architect",
-    "test-designer", "code-reviewer", "security", "scout", "challenger",
+    "test-designer", "code-reviewer", "security", "scout", "challenger", "ui-designer",
 }
+# File thiết kế của task: docs/agent-tasks/<task-id>/design/<file> -> role được ghi
+DESIGN_OWNERS = [
+    (re.compile(r"^mockup-[\w.-]+\.html$"), {"ui-designer"}),
+    (re.compile(r"^(workflow|state)\.md$"), {"business-analyst"}),
+    (re.compile(r"^sequence\.md$"), {"solution-architect", "technical-architect"}),
+]
 DOCS_DIR = "docs/agent-tasks/"
 OWNER_ZONE = {"backend-dev": "be", "frontend-dev": "fe", "test-executor": "test"}
 _BA = {"business-analyst"}
@@ -38,13 +44,17 @@ STAGE_VALUE_RE = re.compile(r"(?:echo|printf)\s+(?:-\w+\s+)*['\"]?(S[1-6])\b")
 GATE_CLASS = {"NHỎ", "VỪA", "LỚN"}
 TEST_FILE_RE = re.compile(r"(^|/)(__tests__|__mocks__)/|(_spec|_test)\.\w+$|\.(spec|test)\.\w+$|(^|/)test_[^/]+\.py$")
 STAGE_ZONES = {"S1": set(), "S2": set(), "S3": {"be", "fe"}, "S4": {"test"}}
-CODE_GRAPH = "code-graph.py"
-CODE_GRAPH_READ = {"who-uses", "uses", "explain"}
+GRAPHIFY = {"graphify", "graphifyy", "graphify-mcp"}
+GRAPHIFY_READ = {"explain", "affected", "query", "path", "god-nodes", "--version", "--help", "-h"}
+GRAPHIFY_LEAD = {"update", "merge-graphs"}  # extract (gọi LLM), install, hook, watch... chặn với mọi người
 PERM_CMDS = {"chmod", "chown", "chgrp", "setfacl", "chattr"}
 SNAP_MAX = 2_000_000
 WRITE_CMDS = {"tee", "mv", "cp", "rm", "touch", "truncate", "install", "dd", "ln"}
 HIDDEN_RE = re.compile(r"(^|[\s/'\"=])\.agent-team(/|\s|$|['\"])")
 CLONE_SCRIPT = "agent-db-clone"
+BOARD = "board.py"
+BOARD_ROLE_CMDS = {"post", "read", "status", "whys"}
+HEREDOC_RE = re.compile(r"<<(-?)\s*['\"]?([A-Za-z_][A-Za-z0-9_]*)['\"]?")
 
 ENV_SAMPLES = {".env.example", ".env.sample", ".env.template", ".env.dist"}
 SECRET_NAME_RES = [
@@ -280,6 +290,74 @@ def check_git(cmd, cwd):
             block(f"git {sub} . sẽ xoá thay đổi chưa commit")
 
 
+def board_segments(cmd):
+    """[(chỉ số token board.py, segment)] cho mọi lệnh gọi board.py."""
+    out = []
+    for tk in parse(cmd):
+        for i, t in enumerate(tk):
+            if os.path.basename(t) == BOARD:
+                out.append((i, tk))
+                break
+    return out
+
+
+def strip_heredocs(cmd):
+    """Bỏ thân heredoc (nội dung bài post) để không bị soi như lệnh."""
+    out, lines, i = [], cmd.splitlines(), 0
+    while i < len(lines):
+        out.append(lines[i])
+        m = HEREDOC_RE.search(lines[i]) if "<<" in unquoted(lines[i]) else None
+        i += 1
+        if m:
+            while i < len(lines) and (lines[i].strip() if m.group(1) else lines[i]) != m.group(2):
+                i += 1
+            i += 1
+    return "\n".join(out)
+
+
+def check_board(cmd, role):
+    """board.py: role chỉ post/read/status và chỉ post bằng tên mình; challenger không dùng."""
+    if role and BOARD in cmd and any(first_cmd(tk).startswith("$") for tk in parse(cmd)):
+        block("chạy board.py bằng đường dẫn trực tiếp, không qua biến")
+    for i, tk in board_segments(cmd):
+        sub = tk[i + 1] if i + 1 < len(tk) else ""
+        if not role:
+            continue
+        if role == "challenger":
+            block("challenger không được đọc board (mù ticket)")
+        if sub not in BOARD_ROLE_CMDS:
+            block(f"board.py {sub}: chỉ Lead được dùng (role chỉ post/read/status)")
+        if sub == "post":
+            who = ""
+            for j, t in enumerate(tk):
+                if t == "--role" and j + 1 < len(tk):
+                    who = tk[j + 1]
+                elif t.startswith("--role="):
+                    who = t.split("=", 1)[1]
+            if who.strip().lower().split(":")[-1] != role:
+                block(f"chỉ được post bằng tên mình: --role {role}")
+
+
+def check_graphify(cmd, role):
+    """Graphify: role chỉ lệnh đọc; Lead thêm update/merge-graphs; lệnh còn lại (extract gọi LLM, install, hook...) chặn hết."""
+    for tk in parse(cmd):
+        for i, t in enumerate(tk):
+            name = os.path.basename(t)
+            if name not in GRAPHIFY:
+                continue
+            if name == "graphify-mcp":
+                block("không chạy graphify-mcp")
+            sub = tk[i + 1] if i + 1 < len(tk) else ""
+            if sub == "graphify":  # uvx graphifyy graphify ...
+                sub = tk[i + 2] if i + 2 < len(tk) else ""
+            allowed = GRAPHIFY_READ | (set() if role else GRAPHIFY_LEAD)
+            if sub not in allowed:
+                who = "role chỉ được" if role else "chỉ được"
+                block(f"graphify {sub or '(trống)'}: {who} {'/'.join(sorted(allowed - {'--help', '-h', '--version'}))}. "
+                      "extract (gọi LLM), install, hook, watch bị chặn")
+            break
+
+
 def check_rm(cmd):
     for tk in parse(cmd):
         if tk and tk[0] == "rm" and any(t.startswith("-") and "r" in t for t in tk[1:]):
@@ -337,13 +415,15 @@ def readonly_segment_ok(tk):
     if tk[0] in ("docker", "docker-compose"):
         inner = strip_docker(tk)
         return inner is not None and readonly_segment_ok(inner)
+    cmd = os.path.basename(tk[0])
+    if cmd == BOARD:
+        return len(tk) > 1 and tk[1] in BOARD_ROLE_CMDS
     if any(t in FIX_FLAGS for t in tk[1:]):
         return False
-    cmd = os.path.basename(tk[0])
     if cmd.startswith(CLONE_SCRIPT):
         return len(tk) > 1 and tk[1] in ("status", "test")
-    if cmd == CODE_GRAPH:
-        return len(tk) > 1 and tk[1] in CODE_GRAPH_READ
+    if cmd in GRAPHIFY:
+        return len(tk) > 1 and tk[1] in GRAPHIFY_READ
     if cmd == "kb-check.py":
         return True  # chỉ đọc: báo file KB nào còn khung
     if cmd == "git":
@@ -397,6 +477,12 @@ def docs_verdict(rel, role, cwd):
     if rel.startswith(DOCS_DIR):
         if role == "scout" and os.path.basename(rel) == "CONTEXT.md":
             return None
+        parts = rel[len(DOCS_DIR):].split("/")
+        if len(parts) == 3 and parts[1] == "design":
+            for rx, roles in DESIGN_OWNERS:
+                if rx.match(parts[2]):
+                    return None if role in roles else f"design/{parts[2]} do {', '.join(sorted(roles))} ghi"
+            return "design/ chỉ gồm mockup-<màn>.html (ui-designer), workflow.md / state.md (BA), sequence.md (Architect)"
         return "docs/agent-tasks (TASK, board) chỉ Lead ghi. Trả kết quả cho Lead, không tự ghi"
     if role == "scout" and stage_value(cwd) is None:
         return None  # init: Scout dựng nháp KB khi chưa có task
@@ -479,6 +565,35 @@ def zone_of(rel, zones):
     return None
 
 
+def migration_dirs(cwd):
+    """(root, [thư mục migration]) từ MIGRATION_PATHS trong config. None nếu không khai báo."""
+    root = find_root(cwd)
+    if not root:
+        return None
+    for line in open(os.path.join(root, ".claude", "agent-team.config"), encoding="utf-8", errors="ignore"):
+        m = re.match(r"^\s*MIGRATION_PATHS=(.*)$", line)
+        if m:
+            val = m.group(1).split("#")[0].strip().strip("'\"")
+            dirs = [os.path.normpath(p.strip("/")) for p in val.split() if p.upper() != "TODO"]
+            return (root, dirs) if dirs else None
+    return None
+
+
+def check_migration_new(path, cwd):
+    """Mọi người (kể cả Lead): file migration chỉ sinh bằng generator trong container, không tự tạo/đổi tên."""
+    loaded = migration_dirs(cwd) if path else None
+    if not loaded:
+        return
+    root, dirs = loaded
+    full = full_path(path, cwd)
+    rel = os.path.relpath(full, root).replace("\\", "/")
+    for d in dirs:
+        if rel == d or (rel.startswith(d + "/") and not os.path.exists(full)):
+            block(f"không tự tạo / đổi tên file migration ('{rel}'). Sinh bằng "
+                  "`.claude/agent-team/agent-db-clone.sh generate <task-id> <Tên> [field:type...]` (generator chạy trong container), "
+                  "rồi Edit file vừa sinh")
+
+
 def check_owner(path, cwd, role):
     """Chặn role ghi vào vùng của role khác."""
     mine = OWNER_ZONE.get(role)
@@ -551,11 +666,16 @@ def gate_missing(stage, text):
                 miss.append("Phương án chốt")
             if first("Security duyệt solution") not in ("APPROVED", "N/A"):
                 miss.append("Security duyệt solution: APPROVED")
+            for k in ("Workflow", "UI mockup"):
+                if first(k) not in ("YES", "N/A"):
+                    miss.append(f"{k}: YES hoặc N/A")
     elif stage == "S5":
         if first("Kết quả test") != "PASS":
             miss.append("Kết quả test: PASS")
         if first("Lint/format") not in ("PASS", "N/A"):
             miss.append("Lint/format: PASS hoặc N/A")
+        if first("Gap còn mở") != "0":
+            miss.append("Gap còn mở: 0 (đóng hết gap ở mục 14)")
     elif stage == "S6":
         if first("Code review") != "APPROVED":
             miss.append("Code review: APPROVED")
@@ -566,6 +686,21 @@ def gate_missing(stage, text):
         if first("Bài học") not in ("YES", "KHÔNG"):
             miss.append("Bài học: YES hoặc KHÔNG CÓ")
     return miss
+
+
+def open_whys(root, task):
+    """Số WHY chưa được cả team đồng ý trên board SQLite (0 nếu chưa có board)."""
+    p = os.path.join(root, ".agent-team", "board.db")
+    if not os.path.isfile(p):
+        return 0
+    try:
+        import sqlite3
+        db = sqlite3.connect(f"file:{p}?mode=ro", uri=True, timeout=5)
+        n = db.execute("SELECT count(*) FROM whys WHERE task=? AND status IN ('open','voting')", (task,)).fetchone()[0]
+        db.close()
+        return n
+    except Exception:
+        return 0
 
 
 def check_stage_change(new_stage, cwd):
@@ -579,6 +714,18 @@ def check_stage_change(new_stage, cwd):
         return
     latest = max(tasks, key=os.path.getmtime)
     miss = gate_missing(new_stage, open(latest, encoding="utf-8", errors="ignore").read())
+    if new_stage == "S3":
+        n = open_whys(root, os.path.basename(os.path.dirname(latest)))
+        if n:
+            miss.append(f"{n} WHY chưa được cả team đồng ý (board.py status)")
+        text = open(latest, encoding="utf-8", errors="ignore").read()
+        ddir = os.path.join(os.path.dirname(latest), "design")
+        has = lambda rx: os.path.isdir(ddir) and any(re.match(rx, f) for f in os.listdir(ddir))
+        yes = lambda k: (task_field(text, k).split() or [""])[0].upper() == "YES"
+        if yes("Workflow") and not has(r"^workflow\.md$"):
+            miss.append("Workflow: YES nhưng chưa có design/workflow.md")
+        if yes("UI mockup") and not has(r"^mockup-.+\.html$"):
+            miss.append("UI mockup: YES nhưng chưa có design/mockup-<màn>.html")
     if miss:
         block(f"chưa đủ điều kiện sang {new_stage}. Thiếu trong {os.path.relpath(latest, root)}: {'; '.join(miss)}")
 
@@ -768,11 +915,12 @@ def main():
 
     if tool == "Bash":
         cmd = ti.get("command", "")
+        if board_segments(cmd.split("\n", 1)[0]):
+            cmd = strip_heredocs(cmd)
+        check_board(cmd, role)
         if role and any(first_cmd(tk) in PERM_CMDS for tk in parse(cmd)):
             block("không được đổi quyền file (chmod/chown...), nhờ Lead")
-        if role and any(os.path.basename(t) == CODE_GRAPH and (i + 1 >= len(tk) or tk[i + 1] not in CODE_GRAPH_READ)
-                        for tk in parse(cmd) for i, t in enumerate(tk)):
-            block("role chỉ được code-graph.py who-uses/uses/explain. build do Lead làm")
+        check_graphify(cmd, role)
         if role and touches_hidden(cmd):
             block("không được đụng .agent-team/ (state DB clone)")
         if role and "agent-tasks" in cmd and (
@@ -791,11 +939,13 @@ def main():
         if role in READONLY_ROLES:
             check_readonly_bash(cmd, role)
         for tgt in bash_write_targets(cmd):
+            check_migration_new(tgt, cwd)
             check_stage(tgt, cwd)
             check_owner(tgt, cwd, role)
             check_docs(tgt, cwd, role)
 
     if tool in ("Edit", "Write", "MultiEdit", "NotebookEdit"):
+        check_migration_new(path, cwd)
         check_stage(path, cwd)
         if not role and tool == "Write" and path.replace("\\", "/").endswith(".agent-team/stage"):
             check_stage_change((ti.get("content") or "").strip().upper(), cwd)

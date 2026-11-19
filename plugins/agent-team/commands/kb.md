@@ -26,9 +26,9 @@ Chia việc dựa trên bản đồ. **Mỗi file KB chỉ một Scout ghi** (tr
 | Scout | File KB sở hữu |
 |---|---|
 | Module nhóm 1..k (mỗi nhóm ≤ 5 module; tối đa 4 Scout song song, nhiều hơn thì làm lượt sau) | `modules/<tên>/README.md` của các module trong nhóm (chức năng, API, bảng DB, bảng quy tắc `BR-<tên>-<n>`, quyền, test liên quan) |
-| Kiến trúc + API + DB | `project-overview.md`, `architecture.md`, `tech-stack.md`, `api/endpoints.md`, `database/schema.md`, `integrations/` |
+| Kiến trúc + API + DB | `project-overview.md`, `architecture.md`, `tech-stack.md`, `api/endpoints.md`, `database/schema.md`, `database/migration-rules.md`, `integrations/` |
 | Frontend (nếu có repo FE) | `modules/<tên>/screens/*.md`, `actions/*.md` (file mới, không sửa README của module) |
-| Quy chuẩn + test | `engineering/coding-standards.md`, `testing/test-strategy.md` (+ báo lệnh lint/format cho Lead) |
+| Quy chuẩn + test | `engineering/coding-standards.md`, `engineering/review-checklist.md` (mục "Mẫu tìm lỗi theo stack"), `testing/test-strategy.md`, `testing/automation-guide.md`, `security/review-patterns.md` (+ báo lệnh lint/format cho Lead) |
 
 Argument là một module/mảng → chỉ gọi đúng Scout cho phần đó.
 

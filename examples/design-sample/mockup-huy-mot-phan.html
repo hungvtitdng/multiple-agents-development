@@ -1,0 +1,30 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Huỷ một phần đơn hàng</title>
+<style>
+body{margin:0;font:14px/1.5 system-ui,sans-serif;color:#000;background:#fff}
+.tabs{display:flex;gap:4px;padding:8px;border-bottom:2px solid #000;position:sticky;top:0;background:#fff}
+.tabs button{border:1px solid #000;background:#fff;padding:4px 10px;cursor:pointer}.tabs button.on{background:#000;color:#fff}
+.state{display:none;padding:16px}.state.on{display:block}
+.box{border:1px solid #000;padding:12px;margin:8px 0}.btn{border:1px solid #000;padding:6px 12px;display:inline-block;background:#fff}
+.btn.primary{background:#000;color:#fff}.ph{background:#f2f2f2;border:1px dashed #999;color:#666;padding:20px;text-align:center}
+.ac{font-size:11px;border:1px solid #999;color:#666;padding:0 4px;margin-left:4px}.note{font-size:12px;color:#666;border-left:3px solid #999;padding-left:8px;margin:4px 0}
+table{border-collapse:collapse;width:100%}th,td{border:1px solid #999;padding:6px;text-align:left}
+</style></head><body>
+<div class="tabs"><button class="on" data-s="normal">Bình thường</button><button data-s="empty">Rỗng</button>
+<button data-s="loading">Đang tải</button><button data-s="error">Lỗi</button><button data-s="denied">Không có quyền</button></div>
+<div class="state on" id="normal"><h2>Đơn #10234 · Đã thanh toán</h2>
+<div class="note">Màn chi tiết đơn hiện có (orders/show), thêm cột chọn và nút "Huỷ sản phẩm đã chọn".</div>
+<table><tr><th>Chọn</th><th>Sản phẩm</th><th>SL huỷ</th><th>Đơn giá (sau KM)</th><th>Trạng thái</th></tr>
+<tr><td>[x]</td><td>Áo thun trắng size M</td><td>[ 1 ▾ ] / 2</td><td>180.000 đ</td><td>Chờ giao</td></tr>
+<tr><td>[ ]</td><td>Quần jean xanh 30</td><td>[ 0 ▾ ] / 1</td><td>420.000 đ</td><td>Chờ giao</td></tr>
+<tr><td>—</td><td>Mũ lưỡi trai đen</td><td>—</td><td>90.000 đ</td><td>Đã huỷ 1 lần (19/11)</td></tr></table>
+<div class="box">Số tiền hoàn dự kiến: <b>180.000 đ</b> <span class="ac">AC-1</span><div class="note">Theo giá sau khuyến mãi đã phân bổ (giả định A-1). Phí vận chuyển không hoàn (giả định A-2).</div></div>
+<span class="btn">Quay lại</span> <span class="btn primary">Huỷ sản phẩm đã chọn</span> <span class="ac">AC-1</span> <span class="ac">AC-4</span>
+<div class="note">Bấm → hộp xác nhận "Huỷ 1 sản phẩm, hoàn 180.000 đ?" → Đồng ý → POST /orders/10234/cancellations → toast "Đã huỷ, tiền hoàn trong 3-5 ngày". Bấm 2 lần liên tiếp chỉ tạo 1 lần huỷ.</div>
+<div class="box"><b>Lịch sử huỷ</b><br>19/11 10:02 · Mũ lưỡi trai đen ×1 · hoàn 90.000 đ · Đang hoàn tiền</div></div>
+<div class="state" id="empty"><h2>Đơn #10234</h2><div class="ph">Không còn sản phẩm nào có thể huỷ.<br>Nút "Huỷ sản phẩm đã chọn" ẩn.</div></div><div class="state" id="loading"><h2>Đơn #10234</h2><div class="ph">[ khung xám đang tải bảng sản phẩm ]</div><div class="note">Nút huỷ bị khoá trong lúc tải và lúc đang gửi yêu cầu.</div></div>
+<div class="state" id="error"><h2>Đơn #10234</h2><div class="box">⚠ Không huỷ được: đơn đã chuyển sang "Đang giao". <span class="ac">AC-2</span><br><span class="btn">Liên hệ CSKH</span></div><div class="note">Lỗi mạng / 500: "Có lỗi, thử lại sau", giữ nguyên lựa chọn.</div></div><div class="state" id="denied"><div class="box">Không tìm thấy đơn hàng. <span class="ac">AC-3</span></div><div class="note">Không phải chủ đơn → 404, không tiết lộ đơn tồn tại.</div></div>
+<script>document.querySelectorAll('.tabs button').forEach(function(b){b.onclick=function(){
+document.querySelectorAll('.tabs button,.state').forEach(function(x){x.classList.remove('on')});
+b.classList.add('on');document.getElementById(b.dataset.s).classList.add('on');};});</script>
+</body></html>

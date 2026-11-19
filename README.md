@@ -16,14 +16,15 @@ Plugin cho Claude Code. Đưa 1 task → Lead + BA + Architect + Test Design deb
 │   │   ├── kb.md        ← /agent-team:kb     - dựng/làm đầy KB từ code (nhiều Scout, kiểm bằng kb-check)
 │   │   └── init.md      ← /agent-team:init   - cài cho 1 project, dựng KB
 │   ├── hooks/           ← hooks.json, guard.py (chặn thật), show_post.py
-│   ├── scripts/         ← agent-db-clone.sh, code-graph.py
+│   ├── scripts/         ← agent-db-clone.sh, kb-check.py, board.py (board chat SQLite)
+│   ├── skills/          ← 8 skill chung, agent tự nạp khi cần
 │   └── templates/       ← TASK, SUMMARY, POST, CONTEXT, config, mục CLAUDE.md, kb/ (khung docs/)
 ├── docs/design.md       ← thiết kế
 ├── tests/
 └── release-notes.md
 ```
 
-## Đội hình (11 agent)
+## Đội hình (12 agent)
 
 | Nhóm | Role | Model |
 |---|---|---|
@@ -33,6 +34,7 @@ Plugin cho Claude Code. Đưa 1 task → Lead + BA + Architect + Test Design deb
 | Kiểm | code-reviewer | sonnet |
 | Kiểm (mù ticket, VỪA/LỚN, ở S5) | challenger: chỉ nhận yêu cầu gốc + diff, tự dựng lại yêu cầu, chấm met / not met / can't tell. Hook chặn nó đọc `docs/` | sonnet |
 | Kiểm | security (bắt buộc mọi task) | opus |
+| Debate (chỉ khi task có UI) | ui-designer: wireframe đen trắng đủ chức năng + trạng thái, hỏi WHY về luồng thao tác | sonnet |
 | Task LỚN | technical-architect (tách khỏi Architect) | opus |
 
 ## Luồng 1 task
@@ -60,6 +62,47 @@ Plugin cho Claude Code. Đưa 1 task → Lead + BA + Architect + Test Design deb
 - Giới hạn: debate 3 lượt, sửa 3 vòng/issue rồi Lead phán quyết. Lỗi Security Critical/High không ai override (không xử lý được → `BLOCKED`).
 - Agent là **subagent**: trả kết quả (≤ 15 dòng) cho Lead, không nhắn nhau, không ghi board/TASK.md. Lead chép vào `board/` để bạn đọc lại.
 
+## Board chat (SQLite) và skill
+
+```
+          Lead (mở/đóng lượt, tóm tắt, export)
+                     │
+   BA ── Architect ── Test Design ── Security ── Code Reviewer ── Dev
+     \        \            |            /             /         /
+      └────────┴─── .agent-team/board.db (board.py) ───┴─────────┘
+                 read: tóm tắt lượt trước + toàn bộ lượt đang mở
+                 post: chỉ bằng tên mình · @role = phải trả lời
+                     │ S6
+                     ▼
+      docs/agent-tasks/<task-id>/board/DEBATE.md  (export, commit)
+```
+- Agent tự đọc board nên Lead **không chép lại** ý kiến giữa các lượt. Điểm chấm vẫn chỉ trả riêng về Lead.
+- Thiết kế mỗi task (`design/`): workflow nghiệp vụ + sơ đồ trạng thái (BA), sequence (Architect), wireframe đen trắng (ui-designer). Báo cáo vẽ sẵn sơ đồ thành hình (cần `mmdc`), nhúng wireframe, client xác nhận từng mục. Mẫu: `examples/design-sample/`.
+- Báo cáo mỗi task: `board.py report <task-id>` → `docs/agent-tasks/<task-id>/REPORT.html` (dashboard gửi client: giả định tô đỏ để client xác nhận, bảng so sánh phương án) + `REPORT.md`. Xem mẫu: `examples/report-sample.html`.
+- Hook chặn: post bằng tên role khác, role dùng `open/close/summary/export`, challenger đọc board, gọi board qua biến.
+
+| Skill (`agent-team:<tên>`) | Ai dùng |
+|---|---|
+| `debate-board` | Mọi role trên board |
+| `acceptance-criteria` | BA, Test Design |
+| `test-case-design` | Test Design |
+| `security-review` | Security |
+| `migration-safety` | Architect, TA, Backend (file migration chỉ sinh bằng `agent-db-clone.sh generate` trong container) |
+| `test-automation` | Test Execution |
+| `code-review` | Code Reviewer |
+| `decision-record` | Architect, TA, Lead |
+
+Skill chỉ chứa **nguyên tắc chung, không gắn framework**. Cách làm riêng của từng dự án nằm trong KB `docs/` (Scout viết nháp theo stack khi init/kb):
+
+| Skill | File riêng của dự án |
+|---|---|
+| `security-review` | `docs/security/review-patterns.md` |
+| `migration-safety` | `docs/database/migration-rules.md` |
+| `test-automation` | `docs/testing/automation-guide.md` |
+| `code-review` | `docs/engineering/review-checklist.md` (mục "Mẫu tìm lỗi theo stack") |
+
+Agent đọc file của dự án trước; thiếu mẫu thì làm theo nguyên tắc chung và đề xuất bổ sung. Ví dụ nội dung cho dự án Rails + JS: `examples/rails-js/`.
+
 ## Hỏi về logic dự án (`/agent-team:ask <câu hỏi>`)
 
 Chỉ đọc, không tạo task. Lead chọn người trả lời, lấy nguồn từ `docs/` rồi đối chiếu code:
@@ -73,7 +116,7 @@ Chỉ đọc, không tạo task. Lead chọn người trả lời, lấy nguồn
 | Tra một chỗ trong docs | Lead trả lời luôn |
 | Xuyên nhiều mảng | 2 role song song, Lead gộp và nêu chỗ khác nhau |
 
-Nguồn theo thứ tự: KB (`docs/`) → `LESSONS.md` → `TASK.md` các task trước → code (`file:dòng`, code-graph). Mỗi ý có nguồn và nhãn `Verified/Unverified/Assumption`; KB lệch code thì tin code và ghi "KB nên cập nhật" (không tự sửa); không có nguồn thì nói thẳng, không bịa.
+Nguồn theo thứ tự: KB (`docs/`) → `LESSONS.md` → `TASK.md` các task trước → code (`file:dòng`, Graphify). Mỗi ý có nguồn và nhãn `Verified/Unverified/Assumption`; KB lệch code thì tin code và ghi "KB nên cập nhật" (không tự sửa); không có nguồn thì nói thẳng, không bịa.
 
 ## Knowledge Base (`docs/`)
 
@@ -106,6 +149,7 @@ docs/
 | backend-dev, frontend-dev, test-executor | Sửa file ngoài vùng của mình (`BE_PATHS`/`FE_PATHS`/`TEST_PATHS`, kèm `*_spec.*`, `*.test.*`, `__tests__/`) |
 | Mọi role (trừ Lead) | Ghi `docs/agent-tasks/` (TASK, board) trừ Scout ghi `CONTEXT.md`; ghi KB của role khác (xem bảng chủ ghi trong `docs/README.md`) |
 | Mọi role (trừ Lead) | Đọc/ghi `.agent-team/` |
+| Mọi role (trừ Lead) | `board.py` ngoài `post/read/status`; post bằng `--role` khác tên mình; challenger dùng board |
 | Lead | Đổi giai đoạn khi TASK.md chưa đủ điều kiện (xem dưới) |
 
 ### Gate chuyển giai đoạn (Lead ghi `.agent-team/stage`, hook kiểm TASK.md)
@@ -113,7 +157,7 @@ docs/
 | Sang | Cần trong TASK.md |
 |---|---|
 | S3 | `Loại`; NHỎ: `Tiêu chí nghiệm thu`; VỪA/LỚN: `Phương án chốt` + `Security duyệt solution: APPROVED` |
-| S5 | `Kết quả test: PASS`, `Lint/format: PASS` hoặc `N/A` |
+| S5 | `Kết quả test: PASS`, `Lint/format: PASS` hoặc `N/A`, `Gap còn mở: 0` |
 | S6 | `Code review: APPROVED`, `Security review: APPROVED`, `Cập nhật KB: YES` hoặc `KHÔNG CẦN`, `Bài học: YES` hoặc `KHÔNG CÓ` |
 
 Gate chỉ đọc các dòng Lead tự điền: chặn quên bước, không kiểm chứng việc đã làm.
@@ -145,11 +189,12 @@ Chọn **1 repo chính** (thường API/BE) chứa `.claude/`, `docs/`, `CLAUDE.
 - Mỗi repo có branch `agent/<task-id>` riêng, commit/push trong từng repo (`git -C ../FrontEnd ...`). Nhánh gốc theo repo (`BASE_BRANCHES`).
 - `/agent-team:init` hỏi chọn repo chính khi thấy ≥ 2 repo. `REPOS` trống = 1 repo.
 
-## Code graph (tự có, không cài gói ngoài)
+## Code graph (Graphify, cài riêng)
 
-- `scripts/code-graph.py` quét file đã commit, tạo `code-graph-out/GRAPH_REPORT.md` + `graph.json` (rb, py, js/ts, go, java, php, vue). Cạnh `EXTRACTED` = import tường minh, `INFERRED` = gợi ý theo tên.
-- Role đọc báo cáo trước khi grep, query `who-uses`, `uses`, `explain`. Lead chạy `build` đầu task và sau S3, S4.
-- Giới hạn: quan hệ ở mức file/class; thay đổi chưa commit không có trong graph.
+- [Graphify](https://github.com/Graphify-Labs/graphify) dựng graph bằng tree-sitter (~40 ngôn ngữ), tới mức hàm, có `file:dòng`, **không gọi LLM** khi chỉ đọc code. Ra `graphify-out/GRAPH_REPORT.md` + `graph.json`.
+- Role đọc báo cáo trước khi grep, query `explain`, `affected`, `query`, `path`, `god-nodes`. Lead chạy `graphify update` đầu task và sau S3, S4; nhiều repo thì `update` từng repo + `merge-graphs` → `graphify-out/merged-graph.json`, query thêm `--graph`.
+- Guard chặn với mọi người: `graphify extract` (gọi LLM), `install`, `hook install`, `claude install`, `watch`, `graphify-mcp`.
+- Chưa cài thì agent tìm bằng grep. Thay đổi chưa commit không có trong graph.
 
 ## Nguồn bên thứ ba
 
@@ -168,9 +213,10 @@ Cập nhật: `/plugin marketplace update kevin-agent-team`, khởi động lạ
 
 ## Kiểm tra sau khi cài
 
-1. `python3 tests/test_guard.py` → toàn bộ pass
+1. `python3 tests/test_guard.py` và `python3 tests/test_board.py` → toàn bộ pass
 2. Trong project, nhờ Claude gọi subagent `agent-team:business-analyst` ghi 1 file ngoài KB của BA → phải bị guard chặn.
 3. `.claude/agent-team/agent-db-clone.sh up test1` → `verify test1` → `down test1`
+4. Nhờ Claude gọi `agent-team:business-analyst` dùng skill `agent-team:acceptance-criteria`. Agent báo không có tool `Skill` → bản Claude Code chưa cho subagent dùng skill: agent vẫn chạy, chỉ thiếu checklist trong skill.
 
 ## Giới hạn
 

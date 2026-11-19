@@ -41,11 +41,12 @@ for dp, _, fs in os.walk(TPL):
         write(proj, os.path.join("docs", rel), open(os.path.join(dp, f), encoding="utf-8").read())
 code, rows = run(proj)
 check("khung template chưa điền -> thiếu", code, 1)
-check("khung template: mọi file bắt buộc đều THIẾU", sum(not r["ok"] for r in rows) >= 11, True)
+check("khung template: mọi file bắt buộc đều THIẾU", sum(not r["ok"] for r in rows) >= 14, True)
 
 FILLED = "verified-at: abc1234\n| BR-1 | x | y | z | Assumption | app/a.rb:10 |\n| BR-2 | x | y | z | Assumption | app/b.rb:20 |\n| BR-3 | x | y | z | Assumption | app/c.rb:30 |\n"
 for rel in ("project-overview", "architecture", "tech-stack", "domain-model", "business-rules", "roles-and-permissions",
-            "glossary", "api/endpoints", "database/schema", "testing/test-strategy", "engineering/coding-standards"):
+            "glossary", "api/endpoints", "database/schema", "testing/test-strategy", "engineering/coding-standards",
+            "database/migration-rules", "testing/automation-guide", "security/review-patterns"):
     write(proj, f"docs/{rel}.md", "# t\n" + FILLED)
 code, rows = run(proj)
 check("điền đủ nhưng chưa có module -> thiếu", code, 1)

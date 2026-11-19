@@ -31,7 +31,7 @@ $ARGUMENTS
 1. `docs/` (Knowledge Base): `business-rules.md`, `glossary.md`, `roles-and-permissions.md`, `domain-model.md`, `modules/<tên>/`, `api/`, `database/`, `architecture/`, `decisions/`, `testing/`, `security/`.
 2. `docs/LESSONS.md`: lỗi đã từng mắc liên quan.
 3. `docs/agent-tasks/*/TASK.md` (quyết định, Assumption, phán quyết của Lead) của các task liên quan.
-4. **Code** để đối chiếu và dẫn `file:dòng`. Có `code-graph-out/`: đọc `GRAPH_REPORT.md`, query `.claude/agent-team/code-graph.py who-uses|uses|explain`. Cạnh `INFERRED` chỉ là gợi ý.
+4. **Code** để đối chiếu và dẫn `file:dòng`. Có `graphify-out/` (Graphify): đọc `GRAPH_REPORT.md`, query `graphify explain "<Tên|file>"` (ai gọi, gọi ai, `file:dòng`) · `graphify affected "<Tên>"` (sửa thì ảnh hưởng đâu) · `graphify query "<câu hỏi>"` · `graphify path "A" "B"`. Nhiều repo: thêm `--graph graphify-out/merged-graph.json`. Cạnh `INFERRED` chỉ là gợi ý.
 - Nhiều repo (`REPOS`): tìm ở tất cả repo trong config.
 - Không đọc `.env*`, key, credentials.
 

@@ -1,6 +1,6 @@
 # Board summary - <task-id>
 
-> Chỉ Lead ghi. Lead chép kết quả (≤ 15 dòng) mỗi role trả về thành `S<giai đoạn>-R<lượt>-<role>-<n>.md` trong `board/` rồi tóm tắt từng lượt ở đây, để người dùng đọc lại. Agent không đọc board; Lead chuyển ý kiến giữa các lượt.
+> Chỉ Lead ghi, khi đóng task. Toàn bộ cuộc debate nằm trong board SQLite, xuất ra `board/DEBATE.md` bằng `board.py export`. File này là bản tóm tắt cuối để người dùng đọc nhanh.
 
 ## Lượt đang mở
 S? - R? : <mục tiêu lượt>, role tham gia: ...

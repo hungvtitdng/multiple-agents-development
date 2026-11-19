@@ -26,7 +26,7 @@ COST_TIER=standard
 # Nơi Lead ghi bài học sau mỗi task (Scout đọc ở task sau). Để trống = bỏ qua.
 LESSONS_PATH=docs/LESSONS.md
 
-# 1 = dùng code graph (Lead build bằng .claude/agent-team/code-graph.py build)
+# 1 = dùng code graph Graphify (cài riêng: xem release-notes của plugin; Lead chạy graphify update)
 USE_CODE_GRAPH=1
 
 # ---- Docker / DB clone ----
@@ -40,6 +40,10 @@ DB_SERVICE=db               # tên service DB trong docker compose
 DB_NAME=app_development     # DB cần clone
 APP_SERVICE=app             # service để chạy migrate / test
 
+# Migration: CHỈ sinh file bằng generator của framework, chạy trong container app (không tự tạo file, tránh trùng timestamp)
+MIGRATION_PATHS="db/migrate"                        # thư mục chứa migration (guard chặn tạo file mới bằng tay ở đây)
+MIGRATION_GEN_CMD="bin/rails generate migration"    # agent-db-clone.sh generate <task-id> <Tên> [field:type...]
+MIGRATION_GEN_USER=                                 # trống = user mặc định của container; "host" = uid:gid của máy (tránh file thuộc root)
 MIGRATE_CMD="bin/rails db:migrate"
 ROLLBACK_CMD="bin/rails db:rollback STEP=1"
 TEST_CMD="bundle exec rspec"

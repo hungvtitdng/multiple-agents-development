@@ -23,6 +23,9 @@ REQUIRED = {
     "docs/database/schema.md": 1,
     "docs/testing/test-strategy.md": 0,
     "docs/engineering/coding-standards.md": 1,
+    "docs/database/migration-rules.md": 0,
+    "docs/testing/automation-guide.md": 0,
+    "docs/security/review-patterns.md": 0,
 }
 VERIFIED_RE = re.compile(r"verified-at:\s*`?[0-9a-f]{7,40}\b")
 CITE_RE = re.compile(r"[\w./@-]+\.\w{1,5}:\d+")

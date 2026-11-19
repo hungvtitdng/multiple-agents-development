@@ -8,3 +8,4 @@ Các đoạn dưới đây được viết lại ngắn gọn từ file gốc, k
 | `templates/claude-md-section.md`, `commands/run.md` (trả lời ngắn) | https://github.com/ayghri/i-have-adhd | MIT | 1ecea1993b7f |
 | `agents/backend-dev.md`, `frontend-dev.md`, `code-reviewer.md` (code ít nhất) | https://github.com/dietrichgebert/ponytail | MIT | 96608e078b2d |
 
+Công cụ ngoài, cài riêng, plugin không đóng gói code của nó: Graphify (https://github.com/Graphify-Labs/graphify, Apache-2.0/MIT) dùng làm code graph.

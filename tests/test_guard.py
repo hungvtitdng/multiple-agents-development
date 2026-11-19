@@ -155,12 +155,19 @@ cases += [
     ("Lead sửa spec", "Edit", {"file_path": "spec/a_spec.rb"}, None, zp, OK),
     ("requirement-reviewer sửa code", "Edit", {"file_path": "app/a.rb"}, "test-designer", zp, B),
     ("dev chmod mở khóa", "Bash", {"command": "chmod -R u+w spec"}, "backend-dev", zp, B),
-    ("reviewer code-graph who-uses", "Bash", {"command": ".claude/agent-team/code-graph.py who-uses User"}, "code-reviewer", zp, OK),
-    ("security code-graph uses", "Bash", {"command": ".claude/agent-team/code-graph.py uses app/a.rb"}, "security", zp, OK),
-    ("reviewer code-graph build", "Bash", {"command": ".claude/agent-team/code-graph.py build"}, "code-reviewer", zp, B),
-    ("dev python3 code-graph build", "Bash", {"command": "python3 .claude/agent-team/code-graph.py build"}, "backend-dev", zp, B),
-    ("dev code-graph explain", "Bash", {"command": ".claude/agent-team/code-graph.py explain User"}, "backend-dev", zp, OK),
-    ("Lead code-graph build", "Bash", {"command": ".claude/agent-team/code-graph.py build"}, None, zp, OK),
+    ("reviewer graphify explain", "Bash", {"command": 'graphify explain "User"'}, "code-reviewer", zp, OK),
+    ("security graphify affected + --graph", "Bash", {"command": 'graphify affected "User" --graph graphify-out/merged-graph.json'}, "security", zp, OK),
+    ("scout graphify query", "Bash", {"command": 'graphify query "ai tạo đơn hàng" | head -40'}, "scout", zp, OK),
+    ("reviewer graphify update bị chặn", "Bash", {"command": "graphify update ."}, "code-reviewer", zp, B),
+    ("dev graphify merge-graphs bị chặn", "Bash", {"command": "graphify merge-graphs a.json b.json"}, "backend-dev", zp, B),
+    ("dev graphify explain", "Bash", {"command": 'graphify explain "User"'}, "backend-dev", zp, OK),
+    ("Lead graphify update", "Bash", {"command": "graphify update . && graphify update ../fe"}, None, zp, OK),
+    ("Lead graphify merge-graphs", "Bash", {"command": "graphify merge-graphs graphify-out/graph.json ../fe/graphify-out/graph.json --out graphify-out/merged-graph.json"}, None, zp, OK),
+    ("Lead graphify extract (gọi LLM) bị chặn", "Bash", {"command": "graphify extract ."}, None, zp, B),
+    ("Lead graphify hook install bị chặn", "Bash", {"command": "graphify hook install"}, None, zp, B),
+    ("Lead graphify install bị chặn", "Bash", {"command": "graphify install"}, None, zp, B),
+    ("Lead uvx graphifyy extract bị chặn", "Bash", {"command": "uvx graphifyy extract ."}, None, zp, B),
+    ("graphify-mcp bị chặn", "Bash", {"command": "graphify-mcp"}, None, zp, B),
     ("scout chạy kb-check", "Bash", {"command": ".claude/agent-team/kb-check.py"}, "scout", zp, OK),
     ("scout python3 kb-check --json", "Bash", {"command": "python3 .claude/agent-team/kb-check.py --json"}, "scout", zp, B),
     ("dev sửa spec khi chưa có config", "Edit", {"file_path": "spec/a_spec.rb"}, "backend-dev", tempfile.mkdtemp(), OK),
@@ -437,14 +444,33 @@ S6 = {"command": "echo S6 > .agent-team/stage"}
 gate("S3 khi TASK còn TODO", "- Loại: TODO (NHỎ/VỪA/LỚN)\n", "Bash", S3, None, B)
 gate("S3 VỪA thiếu phương án", "- Loại: VỪA\n- Phương án chốt: TODO\n", "Bash", S3, None, B)
 gate("S3 VỪA thiếu Security duyệt", "- Loại: VỪA\n- Phương án chốt: A+B\n- Security duyệt solution: TODO\n", "Bash", S3, None, B)
-gate("S3 VỪA đủ", "- Loại: VỪA\n- Phương án chốt: A+B\n- Security duyệt solution: APPROVED\n", "Bash", S3, None, OK)
+gate("S3 VỪA đủ", "- Loại: VỪA\n- Phương án chốt: A+B\n- Security duyệt solution: APPROVED\n- Workflow: N/A\n- UI mockup: N/A\n", "Bash", S3, None, OK)
+gate("S3 VỪA thiếu Workflow/UI mockup", "- Loại: VỪA\n- Phương án chốt: A+B\n- Security duyệt solution: APPROVED\n", "Bash", S3, None, B)
+gate("S3 Workflow YES nhưng chưa có file", "- Loại: VỪA\n- Phương án chốt: A\n- Security duyệt solution: APPROVED\n- Workflow: YES\n- UI mockup: N/A\n", "Bash", S3, None, B)
 gate("S3 NHỎ thiếu tiêu chí", "- Loại: NHỎ\n", "Bash", S3, None, B)
 gate("S3 NHỎ đủ", "- Loại: NHỎ\n- Tiêu chí nghiệm thu: sửa text nút Lưu\n", "Bash", S3, None, OK)
 gate("S3 qua Write tool khi thiếu", "- Loại: TODO\n", "Write", {"file_path": ".agent-team/stage", "content": "S3\n"}, None, B)
 gate("S3 qua Write tool khi đủ", "- Loại: NHỎ\n- Tiêu chí nghiệm thu: x\n", "Write", {"file_path": ".agent-team/stage", "content": "S3\n"}, None, OK)
+BOARD_PY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "plugins", "agent-team", "scripts", "board.py")
+bd_run = lambda *a, stdin=None: subprocess.run([sys.executable, BOARD_PY, *a], input=stdin, cwd=gp, capture_output=True, text=True)
+bd_run("open", "T1", "S2", "2")
+bd_run("team", "T1", "--roles", "lead,business-analyst,solution-architect")
+bd_run("post", "T1", "--role", "business-analyst", stdin="WHY @solution-architect: vì sao cần bảng mới?\n")
+OKS3 = "- Loại: VỪA\n- Phương án chốt: A+B\n- Security duyệt solution: APPROVED\n- Workflow: N/A\n- UI mockup: N/A\n"
+gate("S3 còn WHY chưa thống nhất", OKS3, "Bash", S3, None, B)
+bd_run("post", "T1", "--role", "solution-architect", stdin="RE WHY-1: vì 1 đơn huỷ nhiều lần (order.rb:42)\n")
+bd_run("post", "T1", "--role", "business-analyst", stdin="AGREE WHY-1\n")
+gate("S3 còn người chưa biểu quyết", OKS3, "Bash", S3, None, B)
+bd_run("post", "T1", "--role", "lead", stdin="AGREE WHY-1\n")
+gate("S3 mọi WHY đã thống nhất", OKS3, "Bash", S3, None, OK)
+gate("role xem whys", OKS3, "Bash", {"command": ".claude/agent-team/board.py whys T1 --open"}, "test-designer", OK)
+gate("role chốt team bị chặn", OKS3, "Bash", {"command": ".claude/agent-team/board.py team T1 --roles a,b"}, "business-analyst", B)
+gate("role why-close bị chặn", OKS3, "Bash", {"command": ".claude/agent-team/board.py why-close T1 1 --as ruling --note x"}, "solution-architect", B)
 gate("S5 test FAIL", "- Kết quả test: FAIL\n- Lint/format: PASS\n", "Bash", S5, None, B)
 gate("S5 thiếu lint", "- Kết quả test: PASS\n", "Bash", S5, None, B)
-gate("S5 đủ", "- Kết quả test: PASS\n- Lint/format: N/A\n", "Bash", S5, None, OK)
+gate("S5 đủ", "- Kết quả test: PASS\n- Lint/format: N/A\n- Gap còn mở: 0\n", "Bash", S5, None, OK)
+gate("S5 còn gap mở", "- Kết quả test: PASS\n- Lint/format: PASS\n- Gap còn mở: 2\n", "Bash", S5, None, B)
+gate("S5 chưa điền gap", "- Kết quả test: PASS\n- Lint/format: PASS\n- Gap còn mở: TODO\n", "Bash", S5, None, B)
 DONE = "- Code review: APPROVED\n- Security review: APPROVED\n- Cập nhật KB: YES\n- Bài học: YES\n"
 gate("S6 thiếu Security review", DONE.replace("- Security review: APPROVED\n", ""), "Bash", S6, None, B)
 gate("S6 thiếu KB", DONE.replace("YES\n- Bài học", "TODO\n- Bài học"), "Bash", S6, None, B)
@@ -472,6 +498,77 @@ ch = [
 for c in ch:
     check(*c)
 total += len(ch)
+
+# ---- board SQLite (board.py): role chỉ post/read/status, chỉ post bằng tên mình ----
+BD = ".claude/agent-team/board.py"
+HD = BD + " post T1 --role business-analyst <<'EOF'\nA > B vì N+1\nbundle exec rubocop -a\nEOF"
+bd = [
+    ("BA post bằng heredoc (thân bài có > và -a)", "Bash", {"command": HD}, "business-analyst", gp, OK),
+    ("BA post --role=business-analyst", "Bash", {"command": BD + " post T1 --role=business-analyst --body 'ok'"}, "business-analyst", gp, OK),
+    ("BA post bằng tên SA bị chặn", "Bash", {"command": BD + " post T1 --role solution-architect --body x"}, "business-analyst", gp, B),
+    ("BA đọc board", "Bash", {"command": BD + " read T1"}, "business-analyst", gp, OK),
+    ("security xem status", "Bash", {"command": BD + " status T1"}, "security", gp, OK),
+    ("BA mở lượt bị chặn", "Bash", {"command": BD + " open T1 S2 1"}, "business-analyst", gp, B),
+    ("SA ghi summary bị chặn", "Bash", {"command": BD + " summary T1 --body x"}, "solution-architect", gp, B),
+    ("backend-dev export bị chặn", "Bash", {"command": BD + " export T1"}, "backend-dev", gp, B),
+    ("challenger đọc board bị chặn", "Bash", {"command": BD + " read T1"}, "challenger", gp, B),
+    ("role chạy qua python3 bị chặn (chạy thẳng)", "Bash", {"command": "python3 " + BD + " read T1"}, "code-reviewer", gp, B),
+    ("heredoc ngoài board vẫn bị soi", "Bash", {"command": "cat <<'EOF' > app/x.rb\nx\nEOF"}, "code-reviewer", gp, B),
+    ("Lead mở lượt", "Bash", {"command": BD + " open T1 S2 1 --roles business-analyst"}, None, gp, OK),
+    ("Lead export", "Bash", {"command": BD + " export T1"}, None, gp, OK),
+    ("Lead post --role lead", "Bash", {"command": BD + " post T1 --role lead --body x"}, None, gp, OK),
+    ("dev gọi board qua biến để mạo danh bị chặn", "Bash", {"command": "B=" + BD + "; $B post T1 --role security --body x"}, "backend-dev", gp, B),
+    ("dev post bằng tên mình", "Bash", {"command": BD + " post T1 --role backend-dev --reply 3 --body 'đã sửa'"}, "backend-dev", gp, OK),
+]
+for c in bd:
+    check(*c)
+total += len(bd)
+
+# ---- migration: chỉ sinh bằng generator trong container ----
+mp = tempfile.mkdtemp()
+os.makedirs(os.path.join(mp, ".claude"))
+os.makedirs(os.path.join(mp, "db/migrate"))
+open(os.path.join(mp, ".claude/agent-team.config"), "w").write('BE_PATHS="app db"\nMIGRATION_PATHS="db/migrate"\n')
+open(os.path.join(mp, "db/migrate/20261119000001_add_x.rb"), "w").write("x")
+mg = [
+    ("dev tự tạo file migration bị chặn", "Write", {"file_path": "db/migrate/20261119000002_add_y.rb"}, "backend-dev", mp, B),
+    ("Lead tự tạo file migration bị chặn", "Write", {"file_path": "db/migrate/20261119000002_add_y.rb"}, None, mp, B),
+    ("tạo migration bằng Bash bị chặn", "Bash", {"command": "cat > db/migrate/20261119000003_z.rb <<'EOF'\nx\nEOF"}, "backend-dev", mp, B),
+    ("đổi tên migration (mv) bị chặn", "Bash", {"command": "mv db/migrate/20261119000001_add_x.rb db/migrate/20261119000009_add_x.rb"}, "backend-dev", mp, B),
+    ("chép file vào thư mục migration bị chặn", "Bash", {"command": "cp /tmp/a.rb db/migrate"}, "backend-dev", mp, B),
+    ("Edit file migration đã sinh", "Edit", {"file_path": "db/migrate/20261119000001_add_x.rb"}, "backend-dev", mp, OK),
+    ("Write ghi đè file đã sinh", "Write", {"file_path": "db/migrate/20261119000001_add_x.rb"}, "backend-dev", mp, OK),
+    ("sinh bằng generator trong container", "Bash", {"command": ".claude/agent-team/agent-db-clone.sh generate T1 AddStatusToOrders status:string"}, "backend-dev", mp, OK),
+    ("tạo file ngoài thư mục migration", "Write", {"file_path": "db/seeds/x.rb"}, "backend-dev", mp, OK),
+]
+for c in mg:
+    check(*c)
+total += len(mg)
+
+# ---- thiết kế task: design/ ----
+dz = "docs/agent-tasks/T1/design/"
+dg = [
+    ("ui-designer ghi mockup", "Write", {"file_path": dz + "mockup-huy-don.html"}, "ui-designer", gp, OK),
+    ("ui-designer sửa code bị chặn", "Edit", {"file_path": "app/a.rb"}, "ui-designer", gp, B),
+    ("ui-designer ghi workflow bị chặn", "Write", {"file_path": dz + "workflow.md"}, "ui-designer", gp, B),
+    ("BA ghi workflow", "Write", {"file_path": dz + "workflow.md"}, "business-analyst", gp, OK),
+    ("BA ghi state", "Write", {"file_path": dz + "state.md"}, "business-analyst", gp, OK),
+    ("BA ghi mockup bị chặn", "Write", {"file_path": dz + "mockup-a.html"}, "business-analyst", gp, B),
+    ("Architect ghi sequence", "Write", {"file_path": dz + "sequence.md"}, "solution-architect", gp, OK),
+    ("dev ghi vào design bị chặn", "Write", {"file_path": dz + "sequence.md"}, "frontend-dev", gp, B),
+    ("tên file lạ trong design bị chặn", "Write", {"file_path": dz + "notes.md"}, "business-analyst", gp, B),
+    ("ui-designer vẫn không ghi TASK.md", "Write", {"file_path": "docs/agent-tasks/T1/TASK.md"}, "ui-designer", gp, B),
+]
+for c in dg:
+    check(*c)
+total += len(dg)
+os.makedirs(os.path.join(gp, dz), exist_ok=True)
+open(os.path.join(gp, dz, "workflow.md"), "w").write("x")
+gate("S3 Workflow YES có file, UI mockup YES thiếu file",
+     "- Loại: VỪA\n- Phương án chốt: A\n- Security duyệt solution: APPROVED\n- Workflow: YES\n- UI mockup: YES\n", "Bash", S3, None, B)
+open(os.path.join(gp, dz, "mockup-huy-don.html"), "w").write("x")
+gate("S3 Workflow + UI mockup đủ file",
+     "- Loại: VỪA\n- Phương án chốt: A\n- Security duyệt solution: APPROVED\n- Workflow: YES\n- UI mockup: YES\n", "Bash", S3, None, OK)
 
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

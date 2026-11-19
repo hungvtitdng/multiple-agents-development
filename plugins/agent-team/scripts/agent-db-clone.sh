@@ -11,6 +11,7 @@ Usage: agent-db-clone.sh <command> <task-id> [args]
   rollback <task-id>          chạy ROLLBACK_CMD trên clone
   verify   <task-id>          migrate -> rollback -> migrate
   test     <task-id> [args]   chạy TEST_CMD trên clone
+  generate <task-id> <args>   sinh file migration bằng MIGRATION_GEN_CMD, chạy TRONG container app
   down     <task-id>          xoá clone
   status                      liệt kê clone đang chạy
 EOF
@@ -98,6 +99,47 @@ clone_up() {
   echo "Clone sẵn sàng: $NAME"
 }
 
+migration_files() {
+  local d
+  for d in ${MIGRATION_PATHS:-}; do
+    [ -d "$ROOT/$d" ] && find "$ROOT/$d" -maxdepth 1 -type f -print
+  done | sort
+}
+
+check_dup_versions() {
+  # migration trùng số version (timestamp) → lỗi, không cho chạy tiếp
+  local d dup
+  for d in ${MIGRATION_PATHS:-}; do
+    [ -d "$ROOT/$d" ] || continue
+    dup="$(ls "$ROOT/$d" | sed -n 's/^\([0-9]\{6,\}\)_.*/\1/p' | sort | uniq -d)"
+    [ -z "$dup" ] || die "migration trùng version trong $d: $(echo "$dup" | tr '\n' ' ')"
+  done
+}
+
+generate_migration() {
+  [ -n "${MIGRATION_GEN_CMD:-}" ] || die "thiếu MIGRATION_GEN_CMD trong config"
+  [ -n "${MIGRATION_PATHS:-}" ] || die "thiếu MIGRATION_PATHS trong config"
+  [ $# -gt 0 ] || die "thiếu tên migration"
+  local before after user=() cmd
+  before="$(migration_files)"
+  case "${MIGRATION_GEN_USER:-}" in
+    "") ;;
+    host) user=(-u "$(id -u):$(id -g)") ;;
+    *) user=(-u "$MIGRATION_GEN_USER") ;;
+  esac
+  cmd="$MIGRATION_GEN_CMD $(printf '%q ' "$@")"
+  echo ">> [$APP_SERVICE] $cmd"
+  if [ -n "$(dc ps --status running -q "$APP_SERVICE" 2>/dev/null)" ]; then
+    dc exec -T ${user[@]+"${user[@]}"} "$APP_SERVICE" sh -c "$cmd"
+  else
+    dc run --rm --no-deps ${user[@]+"${user[@]}"} "$APP_SERVICE" sh -c "$cmd"
+  fi
+  after="$(migration_files)"
+  [ "$before" != "$after" ] || die "generator không tạo file migration nào (kiểm MIGRATION_GEN_CMD, volume mount của $APP_SERVICE)"
+  check_dup_versions
+  echo "File mới:"; comm -13 <(echo "$before") <(echo "$after")
+}
+
 run_on_clone() {
   [ -f "$STATE" ] || clone_up
   # shellcheck disable=SC1090
@@ -115,9 +157,11 @@ run_on_clone() {
 
 case "$CMD" in
   up)       clone_up ;;
-  migrate)  run_on_clone "$MIGRATE_CMD" ;;
+  generate) shift 2; generate_migration "$@" ;;
+  migrate)  check_dup_versions; run_on_clone "$MIGRATE_CMD" ;;
   rollback) run_on_clone "$ROLLBACK_CMD" ;;
   verify)
+    check_dup_versions
     run_on_clone "$MIGRATE_CMD"
     run_on_clone "$ROLLBACK_CMD"
     run_on_clone "$MIGRATE_CMD"

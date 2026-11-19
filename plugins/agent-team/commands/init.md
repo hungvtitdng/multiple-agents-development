@@ -11,6 +11,7 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
 2. **Nhận diện project** (chỉ đọc):
    - Stack BE/FE/test: Gemfile, package.json, thư mục spec/test
    - Lệnh lint/format đang có (rubocop, eslint, prettier, ruff...) → `LINT_CMD`, `FORMAT_CMD`
+   - Thư mục migration → `MIGRATION_PATHS`; lệnh generator migration của framework (chạy trong container app) → `MIGRATION_GEN_CMD`. Không chắc → `TODO`.
    - docker-compose: file nằm trong repo hay repo khác, tên service DB và app, loại DB (postgres/mysql)
    - Branch gốc (develop/main/master) của **từng repo** (`git symbolic-ref --short refs/remotes/origin/HEAD`). Giống nhau → `BASE_BRANCH`. Repo nào khác → `BASE_BRANCHES="<repo>=<nhánh>"`.
    - **Có mấy repo git?** Tìm repo ở thư mục hiện tại và thư mục con cấp 1 (`.git`). Thư mục hiện tại là repo thì hỏi thêm user có repo khác đi kèm không (vd `../FrontEnd`).
@@ -25,16 +26,18 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
    - `scripts/agent-db-clone.sh` → `.claude/agent-team/agent-db-clone.sh` (chmod +x)
    - `templates/TASK.md`, `POST.md`, `SUMMARY.md`, `CONTEXT.md` → `.claude/agent-team/templates/`
    - `scripts/kb-check.py` → `.claude/agent-team/kb-check.py` (chmod +x)
+   - `scripts/board.py` → `.claude/agent-team/board.py` (chmod +x). Board chat SQLite, dữ liệu ở `.agent-team/board.db` (đã gitignore).
 5. **CLAUDE.md**: chưa có mục "## Agent Team" thì thêm nội dung `templates/claude-md-section.md` vào cuối. Không sửa phần khác.
-5b. **Code graph (tùy chọn)**: hỏi user có muốn dùng không. Không → `USE_CODE_GRAPH=0`, bỏ qua.
-   - Có → không cài gói ngoài, chỉ cần `python3` (nhiều repo: chạy ở repo chính):
-     1. Copy `scripts/code-graph.py` → `.claude/agent-team/code-graph.py` (chmod +x).
-     2. Build lần đầu: `.claude/agent-team/code-graph.py build` → `code-graph-out/GRAPH_REPORT.md`. Lỗi → báo user, không đoán.
-     3. Báo user: graph quét file đã commit, hỗ trợ rb, py, js/ts, go, java, php, vue. Cạnh INFERRED là gợi ý.
-6. **.gitignore**: `.agent-team/` và `code-graph-out/` thêm vào repo chính. `.env*`, dump thêm vào **mọi repo trong `REPOS`**. Thêm nếu chưa có:
+5a. **Vẽ sơ đồ trong báo cáo**: kiểm `mmdc --version` (Mermaid CLI). Chưa có → báo user lệnh cài `npm i -g @mermaid-js/mermaid-cli` (không tự cài). Không có thì REPORT.html vẫn tạo được, sơ đồ hiện dạng văn bản.
+5b. **Code graph = Graphify (tùy chọn)**: hỏi user có muốn dùng không. Không → `USE_CODE_GRAPH=0`, bỏ qua.
+   - Có → kiểm `graphify --version`. Chưa có thì **không tự cài**, báo user lệnh cài trong `release-notes.md` của plugin (`uv tool install --python 3.11 graphifyy==<bản>`, tên gói 2 chữ y) và 2 biến `GRAPHIFY_BACKEND=none`, `GRAPHIFY_QUERY_LOG_DISABLE=1`.
+     1. Build lần đầu (chỉ đọc code, không gọi LLM): chạy `graphify update .` (nhiều repo: `graphify update <repo>` từng repo trong `REPOS`, rồi `graphify merge-graphs <repo>/graphify-out/graph.json ... --out graphify-out/merged-graph.json` ở repo chính). Chưa cài `graphify` → bỏ qua, báo ở cuối.
+     2. Lỗi → báo user, không đoán. **Không chạy** `graphify install`, `graphify hook install`, `graphify claude install` (đụng hook guard), `graphify extract` (gọi LLM).
+     3. Báo user: graph dựng bằng tree-sitter từ file đã commit, tới mức hàm, có `file:dòng`.
+6. **.gitignore**: `.agent-team/` thêm vào repo chính. `graphify-out/`, `.env*`, dump thêm vào **mọi repo trong `REPOS`**. Thêm nếu chưa có:
    ```
    .agent-team/
-   code-graph-out/
+   graphify-out/
    .env*
    !.env.example
    *.dump

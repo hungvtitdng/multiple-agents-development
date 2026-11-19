@@ -13,9 +13,12 @@
 - Loại: TODO (NHỎ / VỪA / LỚN)
 - Tiêu chí nghiệm thu: TODO (chỉ cần cho NHỎ, vd AC ngắn do Lead viết)
 - Phương án chốt: TODO (tên/mô tả; VỪA/LỚN)
+- Workflow: TODO (YES = có design/workflow.md / N/A)
+- UI mockup: TODO (YES = có design/mockup-<màn>.html đen trắng / N/A nếu task không có UI)
 - Security duyệt solution: TODO (APPROVED / N/A)
 - Kết quả test: TODO (PASS / FAIL)
 - Lint/format: TODO (PASS / N/A)
+- Gap còn mở: TODO (số gap chưa đóng ở mục 14; 0 mới sang S5)
 - Code review: TODO (APPROVED)
 - Security review: TODO (APPROVED)
 - Cập nhật KB: TODO (YES / KHÔNG CẦN)
@@ -28,14 +31,21 @@
 - AC-<n>: Given ... When ... Then ... (đánh số AC-1, AC-2, ...)
 
 ## 2. Giả định (Assumption) cần user xem lại
-| Điểm chưa rõ | Cách hiểu đã chọn (best solution) | Lý do | Ai đề xuất |
-|---|---|---|---|
+> Hiện đỏ ở đầu REPORT.html để client xác nhận. Xếp theo Mức ảnh hưởng. Client trả lời thì ghi vào cột cuối: `Đúng` / `Sai: <cách đúng>`.
+
+| Điểm chưa rõ | Cách hiểu đã chọn (best solution) | Lý do | Phương án khác đã xét | Ưu | Nhược | Ảnh hưởng nếu sai | Mức ảnh hưởng (Cao / Trung bình / Thấp) | Ai đề xuất | Client xác nhận |
+|---|---|---|---|---|---|---|---|---|---|
 
 ## 3. Các phương án (A/B/C)
+> Mỗi phương án ghi đúng các dòng dưới: REPORT.html dựng bảng so sánh (cột = phương án) từ các dòng này + bảng điểm mục 5.
+
 ### A. <tên>
-- Tổng thể + kỹ thuật:
+- Mô tả: <tổng thể + kỹ thuật>
 - API contract:
-- Ưu / Nhược / Rủi ro:
+- Ưu:
+- Nhược:
+- Rủi ro:
+- Kết luận: Chọn / Gộp (lấy ý ...) / Loại (vì ...)
 
 ### B. <tên>
 
@@ -74,6 +84,10 @@
 
 Ý kiến thiểu số bị bác (ghi đủ, không bỏ):
 
+## 7b. WHY đã thống nhất (chép từ `board.py whys`)
+| WHY | Ai hỏi → ai | Câu hỏi | Kết luận cuối | Trạng thái (agreed / ruled / assumption) | Không đồng ý (nếu ruled/assumption) |
+|---|---|---|---|---|---|
+
 ## 8. Phán quyết của Lead
 | Issue | 2 bên | Quyết định | Lý do |
 |---|---|---|---|
@@ -102,3 +116,9 @@ Issue còn để lại + lý do:
 - [ ] Chạy migration
 - [ ] Thêm ENV mới
 - [ ] Xem lại các Assumption ở mục 2
+
+## 14. Gap phát hiện khi làm (S3-S4)
+> Dev/test-executor báo thiếu thông tin → debate nhỏ (tối đa 2 lượt) → Lead chốt. Mỗi gap phải có nguyên nhân gốc và bài học.
+
+| ID | Thiếu gì | Báo bởi | Loại | Người debate | Quyết định | Vì sao S1-S2 bỏ sót (AC thiếu case / KB sai-thiếu / CONTEXT thiếu / Phương án chưa tính / Yêu cầu mơ hồ) | Bài học | Trạng thái |
+|---|---|---|---|---|---|---|---|---|

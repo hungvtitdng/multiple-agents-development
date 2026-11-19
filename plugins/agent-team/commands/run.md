@@ -16,7 +16,7 @@ Làm đúng playbook dưới đây. **Không hỏi lại user**, team tự bàn 
    - `<task-id>` = `YYYYMMDD-<slug-ngắn>`.
    - Nhiều repo (`REPOS`): làm trong từng repo (`git -C ../FrontEnd ...`), chỉ repo task đụng tới; ghi danh sách vào TASK.md. Board và `docs/` nằm ở repo chính.
 3. Tạo `docs/agent-tasks/<task-id>/TASK.md` (từ `.claude/agent-team/templates/TASK.md`) và `board/SUMMARY.md` (từ `SUMMARY.md`). `echo S1 > .agent-team/stage`.
-4. `USE_CODE_GRAPH=1`: chạy `.claude/agent-team/code-graph.py build`.
+4. `USE_CODE_GRAPH=1`: chạy `graphify update .` (nhiều repo: `graphify update <repo>` từng repo trong `REPOS`, rồi `graphify merge-graphs <repo>/graphify-out/graph.json ... --out graphify-out/merged-graph.json` ở repo chính). Chưa cài `graphify` → bỏ qua, báo ở cuối.
 5. Task dở dang từ phiên trước → dừng, dùng `/agent-team:resume <task-id>`.
 
 ## 1. Phân loại task (ghi `- Loại:` + lý do vào TASK.md)
@@ -30,8 +30,9 @@ Làm đúng playbook dưới đây. **Không hỏi lại user**, team tự bàn 
 - Giữa chừng thấy phức tạp hơn → nâng loại, gọi thêm người, ghi lý do.
 
 ## 2. Cách chạy agent (subagent) và model
-- Gọi subagent `agent-team:<role>`. Mỗi agent chạy xong là kết thúc, **trả kết quả về cho bạn**. Agent không nhắn tin cho nhau và không ghi board/TASK.md (hook chặn). **Gọi các agent cùng lượt trong cùng một message để chạy song song.**
-- Mỗi lần gọi nêu: mục tiêu, đầu vào (đường dẫn TASK.md, CONTEXT.md, kết quả lượt trước **dán nguyên văn**, vì agent không nhớ lượt trước), đầu ra (≤ 15 dòng theo `templates/POST.md`).
+- Gọi subagent `agent-team:<role>`. Mỗi agent chạy xong là kết thúc. Agent **tự đọc và post lên board** (mục 3), trả về bạn ≤ 5 dòng: số tin đã post, **điểm chấm** (kín, không post), `Assumption`. Không ghi TASK.md (hook chặn). **Gọi các agent cùng lượt trong cùng một message để chạy song song.**
+- Mỗi lần gọi nêu: task-id, mục tiêu, đầu vào (đường dẫn TASK.md, CONTEXT.md). **Không dán lại kết quả lượt trước**: agent tự `board.py read <task-id>`. Đầu ra: bài post ≤ 15 dòng theo `templates/POST.md` + điểm chấm trả riêng cho bạn.
+- Skill trong plugin (`agent-team:<tên>`) agent tự nạp khi cần, không cần dán vào prompt.
 - Chỉ truyền ngữ cảnh cần thiết. Không nhờ nhiều agent làm cùng một phân tích trừ khi cần đối chiếu độc lập.
 
 **Model theo `COST_TIER`** trong config (mặc định `standard`). Khi gọi agent, truyền tham số `model` theo bảng (ghi đè model mặc định trong định nghĩa agent). Security và Architect không bao giờ hạ dưới opus; reviewer/challenger không bao giờ hạ xuống haiku.
@@ -44,45 +45,64 @@ Làm đúng playbook dưới đây. **Không hỏi lại user**, team tự bàn 
 | business-analyst, test-designer | sonnet | opus | opus |
 | technical-architect (chỉ LỚN) | sonnet | opus | opus |
 | scout | haiku | sonnet | sonnet |
+| ui-designer (chỉ task có UI) | sonnet | sonnet | opus |
 | backend-dev, frontend-dev | sonnet | sonnet | sonnet (LỚN: opus) |
 | test-executor | sonnet | sonnet | sonnet |
 | code-reviewer, challenger | sonnet | sonnet | opus |
 
 `economy` tiết kiệm bằng cách hạ role debate phụ và Scout, không bằng cách bỏ bước. Task chạm auth/phân quyền/secrets: dùng ít nhất `standard` cho cả debate.
 
-## 3. Board (Lead ghi, để user đọc lại)
+## 3. Board: phòng chat chung (SQLite)
+Board lưu ở `.agent-team/board.db` (gitignore). Agent đọc được mọi bài, chỉ post bằng tên mình (hook chặn mạo danh). Challenger không dùng board.
 ```
-docs/agent-tasks/<task-id>/
-├── TASK.md        ← điều kiện chuyển giai đoạn, phương án chốt, bảng điểm, ý kiến từng role
-├── CONTEXT.md     ← Scout ghi
-└── board/SUMMARY.md + S<giai đoạn>-R<lượt>-<role>-<n>.md   ← bạn chép kết quả mỗi agent
+B=.claude/agent-team/board.py
+$B open    <task-id> S2 1 --roles solution-architect,business-analyst --goal "đề xuất"   # bạn mở lượt
+$B status  <task-id>                         # ai chưa post, @ chưa trả lời
+$B read    <task-id>                         # tóm tắt lượt trước + toàn bộ lượt đang mở
+$B summary <task-id> <<'EOF' ... EOF         # bạn tóm tắt lượt (ý mới, ai nói, chấp nhận/bác, @ cần trả lời)
+$B close   <task-id>                         # đóng lượt
+$B export  <task-id>                         # → docs/agent-tasks/<task-id>/board/DEBATE.md (S6, để user đọc + commit)
 ```
-Sau mỗi lượt: chép kết quả từng role thành file trong `board/`, cập nhật `SUMMARY.md` (ý mới, ai nói, chấp nhận/bác, @ cần trả lời).
-- Chép nguyên văn, đúng tên `S<giai đoạn>-R<lượt>-<role>-<n>.md`, giữ nguyên dòng cuối `Kết luận: ...` của reviewer/security/challenger. Không sửa chữ để qua vòng; chưa APPROVED thì làm tiếp vòng sửa.
+- Mỗi lượt: `open` → gọi agent song song → `status` (đủ bài chưa, ai còn nợ @) → `read` → `summary` → `close`.
+- Lượt sau agent đọc tóm tắt + toàn bộ lượt đang mở, nên bạn **không chép lại** ý kiến giữa các lượt.
+- Agent nào không post được (lỗi script/hook): chép kết quả nó trả về bằng `$B post <task-id> --role <role>` và ghi chú "(Lead chép)".
+- Thư mục `docs/agent-tasks/<task-id>/` gồm `TASK.md` (bạn), `CONTEXT.md` (Scout), `board/SUMMARY.md` (bạn, tóm tắt cuối) và `board/DEBATE.md` (export).
 
 ## 4. S1-S2: Scout + Debate (VỪA/LỚN)
 1. **Scout** (sonnet): đọc KB + repo một lần → `CONTEXT.md` ≤ 1 trang. Mọi agent sau đọc file này.
-2. **Lượt 1 ĐỀ XUẤT (song song):**
-   - `solution-architect` → 2-3 phương án A/B/C + API contract (LỚN: thêm `technical-architect`).
-   - `business-analyst` → AC (Given/When/Then, `AC-n`), điểm mơ hồ + cách chọn (không hỏi user).
-3. **Lượt 2 PHẢN BIỆN + CHẤM ĐIỂM (song song):** `business-analyst`, `solution-architect`, `test-designer` (phản biện **AC của BA là bắt buộc**), gửi cho từng agent TOÀN BỘ kết quả lượt 1. Mỗi người góp ý **tất cả** phương án, rủi ro cụ thể, chấm điểm (kết quả chỉ về bạn nên điểm tự kín).
-4. **Lượt 3 (chỉ khi cần):** có bất đồng lớn, Security Critical/High, hoặc bạn muốn gộp ý → Architect sửa/gộp, các role liên quan xác nhận. Tối đa 3 lượt.
-5. **Chốt (bạn quyết, không hỏi user):** điền TASK.md mục 3-8 theo bảng điểm.
+2. **Lượt 1 ĐỀ XUẤT (song song)**, `$B open <task-id> S2 1 --roles solution-architect,business-analyst`:
+   - `solution-architect` → 2-3 phương án A/B/C + API contract (LỚN: thêm `technical-architect`) + `docs/agent-tasks/<task-id>/design/sequence.md` (Mermaid).
+   - `business-analyst` → AC (Given/When/Then, `AC-n`), điểm mơ hồ + cách chọn (không hỏi user) + `docs/agent-tasks/<task-id>/design/workflow.md` (workflow nghiệp vụ) và `state.md` (khi task đổi trạng thái dữ liệu).
+   - `ui-designer` (**chỉ khi task có UI**) → wireframe **đen trắng, đủ chức năng và trạng thái** mỗi màn: `docs/agent-tasks/<task-id>/design/mockup-<màn>.html` (skill `agent-team:wireframe`). Màu/font thật do FE lấy từ dự án khi code.
+   - Sơ đồ viết theo skill `agent-team:diagrams`. Cả team hỏi WHY vào workflow và mockup như với phương án.
+3. **Chốt team debate:** `$B team <task-id> --roles lead,business-analyst,solution-architect,test-designer` (+ `security` khi chạm quyền/dữ liệu nhạy cảm/secret, + `technical-architect` khi LỚN, + `ui-designer` khi task có UI). Chỉ thành viên team được hỏi và biểu quyết WHY.
+4. **Lượt 2 HỎI WHY (song song)**, `S2 2`: mỗi role đọc toàn bộ lượt 1, đặt **≥ 2** `WHY @role: ...?` vào khẳng định cụ thể (phương án, AC, giả định). **Chưa kết luận, chưa chấm điểm.** Bạn cũng hỏi WHY khi hai bên khác nhau: khác dữ kiện hay khác ưu tiên?
+5. **Lượt 3..n TRẢ LỜI + BIỂU QUYẾT (lặp tới khi hết WHY):** mỗi lượt `$B status` → gọi song song những người còn nợ:
+   - người bị hỏi: `RE WHY-n: <trả lời + bằng chứng file:dòng / AC / số liệu / KB>`;
+   - mọi thành viên khác (cả bạn): `AGREE WHY-n` khi **bị thuyết phục**, hoặc `DISAGREE WHY-n: <vì sao ...?>` (bắt buộc kèm lý do).
+   - Trả lời mới → phiếu cũ bị xoá, biểu quyết lại. WHY chỉ đóng khi **cả team** (trừ người trả lời) AGREE. **Không giới hạn số lượt WHY.**
+   - Câu trả lời làm phương án đổi → Architect post phương án đã sửa trong lượt đó.
+   - **Giằng co** (≥ 2 lần trả lời, không có bằng chứng mới): `$B why-close <task-id> <n> --as ruling|assumption --note "<quyết định>"`. Board tự ghi người không đồng ý → chép vào TASK.md "ý kiến thiểu số" (assumption → mục 2). **Security DISAGREE thì không đóng được**: phải xử lý tới khi Security AGREE.
+6. **Lượt CHẤM ĐIỂM (song song)**, chỉ khi `WHY chưa thống nhất: 0`: mỗi role chấm điểm các phương án (đã sửa theo WHY), trả riêng về bạn. Sửa/gộp phương án sau chấm điểm tối đa 3 lượt (không tính lượt WHY).
+7. **Chốt (bạn quyết, không hỏi user):** điền TASK.md mục 3-8 theo bảng điểm.
    - **Chọn một:** điểm cao nhất, không dính lỗi Security Critical/High. Điểm sát nhau → ít sửa code cũ hơn.
    - **Hoặc gộp:** lấy ý mạnh nhất từng phương án thành giải pháp mới; ghi ý nào từ phương án nào, ai đề xuất, vì sao lấy/bỏ. Architect kiểm tính nhất quán.
-   - Ghi `- Phương án chốt:` và tổng hợp ý kiến **từng role** (kể cả ý thiểu số bị bác + lý do).
-6. **Security duyệt nhanh** phương án đã chốt (kể cả giải pháp gộp), ≤ 15 dòng. `REJECTED` → Architect sửa (lượt 3) rồi duyệt lại. Chép bài vào `board/S2-R3-security-<n>.md`, rồi ghi `- Security duyệt solution: APPROVED` trong TASK.md.
-7. Test Design (opus) bắt đầu viết `docs/testing/cases/<task-id>.md` (có thể song song với S3).
-8. `echo S3 > .agent-team/stage`. Hook kiểm TASK.md: `Loại`, `Phương án chốt`, `Security duyệt solution`. Thiếu gì hook nói thiếu đó.
-9. TASK.md mục 0: chép **yêu cầu gốc nguyên văn** của user (dùng cho challenger).
+   - TASK.md mục 3: mỗi phương án ghi `- Mô tả / Ưu / Nhược / Rủi ro / Kết luận` (Chọn / Gộp / Loại + lý do). Mục 2: mỗi giả định đủ cột (phương án khác, ưu, nhược, ảnh hưởng nếu sai, mức ảnh hưởng).
+   - Ghi `- Phương án chốt:`, tổng hợp ý kiến **từng role** (kể cả ý thiểu số bị bác + lý do) và bảng WHY (`$B whys <task-id>`) vào TASK.md mục 7b.
+8. **Security duyệt nhanh** phương án đã chốt (kể cả giải pháp gộp), ≤ 15 dòng. `REJECTED` → Architect sửa (lượt 3) rồi duyệt lại. Security post kết quả lên board (lượt S2 đang mở), rồi bạn ghi `- Security duyệt solution: APPROVED` trong TASK.md.
+9. Test Design (opus) bắt đầu viết `docs/testing/cases/<task-id>.md` (có thể song song với S3).
+10. Ghi TASK.md `- Workflow: YES` (có `design/workflow.md`) và `- UI mockup: YES` (có mockup) hoặc `N/A` (task không có luồng nghiệp vụ mới / không có UI). `echo S3 > .agent-team/stage`. Hook kiểm TASK.md (`Loại`, `Phương án chốt`, `Security duyệt solution`, `Workflow`, `UI mockup`, file trong `design/` có thật) **và board không còn WHY chưa thống nhất**. Thiếu gì hook nói thiếu đó.
+11. TASK.md mục 0: chép **yêu cầu gốc nguyên văn** của user (dùng cho challenger).
+12. **Báo cáo debate:** `$B report <task-id>` → `docs/agent-tasks/<task-id>/REPORT.html` (dashboard gửi client) + `REPORT.md`: bảng giả định tô đỏ ở đầu (client xác nhận Đúng/Sai), ô kết quả, bảng so sánh phương án + điểm từng tiêu chí, quyết định, timeline debate, thẻ WHY (ai đồng ý / không đồng ý), ý kiến từng role, phán quyết, gap, test, review. Mẫu: `examples/report-sample.html` của plugin.
 
 **Bảng điểm (1-5 × trọng số):** Đáp ứng AC ×3, Ít ảnh hưởng code cũ ×3, Bảo mật ×3, Hiệu năng/mở rộng ×2, Dễ maintain/test ×1, Công sức ×1. Phương án có lỗi Security Critical/High chưa xử lý → **loại**, dù điểm cao.
 
-**Bế tắc** (cùng issue hết lượt 3, không có lập luận mới): bạn phán quyết, ghi SUMMARY + "Phán quyết của Lead" trong TASK.md, không mở lại. **Không override** lỗi Security Critical/High.
+**Bế tắc** (WHY: dùng `why-close` như bước 5; sửa phương án: cùng issue hết 3 lượt, không có lập luận mới): bạn phán quyết, ghi SUMMARY + "Phán quyết của Lead" trong TASK.md, không mở lại. **Không override** lỗi Security Critical/High.
 
 ## 5. Thiếu thông tin: không hỏi user
 - Business rule thiếu → bạn chọn **best solution** (theo bảng điểm, sau khi các role góp ý), ghi vào TASK.md mục 2 "Giả định" với nhãn `Assumption`. Không chặn tiến độ.
 - Kỹ thuật thiếu → team tự quyết qua debate.
+- Dev/test-executor **không** tự đoán hay ghi `Assumption`: thiếu thông tin khi đang làm → trả **GAP**, bạn xử lý theo mục 7b.
 - `BLOCKED` chỉ khi không thể tiếp tục an toàn: thiếu quyền/dependency, không xác minh được repo/branch, vượt phạm vi, thiếu môi trường test, hoặc Security Critical/High chưa xử lý được. Ghi lý do + điều kiện tiếp tục vào TASK.md.
 - Nhãn: `Verified` · `Assumption` · `Proposed` · `Confirmed`.
 
@@ -91,12 +111,12 @@ Hook chặn theo giai đoạn: S1-S2 chỉ tài liệu, S3 chỉ code, S4 chỉ 
 
 | Giai đoạn | Việc |
 |---|---|
-| **S3 CODE** | `backend-dev` ∥ `frontend-dev` song song theo API contract. Đổi contract giữa chừng → báo bạn, không tự thống nhất. Migration chỉ qua `agent-db-clone.sh verify`. Dev chạy lint/format. Cập nhật `- Lint/format:`. |
-| **S4 TEST** | `test-designer` đã có test case → `test-executor` viết và chạy test trên DB clone, ghi từng test vào `docs/testing/test-report.md` (`| task-id | AC-n | test | PASS/FAIL/BLOCKED/NOT RUN | bằng chứng |`), rồi ghi `- Kết quả test: PASS` trong TASK.md khi mọi AC đều PASS. Fail → giao dev sửa (S3 lại), tối đa 3 vòng/issue. Sau S3 và S4: `.claude/agent-team/code-graph.py build`. Lint/format pass → ghi `- Lint/format: PASS`. |
-| **S5 REVIEW** | Song song: `code-reviewer`, `security` (review đầy đủ) và (VỪA/LỚN) `challenger`. **Challenger chỉ nhận yêu cầu gốc nguyên văn (TASK.md mục 0) + tên nhánh gốc, KHÔNG đưa TASK.md/AC/thiết kế/board/CONTEXT**; hook chặn nó đọc `docs/`. Lệch giữa challenger và AC của BA (challenger `not met`/`can't tell`) là issue thật: dev/BA xử lý. Có issue → dev sửa, **chỉ reviewer đã báo lỗi review lại**, chỉ khi diff đổi. Tối đa 3 vòng/issue, rồi phán quyết (Security Critical/High không override). Khi cả ba APPROVED: gọi `business-analyst`, `solution-architect`, `security`, dev (theo phần mình sở hữu) cập nhật KB phần bị ảnh hưởng; `code-reviewer` xác nhận KB khớp code. Ghi `- Code review: APPROVED`, `- Security review: APPROVED`, `- Cập nhật KB: YES` (hoặc `KHÔNG CẦN` nếu task không đổi API/DB/rule/màn hình). |
-| **S6 ĐÓNG** | **Bài học (mục 11; lỗi đã ghi ngay lúc xảy ra):** hỏi lần cuối "còn lỗi nào chưa ghi không?". Có lỗi nào trong task → `- Bài học: YES` (đã ghi vào `LESSONS_PATH`); không có → `- Bài học: KHÔNG CÓ`. Bài học bị lặp lại ≥ 1 lần → chuyển thành quy tắc trong `docs/engineering/review-checklist.md`. Điền TASK.md (mục 9-12), `agent-db-clone.sh down`, commit + push, `rm .agent-team/stage`, báo cáo. |
+| **S3 CODE** | `backend-dev` ∥ `frontend-dev` song song theo API contract. FE làm **đủ chức năng và trạng thái của wireframe**, nhưng dùng màu, font, component **có sẵn của dự án** (không copy style đen trắng). Đổi contract giữa chừng → báo bạn, không tự thống nhất. Migration: sinh file **chỉ** bằng `agent-db-clone.sh generate` (generator trong container, hook chặn tự tạo file), kiểm bằng `agent-db-clone.sh verify`. Dev chạy lint/format. Cập nhật `- Lint/format:`. |
+| **S4 TEST** | `test-designer` đã có test case → `test-executor` viết và chạy test trên DB clone, ghi từng test vào `docs/testing/test-report.md` (`| task-id | AC-n | test | PASS/FAIL/BLOCKED/NOT RUN | bằng chứng |`), rồi ghi `- Kết quả test: PASS` trong TASK.md khi mọi AC đều PASS. Fail → giao dev sửa (S3 lại), tối đa 3 vòng/issue. Sau S3 và S4: build lại graph như mục 0.4. Lint/format pass → ghi `- Lint/format: PASS`. |
+| **S5 REVIEW** | Song song: `code-reviewer`, `security` (review đầy đủ) và (VỪA/LỚN) `challenger`. Mở `$B open <task-id> S5 <n> --roles code-reviewer,security,backend-dev,frontend-dev`: reviewer post issue, dev trả lời/phản biện bằng `--reply`. Challenger không dùng board, trả thẳng cho bạn. **Challenger chỉ nhận yêu cầu gốc nguyên văn (TASK.md mục 0) + tên nhánh gốc, KHÔNG đưa TASK.md/AC/thiết kế/board/CONTEXT**; hook chặn nó đọc `docs/`. Lệch giữa challenger và AC của BA (challenger `not met`/`can't tell`) là issue thật: dev/BA xử lý. Có issue → dev sửa, **chỉ reviewer đã báo lỗi review lại**, chỉ khi diff đổi. Tối đa 3 vòng/issue, rồi phán quyết (Security Critical/High không override). Khi cả ba APPROVED: gọi `business-analyst`, `solution-architect`, `security`, dev (theo phần mình sở hữu) cập nhật KB phần bị ảnh hưởng; `code-reviewer` xác nhận KB khớp code. Ghi `- Code review: APPROVED`, `- Security review: APPROVED`, `- Cập nhật KB: YES` (hoặc `KHÔNG CẦN` nếu task không đổi API/DB/rule/màn hình). |
+| **S6 ĐÓNG** | **Bài học (mục 11; lỗi đã ghi ngay lúc xảy ra):** hỏi lần cuối "còn lỗi nào chưa ghi không?". Có lỗi nào trong task → `- Bài học: YES` (đã ghi vào `LESSONS_PATH`); không có → `- Bài học: KHÔNG CÓ`. Bài học bị lặp lại ≥ 1 lần → chuyển thành quy tắc trong `docs/engineering/review-checklist.md`. Điền TASK.md (mục 9-12), `$B export <task-id>`, `$B report <task-id>` (tạo lại REPORT.html + REPORT.md đầy đủ), `agent-db-clone.sh down`, commit + push, `rm .agent-team/stage`, báo cáo. |
 
-Sang S5 hook kiểm `Kết quả test` và `Lint/format`. Sang S6 hook kiểm `Code review`, `Security review`, `Cập nhật KB`, `Bài học` (đều đọc từ TASK.md). Chỉ ghi `APPROVED`/`PASS` khi thật sự đạt; challenger, reviewer, security chưa APPROVED thì làm tiếp vòng sửa.
+Sang S5 hook kiểm `Kết quả test`, `Lint/format` và `Gap còn mở: 0`. Sang S6 hook kiểm `Code review`, `Security review`, `Cập nhật KB`, `Bài học` (đều đọc từ TASK.md). Chỉ ghi `APPROVED`/`PASS` khi thật sự đạt; challenger, reviewer, security chưa APPROVED thì làm tiếp vòng sửa.
 
 DONE chỉ khi: code đúng yêu cầu và quy chuẩn, test pass có bằng chứng, review xong, Security xong, KB cập nhật (hoặc không cần), đúng branch, không thay đổi ngoài phạm vi. Không tự đánh dấu DONE chỉ vì dev báo xong.
 
@@ -105,6 +125,24 @@ DONE chỉ khi: code đúng yêu cầu và quy chuẩn, test pass có bằng ch�
 2. `echo S3 > .agent-team/stage` → dev phù hợp (BE hoặc FE) code theo quy chuẩn trong `docs/engineering/`.
 3. S4: `test-executor` chạy test liên quan (hoặc dev chạy nếu quá đơn giản). S5: `code-reviewer` ∥ `security`. S6 như trên.
 4. Lỗi Security Critical/High hoặc phát hiện task không nhỏ → nâng loại, quay lại mục 4.
+5. Dev báo GAP → mục 7b (gap nghiệp vụ vẫn gọi `business-analyst` dù Fast Track không có BA).
+
+## 7b. Gap khi đang làm (S3-S4)
+Dev/test-executor thiếu thông tin thì dừng đúng phần đó và trả **GAP** (mẫu cuối `POST.md`). Không để dev tự chọn.
+1. Ghi gap vào TASK.md mục 14 (`G-<n>`), cập nhật `- Gap còn mở: <số>`.
+2. Phân loại, gọi đúng người **song song**, debate nhỏ trên board: `$B open <task-id> S3 <n> --roles <role...>,<dev báo gap> --goal "G-<n>: <thiếu gì>"`.
+
+| Loại gap | Gọi |
+|---|---|
+| Nghiệp vụ / AC thiếu case | `business-analyst`, `test-designer` |
+| Thiết kế / API contract / không khả thi | `solution-architect`, `test-designer` |
+| Đụng quyền, dữ liệu nhạy cảm, secret | thêm `security` |
+
+   Dev báo gap được post giải thích thêm. Mỗi gap **tối đa 2 lượt**, chấm điểm như mục 4; hết lượt chưa thống nhất thì bạn phán quyết (mục 8 TASK.md). Không override Security Critical/High.
+3. **Chốt:** cập nhật TASK.md (AC mục 1 / phương án mục 6), `test-designer` bổ sung test case cho case mới, giao dev làm tiếp phần đã dừng. Hướng chốt đụng quyền/dữ liệu → Security duyệt nhanh lại.
+4. **Vì sao S1-S2 bỏ sót (bắt buộc):** chọn đúng 1 nguyên nhân gốc: AC thiếu case · KB sai/thiếu · CONTEXT thiếu · Phương án chưa tính tới · Yêu cầu gốc mơ hồ. Ghi **ngay** bài học vào `LESSONS_PATH` (mục 11): "Cách tránh" kiểm chứng được, "Phát hiện bởi" = role báo gap. KB sai/thiếu → giao chủ KB sửa ở S5. Yêu cầu gốc mơ hồ → thêm vào TASK.md mục 2 (Giả định cần user xem lại).
+5. Đóng gap: trạng thái `Closed` ở mục 14, giảm `- Gap còn mở:`.
+6. **≥ 3 gap trong một task** = S2 làm chưa tới: `echo S2 > .agent-team/stage`, debate lại toàn bộ solution (mục 4) với AC đã bổ sung, nâng loại nếu cần, ghi bài học loại `process`.
 
 ## 8. Ai được sửa gì (hook chặn)
 | Sản phẩm | Chỉ người này ghi |
@@ -116,6 +154,7 @@ DONE chỉ khi: code đúng yêu cầu và quy chuẩn, test pass có bằng ch�
 | Kiến trúc, `engineering/`, `decisions/`, `integrations/` | solution-architect, technical-architect |
 | `api/`, `database/` | architect, backend-dev |
 | `security/` | security |
+| `design/workflow.md`, `state.md` · `design/sequence.md` · `design/mockup-*.html` | business-analyst · solution/technical-architect · ui-designer |
 | TASK.md, board, `docs/` còn lại | chỉ Lead (Scout ghi `CONTEXT.md`) |
 Lỗi thuộc sản phẩm của người khác → ghi vào kết quả giao lại cho đúng chủ, không sửa hộ.
 
@@ -125,7 +164,7 @@ Lỗi thuộc sản phẩm của người khác → ghi vào kết quả giao l�
 - Không push/merge vào main/develop, không force push, không rewrite lịch sử, không tạo PR, không xoá branch. Hook chặn push có secret, `.env`, key, dump DB.
 
 ## 10. Báo cáo cho user (cuối cùng)
-Dòng đầu: kết quả + link branch (mỗi repo một branch). Danh sách tối đa 5 mục mỗi nhóm:
+Dòng đầu: kết quả + link branch (mỗi repo một branch). Dòng 2: đường dẫn `REPORT.html` (gửi client: giả định tô đỏ đầu trang, client chọn Đúng/Sai rồi bấm Copy câu trả lời) và `REPORT.md`. Danh sách tối đa 5 mục mỗi nhóm:
 - TASK.md, KB đã cập nhật (file nào)
 - Phương án chốt + 1 dòng lý do (nếu gộp: ý nào từ đâu)
 - Số issue review theo mức, issue còn lại
@@ -139,8 +178,11 @@ Mục đích: **đã sai một lần thì không vấp lại.** File của repo 
 **Ghi ngay khi có lỗi thật** (không chờ cuối task), khi:
 1. Review có issue Medium trở lên (code-reviewer, security) hoặc challenger `not met`.
 2. Test fail do code (không phải do môi trường).
-3. Một `Assumption` bị review/test/user chứng minh sai.
+3. Một `Assumption` bị review/test/user/**client** chứng minh sai.
+
+**Client trả lời giả định** (từ REPORT.html): ghi vào cột "Client xác nhận" mục 2. `Đúng` → nhãn `Confirmed`, BA cập nhật KB nghiệp vụ. `Sai: <cách đúng>` → mở GAP (mục 7b) để sửa theo cách đúng + ghi bài học. Chạy lại `$B report`.
 4. Security finding, phải làm lại, hoặc task `BLOCKED`.
+4b. Dev/test-executor báo **GAP** (debate S1-S2 bỏ sót case), xem mục 7b.
 5. User sửa cách team làm việc.
 
 Cuối task (S6) hỏi lần nữa "còn lỗi nào chưa ghi không?": có → ghi, `- Bài học: YES`; không có lỗi nào → `- Bài học: KHÔNG CÓ`.

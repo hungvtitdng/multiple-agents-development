@@ -11,3 +11,14 @@
 7. Test đi kèm, dễ test.
 8. Comment ngắn, chỉ khi thật cần.
 9. Không secret, `.env`, dữ liệu thật trong code.
+
+## Mẫu tìm lỗi theo stack
+> Skill `agent-team:code-review` nêu nhóm lỗi chung; bảng này ghi **cách tìm trong dự án** (mẫu grep, hàm, cách sửa đúng).
+
+| Nhóm | Mẫu grep / dấu hiệu | Cách sửa đúng trong dự án | Ví dụ (file:dòng) | Nhãn |
+|---|---|---|---|---|
+| N+1 | | | | |
+| Thiếu phân trang | | | | |
+| Nuốt lỗi | | | | |
+| Debug sót | | | | |
+| State giao diện thiếu | | | | |

@@ -9,6 +9,7 @@ Khung chính: `kien-truc-doi-ngu-ai-agent-claude-code-v2.md`. Phần lấy thêm
 | **[+C]** | Tiết kiệm token |
 | **[+D]** | Vận hành thực tế (nhiều repo, resume, DB clone...) |
 | **[+E]** | Quy chuẩn code / clean code nằm trong KB |
+| **[+F]** | Board chat SQLite + skill chung của plugin (v0.10); workflow + wireframe đen trắng (ui-designer) + báo cáo HTML cho client |
 
 Trạng thái: **ĐÃ CHỐT thiết kế, chưa áp dụng vào code plugin.**
 
@@ -97,9 +98,9 @@ Thêm:
 ### 3.5 Backend Developer
 - Đọc requirement/thiết kế, kiểm code hiện tại trước khi sửa, triển khai business logic theo yêu cầu đã xác nhận, API, DB, validation, xử lý lỗi, authn/authz, unit + integration test, cập nhật tài liệu backend, commit vào branch task.
 - Không tự đổi API contract nếu ảnh hưởng FE/hệ thống khác khi chưa phối hợp với Lead và SA.
-- **[+D]** Migration chỉ qua `agent-db-clone.sh` (DB clone, không đụng DB thật).
+- **[+D]** Migration chỉ qua `agent-db-clone.sh` (DB clone, không đụng DB thật). **[+F]** File migration chỉ sinh bằng `agent-db-clone.sh generate` (generator chạy trong container), guard chặn tự tạo/đổi tên để tránh trùng version.
 - **[+E]** Code theo `docs/engineering/` (clean code, mục 9.7); chạy lint/format trước khi commit.
-- **[+A]** Thấy solution không khả thi → báo Lead; Lead mở lại tối đa 1 lượt.
+- **[+A]** Thiếu thông tin hoặc solution không khả thi → **không tự đoán**, dừng phần đó, báo Lead **GAP**; Lead mở debate nhỏ (tối đa 2 lượt), ghi nguyên nhân S1-S2 bỏ sót vào bài học (`run.md` mục 7b).
 
 ### 3.6 Frontend Developer
 - Đọc requirement/thiết kế, kiểm cấu trúc FE, triển khai giao diện + luồng, tích hợp API, loading/empty/error state, validation, test FE, cập nhật tài liệu màn hình/hành động, commit vào branch task.
@@ -203,7 +204,9 @@ Scout tạo CONTEXT.md. BA, SA, Test Design phân tích theo trách nhiệm, ch�
 
 ### Bước 4: Debate và thống nhất phương án **[+A]**
 
-**Cách chạy [+C]:** subagent, mỗi lượt chạy song song. Agent không nhắn tin cho nhau; Lead chuyển ý kiến giữa các lượt. Điểm chấm kín vì chỉ trả về Lead. Board `docs/agent-tasks/<task-id>/board/` chỉ Lead ghi (để user đọc lại).
+**[+F] Hỏi WHY trước, quyết sau:** sau lượt đề xuất, team debate (Lead chốt danh sách) đặt câu WHY vào từng khẳng định; người bị hỏi trả lời có bằng chứng; mọi thành viên AGREE hoặc DISAGREE kèm lý do; trả lời mới thì biểu quyết lại. WHY chỉ đóng khi **cả team đồng ý**, không giới hạn số lượt. Giằng co (≥ 2 lần trả lời không có bằng chứng mới) thì Lead phán quyết/Assumption và ghi người không đồng ý; WHY của Security không được đóng thay. Chấm điểm chỉ sau khi hết WHY; hook chặn S3 khi board còn WHY mở.
+
+**Cách chạy [+C]:** subagent, mỗi lượt chạy song song. **[+F]** Debate trên board chat SQLite (`board.py`, `.agent-team/board.db`): agent tự đọc tóm tắt lượt trước + toàn bộ lượt đang mở, post bằng tên mình, `@role` = phải trả lời; Lead mở/đóng lượt, tóm tắt, cuối task export ra `board/DEBATE.md`. Lead không còn chép ý kiến giữa các lượt. Điểm chấm kín vì chỉ trả về Lead, không post.
 
 **Mẫu output mỗi agent (≤ 15 dòng):**
 ```
@@ -562,7 +565,7 @@ Trạng thái phản ánh công việc thực tế, không chỉ báo cáo của
 |---|---|
 | Lượt debate | tối đa 3 |
 | Vòng sửa mỗi issue review | tối đa 3, rồi Lead phán quyết |
-| Mở lại solution do dev báo không khả thi | tối đa 1 lượt |
+| Gap khi đang làm (thiếu thông tin / không khả thi) | debate nhỏ tối đa 2 lượt mỗi gap; ≥ 3 gap trong task → quay lại S2 debate toàn bộ |
 | Không có tiến triển | `BLOCKED`, ghi vào báo cáo cuối |
 
 **11.5 Ưu tiên đúng đắn hơn tốc độ.** Rủi ro mất dữ liệu, sai phân quyền, phá tương thích → dừng phần không an toàn, báo Lead; không chọn phương án "nhanh nhất" khi chưa đánh giá ảnh hưởng.
@@ -578,7 +581,9 @@ plugin agent-team/
 │               test-designer, test-executor, backend-developer, frontend-developer,
 │               code-reviewer, security-reviewer      (Lead do command run.md đảm nhiệm)
 ├── hooks/      guard.py, show_post.py
-├── scripts/    agent-db-clone.sh, code-graph.py
+├── scripts/    agent-db-clone.sh, kb-check.py, board.py [+F]   (code graph: Graphify cài riêng)
+├── skills/     [+F] debate-board, acceptance-criteria, test-case-design, security-review,
+│               migration-safety, test-automation, code-review, decision-record
 └── templates/  TASK.md, SUMMARY.md, POST.md (mẫu ≤15 dòng), CONTEXT.md,
                 agent-team.config.example, claude-md-section.md, bộ khung docs/ (mục 9.2)
 
@@ -662,6 +667,7 @@ Thiếu điều kiện bắt buộc → ghi rõ phần thiếu, không đánh d�
 | Khoá vùng theo role (BE/FE/test) | Hook, đã có; **phụ thuộc `agent_type` tới hook khi chạy subagent (chưa kiểm chứng)** |
 | Khoá ghi theo thư mục KB (mục 9.4) | Hook, mở rộng từ `docs/domain/` |
 | Điểm chấm kín | Tự nhiên (subagent trả về Lead) |
+| **[+F]** Board: post bằng tên mình, chỉ Lead open/close/summary/export, challenger không dùng | Hook, thêm mới |
 | Chặn commit có body/trailer, sai format `[role] task-id:` | Hook, thêm mới |
 | Chặn push main/master/develop, force push, secret/.env/dump | Hook, đã có |
 | Migration và test DB chỉ qua `agent-db-clone.sh` | Hook, đã có |
