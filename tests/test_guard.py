@@ -570,5 +570,113 @@ open(os.path.join(gp, dz, "mockup-huy-don.html"), "w").write("x")
 gate("S3 Workflow + UI mockup đủ file",
      "- Loại: VỪA\n- Phương án chốt: A\n- Security duyệt solution: APPROVED\n- Workflow: YES\n- UI mockup: YES\n", "Bash", S3, None, OK)
 
+# ---- App Mode: docs/product + cổng owner ----
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from product_fixture import GOOD, write_product  # noqa: E402
+
+ap = tempfile.mkdtemp()
+os.makedirs(os.path.join(ap, ".claude"))
+os.makedirs(os.path.join(ap, "docs/agent-tasks/A1"))
+open(os.path.join(ap, ".claude/agent-team.config"), "w").write('BE_PATHS="app"\nFE_PATHS="web"\n')
+pz = "docs/product/"
+pr = [
+    ("BA ghi requirements", "Write", {"file_path": pz + "requirements.md"}, "business-analyst", ap, OK),
+    ("BA ghi flows", "Write", {"file_path": pz + "flows.md"}, "business-analyst", ap, OK),
+    ("BA ghi APP.md bị chặn (chỉ Lead)", "Write", {"file_path": pz + "APP.md"}, "business-analyst", ap, B),
+    ("BA ghi questions bị chặn (chỉ Lead)", "Write", {"file_path": pz + "questions.md"}, "business-analyst", ap, B),
+    ("BA ghi mockup sản phẩm bị chặn", "Write", {"file_path": pz + "design/mockup-a.html"}, "business-analyst", ap, B),
+    ("ui-designer ghi mockup sản phẩm", "Write", {"file_path": pz + "design/mockup-a.html"}, "ui-designer", ap, OK),
+    ("ui-designer ghi screens", "Write", {"file_path": pz + "screens.md"}, "ui-designer", ap, OK),
+    ("ui-designer ghi requirements bị chặn", "Write", {"file_path": pz + "requirements.md"}, "ui-designer", ap, B),
+    ("Architect ghi requirements bị chặn", "Write", {"file_path": pz + "requirements.md"}, "solution-architect", ap, B),
+    ("Lead ghi APP.md", "Write", {"file_path": pz + "APP.md"}, None, ap, OK),
+    ("challenger đọc docs/product bị chặn", "Read", {"file_path": pz + "brief.md"}, "challenger", ap, B),
+]
+for c in pr:
+    check(*c)
+total += len(pr)
+
+
+GAP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "plugins", "agent-team", "scripts", "gap-check.py")
+
+
+def app_gate(desc, task, exp, overrides=None, drop=(), product=True, stage=None, spec=True, after=None):
+    """spec: sinh SPEC.md trước; after: sửa file sau khi sinh SPEC (làm SPEC cũ)."""
+    global fail, total
+    import shutil
+    shutil.rmtree(os.path.join(ap, "docs/product"), ignore_errors=True)
+    if product:
+        write_product(ap, overrides, drop)
+        if spec:
+            subprocess.run([sys.executable, GAP, "--spec", ap], capture_output=True)
+        if after:
+            write_product(ap, after)
+    open(os.path.join(ap, "docs/agent-tasks/A1/TASK.md"), "w").write(task)
+    got = run("Bash", stage or S3, None, ap)
+    fail += got != exp
+    total += 1
+    print(f"{'PASS' if got == exp else 'FAIL'}  app gate: {desc}  (expect {exp}, got {got})")
+
+
+APP_TASK = "- Loại: APP\n- Phương án chốt: Rails + React\n- Security duyệt solution: APPROVED\n"
+app_gate("APP đủ tài liệu + owner duyệt -> sang S3 (khung project)", APP_TASK, OK)
+app_gate("APP thiếu phương án chốt", APP_TASK.replace("Rails + React", "TODO"), B)
+app_gate("APP owner chưa duyệt", APP_TASK, B, {"APP.md": GOOD["APP.md"].replace("APPROVED", "TODO")})
+app_gate("APP challenger chưa soi", APP_TASK, B, {"APP.md": GOOD["APP.md"].replace("DONE", "TODO")})
+app_gate("APP câu hỏi CAO còn mở", APP_TASK, B, {"questions.md": GOOD["questions.md"] + "| Q-3 | Cọc? | CAO | MỞ | |\n"})
+app_gate("APP ý owner chưa có yêu cầu", APP_TASK, B, {"brief.md": GOOD["brief.md"] + "- B-3: báo cáo\n"})
+app_gate("APP chưa có docs/product", APP_TASK, B, product=False)
+MOD = "- Loại: VỪA\n- Phương án chốt: A\n- Security duyệt solution: APPROVED\n- Workflow: N/A\n- UI mockup: N/A\n"
+app_gate("module khi owner đã duyệt -> sang S3", MOD, OK)
+app_gate("module khi owner chưa duyệt bị chặn", MOD, B, {"APP.md": GOOD["APP.md"].replace("APPROVED", "TODO")})
+app_gate("task thường, không có App Mode -> như cũ", MOD, OK, product=False)
+app_gate("APP chưa sinh SPEC.md", APP_TASK, B, spec=False)
+STALE = {"requirements.md": GOOD["requirements.md"].replace("Khách đặt lịch", "Khách đặt lịch online")}
+app_gate("APP sửa tài liệu sau khi sinh SPEC (SPEC cũ)", APP_TASK, B, after=STALE)
+app_gate("S6 module: tài liệu + SPEC khớp", DONE, OK, stage=S6)
+app_gate("S6 module: quên sinh lại SPEC sau khi sửa yêu cầu", DONE, B, stage=S6, after=STALE)
+app_gate("S6 module: thêm ý owner mà chưa có yêu cầu", DONE, B, stage=S6, overrides={"brief.md": GOOD["brief.md"] + "- B-3: báo cáo\n"})
+app_gate("S6 task thường, không có App Mode -> như cũ", DONE, OK, stage=S6, product=False)
+
+
+# ---- S6: "Cập nhật KB: YES" phải có file KB đổi thật so với nhánh gốc ----
+def kb_gate(desc, files, exp, task=DONE, base="develop", commit=False):
+    """files: {đường dẫn: nội dung} ghi trên branch agent/k1 (commit=True thì commit luôn)."""
+    global fail, total
+    d = tempfile.mkdtemp()
+    sh(d, "git", "init", "-q", "-b", "develop")
+    sh(d, "git", "config", "user.email", "t@t")
+    sh(d, "git", "config", "user.name", "t")
+    for rel, text in {".claude/agent-team.config": f'BASE_BRANCH={base}\nBE_PATHS="app"\n',
+                      "docs/business-rules.md": "# BR\n", "docs/LESSONS.md": "# L\n", "app/a.rb": "x\n"}.items():
+        os.makedirs(os.path.dirname(os.path.join(d, rel)), exist_ok=True)
+        open(os.path.join(d, rel), "w").write(text)
+    sh(d, "git", "add", ".")
+    sh(d, "git", "commit", "-qm", "init")
+    sh(d, "git", "switch", "-qc", "agent/k1")
+    for rel, text in {"app/a.rb": "y\n", **files}.items():
+        os.makedirs(os.path.dirname(os.path.join(d, rel)), exist_ok=True)
+        open(os.path.join(d, rel), "w").write(text)
+    if commit:
+        sh(d, "git", "add", ".")
+        sh(d, "git", "commit", "-qm", "k1")
+    os.makedirs(os.path.join(d, "docs/agent-tasks/K1"), exist_ok=True)
+    open(os.path.join(d, "docs/agent-tasks/K1/TASK.md"), "w").write(task)
+    got = run("Bash", S6, None, d)
+    fail += got != exp
+    total += 1
+    print(f"{'PASS' if got == exp else 'FAIL'}  kb gate: {desc}  (expect {exp}, got {got})")
+
+
+kb_gate("KB YES nhưng chỉ đổi code", {}, B)
+kb_gate("KB YES nhưng chỉ thêm test case", {"docs/testing/cases/K1.md": "x"}, B)
+kb_gate("KB YES nhưng chỉ ghi bài học", {"docs/LESSONS.md": "# L\n| x |\n"}, B)
+kb_gate("KB YES nhưng chỉ sinh lại SPEC", {"docs/product/SPEC.md": "x"}, B)
+kb_gate("KB YES, sửa business-rules (chưa commit)", {"docs/business-rules.md": "# BR\n| BR-1 |\n"}, OK)
+kb_gate("KB YES, thêm api/endpoints.md (đã commit)", {"docs/api/endpoints.md": "x"}, OK, commit=True)
+kb_gate("KB YES, sửa docs/product/requirements.md", {"docs/product/requirements.md": "x"}, OK)
+kb_gate("KB KHÔNG CẦN, chỉ đổi code", {}, OK, task=DONE.replace("Cập nhật KB: YES", "Cập nhật KB: KHÔNG CẦN"))
+kb_gate("không tìm thấy nhánh gốc -> bỏ qua kiểm", {}, OK, base="khong-co")
+
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

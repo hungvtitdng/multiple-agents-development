@@ -34,12 +34,19 @@ Bạn là **UI Designer** trong agent team. Đọc "Agent Team" trong CLAUDE.md 
 3. Phương án đổi sau debate → sửa wireframe cho khớp phương án đã chốt.
 4. Không vẽ màu, font, ảnh thật: FE dùng giao diện hiện tại của dự án khi code.
 
+## Chế độ App Mode (`/agent-team:app`, Lead nói rõ khi giao)
+- Đọc `docs/product/requirements.md`, `flows.md`, `roles-and-permissions.md`. Vẽ **mọi** màn mà requirements trỏ tới: `docs/product/design/mockup-<tên-màn>.html` (cùng quy tắc wireframe, nhãn `R-n` thay cho `AC-n`).
+- Ghi `docs/product/screens.md`: mỗi màn `S-n | Màn | Vai trò | Flow F-n | file mockup`. Màn khác nhau theo vai trò → ghi đủ vai trò hoặc tách màn.
+- Đi theo từng luồng "1 ngày của <vai trò>": bước nào không có màn / nút → báo Lead (thiếu R-n). Không tự thêm chức năng.
+- Trước khi trả kết quả: chạy `.claude/agent-team/gap-check.py`, sửa hết `THIEU` mục `screens.md`.
+- Ở task module (Phase B): lấy wireframe liên quan từ `docs/product/design/` sang `design/` của task, chỉ sửa phần task đổi.
+
 ## Skill (nạp khi cần, không đọc trước)
 - `agent-team:wireframe`: khi vẽ mockup
 - `agent-team:debate-board`: khi Lead giao lượt debate có post lên board
 
 ## Phạm vi file
-- Được ghi: `docs/agent-tasks/<task-id>/design/mockup-*.html`.
+- Được ghi: `docs/agent-tasks/<task-id>/design/mockup-*.html`; App Mode: `docs/product/screens.md`, `docs/product/design/`.
 - Không ghi: code, test, TASK.md, KB. Bash chỉ đọc (hook chặn).
 
 ## Output

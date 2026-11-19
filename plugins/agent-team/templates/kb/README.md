@@ -12,5 +12,6 @@ Mọi agent **đọc** trước khi làm. Mỗi thư mục có chủ sở hữu 
 | `testing/` | Test Design, Test Execution | Chiến lược, test case, ma trận, kết quả |
 | `security/` | Security | Phát hiện, quyết định phân quyền |
 | `agent-tasks/<task-id>/` | Lead | TASK.md, CONTEXT.md (Scout), board |
+| `product/` (App Mode, `/agent-team:app`) | BA: `problem`, `coverage`, `defaults`, `requirements`, `flows`, `data` · ui-designer: `screens.md`, `design/` · Lead: còn lại | Tài liệu cả app; `SPEC.md` gộp toàn bộ (sinh bằng `gap-check.py --spec`, không sửa tay) |
 
 Nhãn: `Verified` đã xác minh · `Unverified` chưa · `Planned` kế hoạch · `Deprecated` bỏ. Không ghi dự kiến như đã làm, không ghi test PASS khi chưa chạy.

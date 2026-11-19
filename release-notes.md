@@ -1,3 +1,29 @@
+# Release notes - 19/11/2026 (v0.11.0)
+
+## Thay đổi
+- **App Mode: lệnh mới `/agent-team:app <ý tưởng>`** làm cả app từ 1 ý tưởng. Phase A chỉ tài liệu (S1-S2): A0 Intake → A1 Vấn đề + 12 góc nhìn → A2 Giải pháp (debate như `run`) → A3 Nghiệp vụ → A3b Wireframe → A4 Săn gap → cổng owner → A5 Chia module. Phase B: M-0 khung project trong chính task app (S3-S6), M-1..n mỗi module 1 `/agent-team:run`, lần lượt.
+- **Được hỏi owner ở Phase A** (ngoại lệ của "không hỏi user"): chỉ Lead hỏi, bằng `AskUserQuestion` (≤ 4 câu/lượt, có lựa chọn đề xuất, hỏi bằng tình huống). Câu mức CAO phải được trả lời; mức THẤP được giả định. Agent vẫn không hỏi, trả câu hỏi về Lead. Owner không phải đọc tài liệu: chỉ bấm chọn, xem wireframe và sơ đồ flow.
+- **Tài liệu sản phẩm `docs/product/`** (mẫu `templates/product/`, cột cố định): `APP.md` (cổng + module), `brief.md` (ý owner B-n), `intake.md`, `questions.md` (Lead) · `problem.md`, `coverage.md`, `defaults.md`, `requirements.md`, `flows.md`, `data.md` (BA) · `screens.md`, `design/mockup-*.html` (ui-designer).
+- **`catalog/`** mặc định theo loại app để bù phần owner không nghĩ tới: `chung.md` (21 mục mọi app), `quan-ly-noi-bo.md` (14 mục), `dat-lich.md` (17 mục). Mỗi mục có câu hỏi tình huống + lựa chọn. Owner chỉ chọn GIỮ / BỎ / KHÁC.
+- **Script mới `scripts/gap-check.py`** (copy vào `.claude/agent-team/gap-check.py`): kiểm intake, ý owner B-n chưa có yêu cầu, R-n không có nguồn, câu hỏi CAO còn mở, 12 góc nhìn, mặc định owner chưa chọn, flow thiếu nhánh lỗi, màn mồ côi / chưa có wireframe, vai trò × màn, Dữ liệu × CRUD, vòng đời trạng thái. `--gate` kiểm thêm `APP.md` (Intake, Challenger, Owner duyệt).
+- **`docs/product/SPEC.md`: toàn bộ tài liệu app trong 1 file**, sinh bằng `gap-check.py --spec` (không sửa tay): ý tưởng, mục tiêu, stack, yêu cầu, flow, màn + link wireframe, dữ liệu, mặc định, câu hỏi đã hỏi owner, 12 góc nhìn, bảng truy vết B → R → S (ý chưa có yêu cầu ghi **CHƯA CÓ**), link KB + quyết định, bảng module. `--spec-check`: SPEC phải khớp tài liệu hiện tại.
+- **Tài liệu app luôn đúng khi build (Phase B):** module đổi yêu cầu / có GAP → BA, ui-designer sửa `docs/product/`; S6 của module: Lead cập nhật trạng thái module + sinh lại SPEC.
+- **Guard:** loại `APP`; sang S3 với task APP thì guard chạy `gap-check.py --gate --spec-check`, thiếu gì báo đó. Có `docs/product/APP.md` thì mọi task khác bị chặn sang S3 khi chưa `Owner duyệt: APPROVED`, và **mọi task bị chặn sang S6** khi tài liệu app thiếu hoặc SPEC.md cũ hơn tài liệu. Chủ ghi `docs/product/`: BA (problem, coverage, defaults, requirements, flows, data), ui-designer (screens, design/), còn lại chỉ Lead.
+- **Mỗi task phải cập nhật tài liệu thật, không chỉ khai:**
+  - Guard S6: `Cập nhật KB: YES` mà không có file KB nào trong `docs/` đổi so với `BASE_BRANCH` (git diff + file mới, gồm cả chưa commit; không tính `agent-tasks/`, `testing/`, `LESSONS.md`, `SPEC.md`) → chặn. Không xác định được nhánh gốc thì bỏ qua.
+  - `code-reviewer`: có `docs/product/` thì hành vi trong diff phải khớp R-n / flow / màn / dữ liệu; lệch hoặc hành vi mới không có R-n = High, kể cả task sửa bug.
+- Tài liệu: `templates/kb/README.md` (bảng chủ ghi thêm `product/`), `resume.md` (làm tiếp task APP: suy bước A0-A5 từ `docs/product/`), `ask.md` (đọc `SPEC.md` trước), README (bảng gate + guard), `docs/design.md` mục 19.
+- Agent: `business-analyst`, `ui-designer` thêm chế độ App Mode; `challenger` thêm chế độ Phase A (chỉ đọc ý tưởng gốc, tự liệt kê app cần gì).
+- `run.md`: ý tưởng cả app → chuyển sang `/agent-team:app`; task module lấy AC từ `R-n`. `init.md`: dự án mới chưa có git → `git init -b main`; không có remote → `PUSH=0`.
+- Test mới `tests/test_gap_check.py` (38 case), `tests/product_fixture.py`; `test_guard.py` thêm 36 case (App Mode + kiểm KB thật).
+- Xoá thư mục `Claude outputs/` bị commit nhầm ở v0.10.0 (bản cũ của `board.py`, `report-sample.html`).
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update kevin-agent-team`, khởi động lại Claude Code.
+- **Key mới trong `.claude/agent-team.config`**: `PUSH` (`1` = có remote, mặc định; `0` = repo chỉ ở máy, không fetch/push). Project đã init: thêm `PUSH=1`.
+- Project đã init: copy `scripts/gap-check.py` → `.claude/agent-team/gap-check.py` (chmod +x); copy lại `templates/TASK.md`; thay mục "Agent Team" trong `CLAUDE.md` bằng `templates/claude-md-section.md`.
+- Chưa có: `REPORT.html` cho cấp app (owner duyệt bằng `AskUserQuestion` + mở file wireframe), test E2E Playwright (dự kiến v0.12.0).
+
 # Release notes - 19/11/2026 (v0.10.0)
 
 ## Thay đổi

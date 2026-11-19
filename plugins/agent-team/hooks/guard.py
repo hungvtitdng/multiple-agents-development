@@ -35,13 +35,19 @@ KB_OWNERS = [
     ("docs/modules/", _BA | _ARCH | {"backend-dev", "frontend-dev"}),
     ("docs/testing/", {"test-designer", "test-executor"}),
     ("docs/security/", {"security"}),
+    # App Mode: tài liệu sản phẩm (APP, brief, intake, questions còn lại = chỉ Lead)
+    ("docs/product/design/", {"ui-designer"}), ("docs/product/screens.md", {"ui-designer"}),
+    ("docs/product/problem.md", _BA), ("docs/product/coverage.md", _BA), ("docs/product/defaults.md", _BA),
+    ("docs/product/requirements.md", _BA), ("docs/product/flows.md", _BA), ("docs/product/data.md", _BA),
 ]
+PRODUCT_APP = "docs/product/APP.md"
+GAP_CHECK = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts", "gap-check.py")
 COMMIT_MSG_RE = re.compile(r"^\[[a-z][a-z-]*\] [\w.-]+: \S.*$")
 TRAILER_RE = re.compile(r"(?i)signed-off-by|co-authored-by|reviewed-by|generated-by|generated with")
 STAGE_WRITE_RE = re.compile(r">+\s*['\"]?\S*\.agent-team/stage")
 STAGE_VALUE_RE = re.compile(r"(?:echo|printf)\s+(?:-\w+\s+)*['\"]?(S[1-6])\b")
 # Điều kiện (đọc từ TASK.md) trước khi Lead sang giai đoạn mới
-GATE_CLASS = {"NHỎ", "VỪA", "LỚN"}
+GATE_CLASS = {"NHỎ", "VỪA", "LỚN", "APP"}
 TEST_FILE_RE = re.compile(r"(^|/)(__tests__|__mocks__)/|(_spec|_test)\.\w+$|\.(spec|test)\.\w+$|(^|/)test_[^/]+\.py$")
 STAGE_ZONES = {"S1": set(), "S2": set(), "S3": {"be", "fe"}, "S4": {"test"}}
 GRAPHIFY = {"graphify", "graphifyy", "graphify-mcp"}
@@ -657,7 +663,7 @@ def gate_missing(stage, text):
     miss = []
     if stage == "S3":
         if first("Loại") not in GATE_CLASS:
-            miss.append("Loại (NHỎ/VỪA/LỚN)")
+            miss.append("Loại (NHỎ/VỪA/LỚN/APP)")
         elif first("Loại") == "NHỎ":
             if not f("Tiêu chí nghiệm thu"):
                 miss.append("Tiêu chí nghiệm thu")
@@ -666,7 +672,8 @@ def gate_missing(stage, text):
                 miss.append("Phương án chốt")
             if first("Security duyệt solution") not in ("APPROVED", "N/A"):
                 miss.append("Security duyệt solution: APPROVED")
-            for k in ("Workflow", "UI mockup"):
+            # APP: thiết kế nằm ở docs/product, gap-check kiểm (check_stage_change)
+            for k in (("Workflow", "UI mockup") if first("Loại") != "APP" else ()):
                 if first(k) not in ("YES", "N/A"):
                     miss.append(f"{k}: YES hoặc N/A")
     elif stage == "S5":
@@ -703,6 +710,66 @@ def open_whys(root, task):
         return 0
 
 
+def cfg_value(root, key, default=""):
+    """Giá trị 1 key trong .claude/agent-team.config."""
+    try:
+        for line in open(os.path.join(root, ".claude", "agent-team.config"), encoding="utf-8", errors="ignore"):
+            m = re.match(rf"^\s*{re.escape(key)}=(.*)$", line)
+            if m:
+                return m.group(1).split("#")[0].strip().strip("'\"")
+    except OSError:
+        pass
+    return default
+
+
+def is_kb_file(rel):
+    """File KB thật (không tính tài liệu riêng task, test case/report, bài học, SPEC sinh tự động)."""
+    if not rel.startswith("docs/") or rel.startswith(("docs/agent-tasks/", "docs/testing/")):
+        return False
+    return os.path.basename(rel) != "LESSONS.md" and rel != "docs/product/SPEC.md"
+
+
+def kb_changed(root):
+    """Có file KB đổi so với nhánh gốc không (gồm cả chưa commit). None = không xác định được nhánh gốc."""
+    base = cfg_value(root, "BASE_BRANCH", "develop")
+    mb = next((out for ref in (f"origin/{base}", base)
+               for code, out in [git(root, "merge-base", "HEAD", ref)] if code == 0 and out), None)
+    if not mb:
+        return None
+    _, changed = git(root, "diff", "--name-only", "--relative", mb)
+    _, new = git(root, "ls-files", "--others", "--exclude-standard")
+    return any(is_kb_file(f) for f in changed.splitlines() + new.splitlines())
+
+
+def run_gap_check(root):
+    """gap-check --gate --spec-check: [] nếu sạch, ngược lại 1 dòng lý do."""
+    if not os.path.isfile(GAP_CHECK):
+        return ["không tìm thấy scripts/gap-check.py của plugin"]
+    try:
+        r = subprocess.run([sys.executable, GAP_CHECK, "--gate", "--spec-check", root], capture_output=True, text=True, timeout=30)
+    except Exception as e:
+        return [f"gap-check lỗi: {e}"]
+    if r.returncode == 0:
+        return []
+    bad = [ln.split(None, 1)[1] for ln in r.stdout.splitlines() if ln.startswith("THIEU")]
+    return [f"gap-check ({len(bad)} mục, xem đủ: .claude/agent-team/gap-check.py): {'; '.join(bad[:3]) or (r.stderr.strip() or 'lỗi')}"]
+
+
+def product_gate(root, stage, is_app):
+    """App Mode. S3: task APP qua gap-check; task khác chờ owner duyệt.
+    S6: mọi task trong app (đang có APP.md) phải để docs/product đúng + SPEC.md mới."""
+    has_app = os.path.isfile(os.path.join(root, PRODUCT_APP))
+    if stage == "S3" and is_app:
+        return run_gap_check(root)
+    if stage == "S3" and has_app:
+        v = task_field(open(os.path.join(root, PRODUCT_APP), encoding="utf-8", errors="ignore").read(), "Owner duyệt")
+        if (v.split() or [""])[0].upper() != "APPROVED":
+            return [f"{PRODUCT_APP}: Owner duyệt: APPROVED (App Mode chưa qua cổng owner)"]
+    if stage == "S6" and has_app:
+        return run_gap_check(root)
+    return []
+
+
 def check_stage_change(new_stage, cwd):
     """Lead đổi giai đoạn: TASK.md (task mới nhất) phải đủ điều kiện."""
     root = find_root(cwd)
@@ -726,6 +793,14 @@ def check_stage_change(new_stage, cwd):
             miss.append("Workflow: YES nhưng chưa có design/workflow.md")
         if yes("UI mockup") and not has(r"^mockup-.+\.html$"):
             miss.append("UI mockup: YES nhưng chưa có design/mockup-<màn>.html")
+        miss += product_gate(root, "S3", (task_field(text, "Loại").split() or [""])[0].upper() == "APP")
+    if new_stage == "S6":
+        text = open(latest, encoding="utf-8", errors="ignore").read()
+        # "Cập nhật KB: YES" phải có file KB đổi thật (không chỉ lời khai)
+        if (task_field(text, "Cập nhật KB").split() or [""])[0].upper() == "YES" and kb_changed(root) is False:
+            miss.append("Cập nhật KB: YES nhưng không có file KB nào trong docs/ đổi so với nhánh gốc "
+                        "(không tính agent-tasks/, testing/, LESSONS.md, SPEC.md). Cập nhật KB hoặc ghi KHÔNG CẦN + lý do")
+        miss += product_gate(root, "S6", False)
     if miss:
         block(f"chưa đủ điều kiện sang {new_stage}. Thiếu trong {os.path.relpath(latest, root)}: {'; '.join(miss)}")
 

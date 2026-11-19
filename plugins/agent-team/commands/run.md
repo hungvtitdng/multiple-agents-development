@@ -12,7 +12,7 @@ Làm đúng playbook dưới đây. **Không hỏi lại user**, team tự bàn 
 
 ## 0. Chuẩn bị
 1. Đọc `CLAUDE.md` (mục "Agent Team"), `.claude/agent-team.config`, `docs/README.md`. Chưa có config thì dừng, báo user chạy `/agent-team:init`.
-2. `git status` sạch. `git fetch`, tạo branch `agent/<task-id>` từ `origin/<nhánh gốc>` (nhánh gốc = `BASE_BRANCHES` của repo nếu có, không thì `BASE_BRANCH`).
+2. `git status` sạch. `git fetch`, tạo branch `agent/<task-id>` từ `origin/<nhánh gốc>` (nhánh gốc = `BASE_BRANCHES` của repo nếu có, không thì `BASE_BRANCH`). Config `PUSH=0` (repo chưa có remote): không `fetch`, tạo branch từ nhánh gốc local, hoặc từ "Branch gốc" ghi trong `docs/product/APP.md` khi là module của App Mode.
    - `<task-id>` = `YYYYMMDD-<slug-ngắn>`.
    - Nhiều repo (`REPOS`): làm trong từng repo (`git -C ../FrontEnd ...`), chỉ repo task đụng tới; ghi danh sách vào TASK.md. Board và `docs/` nằm ở repo chính.
 3. Tạo `docs/agent-tasks/<task-id>/TASK.md` (từ `.claude/agent-team/templates/TASK.md`) và `board/SUMMARY.md` (từ `SUMMARY.md`). `echo S1 > .agent-team/stage`.
@@ -25,6 +25,7 @@ Làm đúng playbook dưới đây. **Không hỏi lại user**, team tự bàn 
 | NHỎ | bug 1 chỗ, sửa text, nghiệp vụ rõ | **Fast Track** (mục 7) | Dev, test, Code Reviewer, Security (không cần challenger) |
 | VỪA | thêm field, API nhỏ, 1 service | Standard | + Scout, debate: Architect, Test Design, BA (nếu nghiệp vụ chưa rõ) |
 | LỚN | feature mới, đổi DB lớn, nhiều service, phân quyền | Full | Standard + tách `solution-architect` và `technical-architect`, chia task |
+- **Đầu vào là ý tưởng cả app** (chưa có code, cần nhiều module) → dừng, dùng `/agent-team:app <ý tưởng>`. Đang có `docs/product/APP.md`: task là 1 module, lấy AC từ các `R-n` của module, thiết kế từ `docs/product/`; hook chặn sang S3 khi owner chưa duyệt (`Owner duyệt: APPROVED`).
 - **Security luôn có mặt.** Chạm auth, phân quyền, secrets, dữ liệu nhạy cảm → luôn duyệt cả solution.
 - Ghi lý do gọi hoặc bỏ từng role. Role bị bỏ thì Lead vẫn bảo đảm yêu cầu đủ rõ, test phù hợp, rủi ro được kiểm soát.
 - Giữa chừng thấy phức tạp hơn → nâng loại, gọi thêm người, ghi lý do.
@@ -114,9 +115,9 @@ Hook chặn theo giai đoạn: S1-S2 chỉ tài liệu, S3 chỉ code, S4 chỉ 
 | **S3 CODE** | `backend-dev` ∥ `frontend-dev` song song theo API contract. FE làm **đủ chức năng và trạng thái của wireframe**, nhưng dùng màu, font, component **có sẵn của dự án** (không copy style đen trắng). Đổi contract giữa chừng → báo bạn, không tự thống nhất. Migration: sinh file **chỉ** bằng `agent-db-clone.sh generate` (generator trong container, hook chặn tự tạo file), kiểm bằng `agent-db-clone.sh verify`. Dev chạy lint/format. Cập nhật `- Lint/format:`. |
 | **S4 TEST** | `test-designer` đã có test case → `test-executor` viết và chạy test trên DB clone, ghi từng test vào `docs/testing/test-report.md` (`| task-id | AC-n | test | PASS/FAIL/BLOCKED/NOT RUN | bằng chứng |`), rồi ghi `- Kết quả test: PASS` trong TASK.md khi mọi AC đều PASS. Fail → giao dev sửa (S3 lại), tối đa 3 vòng/issue. Sau S3 và S4: build lại graph như mục 0.4. Lint/format pass → ghi `- Lint/format: PASS`. |
 | **S5 REVIEW** | Song song: `code-reviewer`, `security` (review đầy đủ) và (VỪA/LỚN) `challenger`. Mở `$B open <task-id> S5 <n> --roles code-reviewer,security,backend-dev,frontend-dev`: reviewer post issue, dev trả lời/phản biện bằng `--reply`. Challenger không dùng board, trả thẳng cho bạn. **Challenger chỉ nhận yêu cầu gốc nguyên văn (TASK.md mục 0) + tên nhánh gốc, KHÔNG đưa TASK.md/AC/thiết kế/board/CONTEXT**; hook chặn nó đọc `docs/`. Lệch giữa challenger và AC của BA (challenger `not met`/`can't tell`) là issue thật: dev/BA xử lý. Có issue → dev sửa, **chỉ reviewer đã báo lỗi review lại**, chỉ khi diff đổi. Tối đa 3 vòng/issue, rồi phán quyết (Security Critical/High không override). Khi cả ba APPROVED: gọi `business-analyst`, `solution-architect`, `security`, dev (theo phần mình sở hữu) cập nhật KB phần bị ảnh hưởng; `code-reviewer` xác nhận KB khớp code. Ghi `- Code review: APPROVED`, `- Security review: APPROVED`, `- Cập nhật KB: YES` (hoặc `KHÔNG CẦN` nếu task không đổi API/DB/rule/màn hình). |
-| **S6 ĐÓNG** | **Bài học (mục 11; lỗi đã ghi ngay lúc xảy ra):** hỏi lần cuối "còn lỗi nào chưa ghi không?". Có lỗi nào trong task → `- Bài học: YES` (đã ghi vào `LESSONS_PATH`); không có → `- Bài học: KHÔNG CÓ`. Bài học bị lặp lại ≥ 1 lần → chuyển thành quy tắc trong `docs/engineering/review-checklist.md`. Điền TASK.md (mục 9-12), `$B export <task-id>`, `$B report <task-id>` (tạo lại REPORT.html + REPORT.md đầy đủ), `agent-db-clone.sh down`, commit + push, `rm .agent-team/stage`, báo cáo. |
+| **S6 ĐÓNG** | **Bài học (mục 11; lỗi đã ghi ngay lúc xảy ra):** hỏi lần cuối "còn lỗi nào chưa ghi không?". Có lỗi nào trong task → `- Bài học: YES` (đã ghi vào `LESSONS_PATH`); không có → `- Bài học: KHÔNG CÓ`. Bài học bị lặp lại ≥ 1 lần → chuyển thành quy tắc trong `docs/engineering/review-checklist.md`. Điền TASK.md (mục 9-12), `$B export <task-id>`, `$B report <task-id>` (tạo lại REPORT.html + REPORT.md đầy đủ). **Có App Mode:** cập nhật cột Trạng thái module trong `docs/product/APP.md`, chạy `.claude/agent-team/gap-check.py --spec` (sinh lại `docs/product/SPEC.md`, sửa hết `THIEU`) **trước** khi `echo S6`. Rồi `agent-db-clone.sh down`, commit + push, `rm .agent-team/stage`, báo cáo. |
 
-Sang S5 hook kiểm `Kết quả test`, `Lint/format` và `Gap còn mở: 0`. Sang S6 hook kiểm `Code review`, `Security review`, `Cập nhật KB`, `Bài học` (đều đọc từ TASK.md). Chỉ ghi `APPROVED`/`PASS` khi thật sự đạt; challenger, reviewer, security chưa APPROVED thì làm tiếp vòng sửa.
+Sang S5 hook kiểm `Kết quả test`, `Lint/format` và `Gap còn mở: 0`. Sang S6 hook kiểm `Code review`, `Security review`, `Cập nhật KB`, `Bài học` (đều đọc từ TASK.md); `Cập nhật KB: YES` thì hook **kiểm thật** có file KB trong `docs/` đổi so với nhánh gốc (không tính `agent-tasks/`, `testing/`, `LESSONS.md`, `SPEC.md`), không có thì chặn; có App Mode thì hook chạy thêm `gap-check.py --gate --spec-check` (tài liệu app đủ và SPEC.md khớp). Chỉ ghi `APPROVED`/`PASS` khi thật sự đạt; challenger, reviewer, security chưa APPROVED thì làm tiếp vòng sửa.
 
 DONE chỉ khi: code đúng yêu cầu và quy chuẩn, test pass có bằng chứng, review xong, Security xong, KB cập nhật (hoặc không cần), đúng branch, không thay đổi ngoài phạm vi. Không tự đánh dấu DONE chỉ vì dev báo xong.
 
@@ -139,7 +140,7 @@ Dev/test-executor thiếu thông tin thì dừng đúng phần đó và trả **
 | Đụng quyền, dữ liệu nhạy cảm, secret | thêm `security` |
 
    Dev báo gap được post giải thích thêm. Mỗi gap **tối đa 2 lượt**, chấm điểm như mục 4; hết lượt chưa thống nhất thì bạn phán quyết (mục 8 TASK.md). Không override Security Critical/High.
-3. **Chốt:** cập nhật TASK.md (AC mục 1 / phương án mục 6), `test-designer` bổ sung test case cho case mới, giao dev làm tiếp phần đã dừng. Hướng chốt đụng quyền/dữ liệu → Security duyệt nhanh lại.
+3. **Chốt:** cập nhật TASK.md (AC mục 1 / phương án mục 6), `test-designer` bổ sung test case cho case mới, giao dev làm tiếp phần đã dừng. Hướng chốt đụng quyền/dữ liệu → Security duyệt nhanh lại. Có App Mode (`docs/product/APP.md`): BA sửa luôn `docs/product/` (R-n, flow, data), ui-designer sửa `screens.md` / wireframe; ý mới của owner → bạn thêm `B-n` vào `brief.md`. Không để tài liệu app lệch code.
 4. **Vì sao S1-S2 bỏ sót (bắt buộc):** chọn đúng 1 nguyên nhân gốc: AC thiếu case · KB sai/thiếu · CONTEXT thiếu · Phương án chưa tính tới · Yêu cầu gốc mơ hồ. Ghi **ngay** bài học vào `LESSONS_PATH` (mục 11): "Cách tránh" kiểm chứng được, "Phát hiện bởi" = role báo gap. KB sai/thiếu → giao chủ KB sửa ở S5. Yêu cầu gốc mơ hồ → thêm vào TASK.md mục 2 (Giả định cần user xem lại).
 5. Đóng gap: trạng thái `Closed` ở mục 14, giảm `- Gap còn mở:`.
 6. **≥ 3 gap trong một task** = S2 làm chưa tới: `echo S2 > .agent-team/stage`, debate lại toàn bộ solution (mục 4) với AC đã bổ sung, nâng loại nếu cần, ghi bài học loại `process`.
@@ -160,7 +161,7 @@ Lỗi thuộc sản phẩm của người khác → ghi vào kết quả giao l�
 
 ## 9. Git
 - Commit sau mỗi giai đoạn, **một dòng** `[<role>] <task-id>: <mô tả>`. Không body, không Co-authored-by/Signed-off-by (hook chặn). Board và `docs/` commit cùng repo chính.
-- Push: `git push -u origin agent/<task-id>`. Nhiều repo: commit/push trong từng repo (`git -C ../FrontEnd push -u origin agent/<task-id>`), mỗi repo chỉ commit file của repo đó.
+- Push: `git push -u origin agent/<task-id>` (`PUSH=0`: không push, báo user branch nằm ở máy). Nhiều repo: commit/push trong từng repo (`git -C ../FrontEnd push -u origin agent/<task-id>`), mỗi repo chỉ commit file của repo đó.
 - Không push/merge vào main/develop, không force push, không rewrite lịch sử, không tạo PR, không xoá branch. Hook chặn push có secret, `.env`, key, dump DB.
 
 ## 10. Báo cáo cho user (cuối cùng)

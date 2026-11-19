@@ -11,14 +11,16 @@ Plugin cho Claude Code. Đưa 1 task → Lead + BA + Architect + Test Design deb
 │   ├── agents/          ← 11 role (Lead = session chính, nằm trong commands/run.md)
 │   ├── commands/
 │   │   ├── run.md       ← /agent-team:run    - playbook của Lead
+│   │   ├── app.md       ← /agent-team:app    - làm cả app từ ý tưởng (hỏi owner → tài liệu → owner duyệt → build từng module)
 │   │   ├── resume.md    ← /agent-team:resume - làm tiếp task dang dở (hết quota, lỗi)
 │   │   ├── ask.md       ← /agent-team:ask    - hỏi về logic dự án, có dẫn nguồn
 │   │   ├── kb.md        ← /agent-team:kb     - dựng/làm đầy KB từ code (nhiều Scout, kiểm bằng kb-check)
 │   │   └── init.md      ← /agent-team:init   - cài cho 1 project, dựng KB
 │   ├── hooks/           ← hooks.json, guard.py (chặn thật), show_post.py
-│   ├── scripts/         ← agent-db-clone.sh, kb-check.py, board.py (board chat SQLite)
-│   ├── skills/          ← 8 skill chung, agent tự nạp khi cần
-│   └── templates/       ← TASK, SUMMARY, POST, CONTEXT, config, mục CLAUDE.md, kb/ (khung docs/)
+│   ├── scripts/         ← agent-db-clone.sh, kb-check.py, board.py (board chat SQLite), gap-check.py (App Mode)
+│   ├── skills/          ← 10 skill chung, agent tự nạp khi cần
+│   ├── catalog/         ← mặc định theo loại app (chung, quản lý nội bộ, đặt lịch) để bù ý owner không nghĩ tới
+│   └── templates/       ← TASK, SUMMARY, POST, CONTEXT, config, mục CLAUDE.md, kb/ (khung docs/), product/ (App Mode)
 ├── docs/design.md       ← thiết kế
 ├── tests/
 └── release-notes.md
@@ -103,6 +105,33 @@ Skill chỉ chứa **nguyên tắc chung, không gắn framework**. Cách làm r
 
 Agent đọc file của dự án trước; thiếu mẫu thì làm theo nguyên tắc chung và đề xuất bổ sung. Ví dụ nội dung cho dự án Rails + JS: `examples/rails-js/`.
 
+## Làm cả app từ ý tưởng (`/agent-team:app <ý tưởng>`)
+
+```
+PHASE A: chỉ tài liệu (stage S1-S2)
+ A0 Intake        Lead tách ý owner B-n, điền phiếu (nền tảng, stack...), thiếu thì HỎI owner
+ A1 Vấn đề        BA: mục tiêu G-n + 12 góc nhìn (không ô trống)
+ A2 Giải pháp     debate như run (WHY, chấm điểm, Security): kiến trúc + stack
+ A3 Nghiệp vụ     owner tick mặc định từ catalog/ → BA: requirements R-n, flows F-n, data
+ A3b Wireframe    ui-designer: mọi màn S-n, đen trắng, 5 trạng thái
+ A4 Săn gap       challenger (chỉ đọc ý tưởng gốc) ∥ test-designer ∥ security ∥ BA + gap-check.py
+ ⛔ Owner duyệt   owner xem wireframe + flow, bấm Đúng ý / Chưa đúng (không phải đọc tài liệu)
+ A5 Chia module   APP.md: M-0 khung project, M-1..n theo phụ thuộc
+PHASE B: M-0 trong task app (S3-S6), M-1..n mỗi module 1 /agent-team:run, lần lượt
+```
+
+| Khác `run` | Chi tiết |
+|---|---|
+| Được hỏi owner | Chỉ Lead hỏi, bằng `AskUserQuestion` (≤ 4 câu/lượt, có lựa chọn đề xuất, hỏi bằng tình huống). Câu mức CAO phải được trả lời; THẤP được giả định |
+| Tài liệu sản phẩm | `docs/product/` (mẫu ở `templates/product/`, cột cố định) |
+| Chống sót ý | 12 góc nhìn · `catalog/` mặc định theo loại app · flow có cột "Nếu lỗi" · Dữ liệu × CRUD · vòng đời trạng thái · vai trò × màn · truy vết B → R → S · challenger mù |
+| Cổng | Hook chặn S3 của task APP khi `gap-check.py --gate` còn thiếu; chặn S3 của mọi module khi `APP.md` chưa `Owner duyệt: APPROVED` |
+| Không có remote | `PUSH=0`: không fetch/push, module sau tạo branch từ branch module trước |
+
+**Tài liệu ghi lại toàn bộ:** `gap-check.py --spec` sinh `docs/product/SPEC.md` = mọi tài liệu app trong 1 file (ý tưởng, mục tiêu, stack, yêu cầu, flow, màn + link wireframe, dữ liệu, mặc định, câu hỏi, truy vết B → R → S, quyết định, module). Module đổi yêu cầu thì BA sửa `docs/product/`, Lead sinh lại SPEC; hook chặn S6 khi SPEC cũ hơn tài liệu. Mỗi task vẫn có `docs/agent-tasks/<task-id>/` (TASK.md, design/, board, REPORT) như `run`.
+
+`gap-check.py` (chạy được bất cứ lúc nào): báo B-n chưa có yêu cầu, R-n không có nguồn (tự bịa), câu hỏi CAO còn mở, mặc định owner chưa chọn, flow thiếu nhánh lỗi, màn mồ côi / chưa có wireframe, vai trò không có trên màn, dữ liệu thiếu đường tạo/xoá, trạng thái không vào/ra được.
+
 ## Hỏi về logic dự án (`/agent-team:ask <câu hỏi>`)
 
 Chỉ đọc, không tạo task. Lead chọn người trả lời, lấy nguồn từ `docs/` rồi đối chiếu code:
@@ -150,17 +179,20 @@ docs/
 | Mọi role (trừ Lead) | Ghi `docs/agent-tasks/` (TASK, board) trừ Scout ghi `CONTEXT.md`; ghi KB của role khác (xem bảng chủ ghi trong `docs/README.md`) |
 | Mọi role (trừ Lead) | Đọc/ghi `.agent-team/` |
 | Mọi role (trừ Lead) | `board.py` ngoài `post/read/status`; post bằng `--role` khác tên mình; challenger dùng board |
+| Mọi role (trừ Lead) | Ghi `docs/product/` sai chủ: BA (problem, coverage, defaults, requirements, flows, data), ui-designer (screens, design/), còn lại chỉ Lead |
 | Lead | Đổi giai đoạn khi TASK.md chưa đủ điều kiện (xem dưới) |
 
 ### Gate chuyển giai đoạn (Lead ghi `.agent-team/stage`, hook kiểm TASK.md)
 
 | Sang | Cần trong TASK.md |
 |---|---|
-| S3 | `Loại`; NHỎ: `Tiêu chí nghiệm thu`; VỪA/LỚN: `Phương án chốt` + `Security duyệt solution: APPROVED` |
+| S3 | `Loại`; NHỎ: `Tiêu chí nghiệm thu`; VỪA/LỚN: `Phương án chốt` + `Security duyệt solution: APPROVED` + `Workflow`, `UI mockup` (file có thật); không còn WHY chưa thống nhất |
+| S3 (APP) | `Phương án chốt` + `Security duyệt solution`; hook **chạy** `gap-check.py --gate --spec-check`: tài liệu app đủ, owner đã duyệt, SPEC.md khớp |
+| S3 (module, có `docs/product/APP.md`) | Như VỪA/LỚN + `APP.md` có `Owner duyệt: APPROVED` |
 | S5 | `Kết quả test: PASS`, `Lint/format: PASS` hoặc `N/A`, `Gap còn mở: 0` |
-| S6 | `Code review: APPROVED`, `Security review: APPROVED`, `Cập nhật KB: YES` hoặc `KHÔNG CẦN`, `Bài học: YES` hoặc `KHÔNG CÓ` |
+| S6 | `Code review: APPROVED`, `Security review: APPROVED`, `Cập nhật KB: YES` hoặc `KHÔNG CẦN`, `Bài học: YES` hoặc `KHÔNG CÓ`. `Cập nhật KB: YES` mà không có file KB nào trong `docs/` đổi so với nhánh gốc → chặn. Có App Mode: hook chạy lại `gap-check.py --gate --spec-check` |
 
-Gate chỉ đọc các dòng Lead tự điền: chặn quên bước, không kiểm chứng việc đã làm.
+Gate chủ yếu đọc các dòng Lead tự điền: chặn quên bước, không kiểm chứng việc đã làm. Ngoại lệ có kiểm thật: file trong `design/`, WHY trên board, `Cập nhật KB: YES` (git diff so với nhánh gốc), và App Mode (hook chạy `gap-check.py` trên tài liệu). Tài liệu khớp **code** thì do `code-reviewer` kiểm (KB và `docs/product/` lệch diff = High).
 
 ## Mức model (`COST_TIER`) và bài học (`LESSONS_PATH`)
 
@@ -213,7 +245,7 @@ Cập nhật: `/plugin marketplace update kevin-agent-team`, khởi động lạ
 
 ## Kiểm tra sau khi cài
 
-1. `python3 tests/test_guard.py` và `python3 tests/test_board.py` → toàn bộ pass
+1. `python3 tests/test_guard.py`, `python3 tests/test_board.py`, `python3 tests/test_gap_check.py` → toàn bộ pass
 2. Trong project, nhờ Claude gọi subagent `agent-team:business-analyst` ghi 1 file ngoài KB của BA → phải bị guard chặn.
 3. `.claude/agent-team/agent-db-clone.sh up test1` → `verify test1` → `down test1`
 4. Nhờ Claude gọi `agent-team:business-analyst` dùng skill `agent-team:acceptance-criteria`. Agent báo không có tool `Skill` → bản Claude Code chưa cho subagent dùng skill: agent vẫn chạy, chỉ thiếu checklist trong skill.

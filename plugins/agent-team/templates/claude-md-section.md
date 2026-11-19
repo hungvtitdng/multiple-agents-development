@@ -1,6 +1,6 @@
 ## Agent Team
 
-Project dùng plugin `agent-team`. Chạy task: `/agent-team:run <task>`. Làm tiếp task dang dở: `/agent-team:resume <task-id>`. Hỏi về logic dự án (chỉ đọc, có dẫn nguồn): `/agent-team:ask <câu hỏi>`. Dựng/làm đầy KB từ code: `/agent-team:kb`.
+Project dùng plugin `agent-team`. Chạy task: `/agent-team:run <task>`. Làm cả app từ ý tưởng: `/agent-team:app <ý tưởng>` (tài liệu sản phẩm ở `docs/product/`, owner duyệt rồi mới code). Làm tiếp task dang dở: `/agent-team:resume <task-id>`. Hỏi về logic dự án (chỉ đọc, có dẫn nguồn): `/agent-team:ask <câu hỏi>`. Dựng/làm đầy KB từ code: `/agent-team:kb`.
 
 - Config project: `.claude/agent-team.config` (nhánh gốc, đường dẫn BE/FE/test, DB clone, lint/format, `REPOS` nếu nhiều repo)
 - Mọi tài liệu nằm trong `docs/` (Knowledge Base, **đọc trước khi làm**, mỗi thư mục có chủ ghi riêng, xem `docs/README.md`). Quy chuẩn code ở `docs/engineering/`.
@@ -17,7 +17,7 @@ Project dùng plugin `agent-team`. Chạy task: `/agent-team:run <task>`. Làm t
 - Không sửa code cũ khi không cần thiết, không refactor ngoài phạm vi. Comment ngắn, chỉ khi cần.
 - Theo đúng stack, convention và `docs/engineering/`. Chạy lint/format (`LINT_CMD`, `FORMAT_CMD`) trước khi commit.
 - Thêm ENV/lệnh chạy mới → ghi `release-notes.md` (chỉ tên biến).
-- **Không hỏi user.** Thiếu business rule: Lead chọn best solution, ghi nhãn `Assumption`, báo ở cuối. Kỹ thuật: team tự quyết.
+- **Không hỏi user.** Thiếu business rule: Lead chọn best solution, ghi nhãn `Assumption`, báo ở cuối. Kỹ thuật: team tự quyết. Ngoại lệ App Mode (Phase A): Lead hỏi owner câu mức CAO trước khi code; agent vẫn không hỏi, trả câu hỏi về Lead.
 - Security bắt buộc mọi task. Critical/High phải sửa, Lead không được override.
 - Debate bằng subagent trên **board chat SQLite** (`.claude/agent-team/board.py`): mỗi lượt agent đọc tóm tắt lượt trước + toàn bộ lượt đang mở, post bằng tên mình (≤ 15 dòng), `@role` = phải trả lời. Chỉ Lead mở/đóng lượt, tóm tắt, export. Điểm chấm không post, chỉ trả về Lead. Không ghi TASK.md.
 - Skill chung của plugin (`agent-team:debate-board`, `acceptance-criteria`, `test-case-design`, `security-review`, `migration-safety`, `test-automation`, `code-review`, `decision-record`): agent tự nạp khi cần. Kiến thức riêng của dự án nằm trong KB `docs/`.
