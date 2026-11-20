@@ -5,9 +5,11 @@ Dùng (Lead chạy, trong project):
   owner-form.py build  [thư mục project]          → docs/product/owner-form-<n>.xlsx
   owner-form.py import <file .xlsx|.csv> [project] → ghi câu trả lời vào questions.md, defaults.md
 
-Form: tên app + 2 mục, mỗi mục 1 bảng: # · Câu hỏi · Đề xuất của team · <người> duyệt / góp ý (ô trống).
+Form: tên app + 2 mục, mỗi mục 1 bảng: # · Câu hỏi · Màn / mockup · Đề xuất của team · <người> duyệt / góp ý (ô trống).
   A. Owner: nghiệp vụ (câu OWNER + mặc định)   B. Dev: kỹ thuật (câu DEV)
-Ghi "OK" (duyệt), "không" (không đồng ý / không cần), hoặc góp ý. Mã câu nằm ở cột E (ẩn).
+Dòng xếp theo cột Nhóm (hành trình: "1. Tổng quan", "3. F-1 Đặt lịch"...), mỗi nhóm 1 dòng tiêu đề.
+Chỉ build khi APP.md có Debate: DONE + Challenger: DONE, có mockup, mọi luồng F-n có câu trong Nhóm.
+Ghi "OK" (duyệt), "không" (không đồng ý / không cần), hoặc góp ý. Mã câu nằm ở cột F (ẩn).
 Mở được bằng Excel, Numbers, Google Sheet (tải lên). Exit 0 = xong, 1 = lỗi dữ liệu, 2 = chưa có docs/product.
 """
 import csv
@@ -76,12 +78,46 @@ def app_name(root):
     return "App" if not name or name.startswith("<") else name
 
 
+def group_key(g):
+    m = re.match(r"\s*(\d+)", g)
+    return int(m.group(1)) if m else 99
+
+
+def screen_map(root):
+    """{S-n: "S-n Tên\ndesign/mockup.html"} của màn có file mockup thật."""
+    m, rows = gc.table(gc.read(root, "screens.md") or "", "s", "màn", "mockup")
+    out = {}
+    for r in rows if m else []:
+        s, mk = gc.clean(r[m["s"]]), gc.clean(r[m["mockup"]])
+        if not s or gc.empty(mk):
+            continue
+        rel = mk if mk.startswith("design/") else f"design/{mk}"
+        if os.path.isfile(os.path.join(root, P, rel)):
+            out[s] = f"{s} {gc.clean(r[m['màn']])}\n{rel}"
+    return out
+
+
+def gates(root, qrows, screens):
+    app = gc.fields(gc.read_raw(os.path.join(root, P, "APP.md")) or "")
+    errs = [f"APP.md {k} chưa DONE ({why})" for k, why in
+            (("Debate", "team chưa debate xong"), ("Challenger", "chưa săn gap trên nháp + mockup"))
+            if gc.first_word(app.get(k, "")) != "DONE"]
+    if not screens:
+        errs.append("chưa có mockup (screens.md + design/mockup-*.html): vẽ A3b trước khi hỏi")
+    groups = " ".join(gc.col(r, "nhóm") for r in qrows)
+    flows = re.findall(r"(?m)^##\s+(F-\d+)\b", gc.read(root, "flows.md") or "")
+    errs += [f"luồng {f} chưa có câu nào trong Nhóm (thêm câu xác nhận luồng)" for f in flows if f not in gc.ids(groups, "F")]
+    return errs
+
+
 def form_rows(root):
-    """({OWNER: [...], DEV: [...]} câu hỏi, mặc định chưa chốt, lỗi). Câu CAO lên trước."""
+    """({OWNER: [...], DEV: [...]} câu hỏi, mặc định chưa chốt, lỗi). Xếp theo Nhóm (hành trình), giữ thứ tự trong file."""
     errs, qs, ds = [], {"OWNER": [], "DEV": []}, []
+    screens = screen_map(root)
     qm, qrows = gc.table(gc.read(root, "questions.md") or "", "q", "câu hỏi", "đề xuất", "vì sao", "mức", "ai trả lời", "trạng thái")
     if not qm:
-        errs.append("questions.md thiếu cột: Q | Câu hỏi | Đề xuất của team | Vì sao | Mức | Ai trả lời | Trạng thái (bản cũ: copy lại templates/product/questions.md)")
+        errs.append("questions.md thiếu cột: Q | Câu hỏi | Đề xuất của team | Vì sao | Mức | Ai trả lời | Trạng thái | Trả lời | Nhóm | Màn (bản cũ: copy lại templates/product/questions.md)")
+    errs += gates(root, qrows, screens)
     for r in qrows if qm else []:
         q = gc.clean(r[qm["q"]])
         who = gc.first_word(r[qm["ai trả lời"]])
@@ -92,11 +128,20 @@ def form_rows(root):
         if gc.empty(r[qm["đề xuất"]]):
             errs.append(f"{q} chưa có Đề xuất của team")
             continue
+        group = gc.clean(gc.col(r, "nhóm"))
+        man = gc.ids(gc.col(r, "màn"), "S")
+        if who == "OWNER" and gc.empty(group):
+            errs.append(f"{q} chưa có Nhóm (bước nào trong hành trình)")
+            continue
+        if who == "OWNER" and gc.ids(group, "F") and not man:
+            errs.append(f"{q} thuộc luồng nhưng chưa có Màn (S-n)")
+            continue
+        if man - screens.keys():
+            errs.append(f"{q} trỏ tới màn chưa có mockup: {', '.join(sorted(man - screens.keys()))}")
+            continue
         why = gc.clean(r[qm["vì sao"]])
         sug = gc.clean(r[qm["đề xuất"]]) + (f"\n{why}" if why and not gc.empty(why) else "")
-        qs[who].append((q, gc.clean(r[qm["câu hỏi"]]), sug, gc.clean(r[qm["mức"]]).upper() == "CAO"))
-    for v in qs.values():
-        v.sort(key=lambda x: not x[3])
+        qs[who].append((q, gc.clean(r[qm["câu hỏi"]]), "\n".join(screens[s] for s in sorted(man)), sug, group or "Kỹ thuật"))
     dm, drows = gc.table(gc.read(root, "defaults.md") or "", "d", "mục", "đề xuất", "owner chọn")
     for r in drows if dm else []:
         d = gc.clean(r[dm["d"]])
@@ -104,8 +149,12 @@ def form_rows(root):
             if gc.empty(r[dm["đề xuất"]]):
                 errs.append(f"{d} chưa có Đề xuất mặc định")
                 continue
-            ds.append((d, gc.clean(r[dm["mục"]]), gc.clean(r[dm["đề xuất"]]), False))
+            ds.append((d, gc.clean(r[dm["mục"]]), "", gc.clean(r[dm["đề xuất"]]), gc.clean(gc.col(r, "nhóm")) or "Mặc định"))
     return qs, ds, errs
+
+
+def by_group(rows):
+    return sorted(rows, key=lambda x: group_key(x[4]))
 
 
 # ---------- ghi / đọc .xlsx (OOXML tối thiểu) ----------
@@ -125,7 +174,8 @@ STYLES = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
 <xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1" applyProtection="1"><alignment vertical="top" wrapText="1"/></xf></cellXfs>
 </styleSheet>"""
-WIDTHS = [5, 45, 55, 40, 8]
+WIDTHS = [5, 45, 30, 50, 40, 8]
+COLS = "ABCDEF"
 
 
 def _c(ref, val, style):
@@ -149,14 +199,18 @@ def write_xlsx(path, title, sections):
         r += 2  # chừa 1 dòng trống
         xml.append(_row_xml(r, [_c(f"A{r}", name, 1)], 22))
         r += 1
-        head = ["#", "Câu hỏi", "Đề xuất của team", answer, "Mã"]
-        xml.append(_row_xml(r, [_c(f"{'ABCDE'[k]}{r}", h, 2) for k, h in enumerate(head)], 20))
-        for n, (rid, q, sug, _cao) in enumerate(rows, 1):
+        head = ["#", "Câu hỏi", "Màn / mockup", "Đề xuất của team", answer, "Mã"]
+        xml.append(_row_xml(r, [_c(f"{COLS[k]}{r}", h, 2) for k, h in enumerate(head)], 20))
+        group = None
+        for n, (rid, q, man, sug, g) in enumerate(rows, 1):
+            if g != group:
+                group, r = g, r + 1
+                xml.append(_row_xml(r, [_c(f"B{r}", g, 2)], 20))
             r += 1
-            vals = [n, q, sug, "", rid]
-            xml.append(_row_xml(r, [_c(f"{'ABCDE'[k]}{r}", v, 4 if k == 3 else 3) for k, v in enumerate(vals)], _height(vals)))
-    hidden = ' hidden="1"'  # cột E (mã câu) ẩn với owner
-    cols = "".join(f'<col min="{k + 1}" max="{k + 1}" width="{w}" customWidth="1"{hidden if k == 4 else ""}/>'
+            vals = [n, q, man, sug, "", rid]
+            xml.append(_row_xml(r, [_c(f"{COLS[k]}{r}", v, 4 if k == 4 else 3) for k, v in enumerate(vals)], _height(vals)))
+    hidden = ' hidden="1"'  # cột F (mã câu) ẩn với owner
+    cols = "".join(f'<col min="{k + 1}" max="{k + 1}" width="{w}" customWidth="1"{hidden if k == 5 else ""}/>'
                    for k, w in enumerate(WIDTHS))
     sheet = ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
              '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
@@ -217,7 +271,7 @@ def read_xlsx(path):
 
 def read_csv(path):
     with open(path, encoding="utf-8-sig", newline="") as f:
-        return [{"ABCDE"[k]: (v or "").strip() for k, v in enumerate(r[:5])} for r in csv.reader(f)]
+        return [{COLS[k]: (v or "").strip() for k, v in enumerate(r[:6])} for r in csv.reader(f)]
 
 
 # ---------- lệnh ----------
@@ -228,15 +282,11 @@ def verdict(text):
 
 
 def cmd_build(root):
-    app = gc.fields(gc.read_raw(os.path.join(root, P, "APP.md")) or "")
-    if gc.first_word(app.get("Challenger", "")) != "DONE":
-        sys.stderr.write("owner-form: chưa săn gap (APP.md Challenger chưa DONE). Làm A3 nháp + A4 trước, rồi mới hỏi 1 lần.\n")
-        return 1
     qs, ds, errs = form_rows(root)
     if errs:
         sys.stderr.write("owner-form: chưa gửi được, sửa trước:\n" + "\n".join(f"  - {e}" for e in errs) + "\n")
         return 1
-    own, dev = qs["OWNER"] + ds, qs["DEV"]
+    own, dev = by_group(qs["OWNER"] + ds), by_group(qs["DEV"])
     if not own and not dev:
         print("Không có câu nào cần trả lời (OWNER / DEV đang MỞ, mặc định CHƯA).")
         return 0
@@ -249,9 +299,8 @@ def cmd_build(root):
         patch(qp, "q", ["q", "trạng thái"], upd)
     if ds:
         patch(dp, "d", ["d", "owner chọn"], {d[0]: {"owner chọn": "CHỜ OWNER"} for d in ds})
-    cao = sum(q[3] for q in qs["OWNER"])
-    print(f"{os.path.relpath(out, root)}: A. Owner {len(qs['OWNER'])} câu ({cao} mức CAO) + {len(ds)} mặc định · "
-          f"B. Dev {len(dev)} câu. Gửi file cho owner (mục A) và dev (mục B).")
+    print(f"{os.path.relpath(out, root)}: A. Owner {len(qs['OWNER'])} câu + {len(ds)} mặc định · "
+          f"B. Dev {len(dev)} câu. Gửi file + thư mục {P}/design/ (mockup) cho owner (mục A) và dev (mục B).")
     return 0
 
 
@@ -261,6 +310,9 @@ def cmd_import(root, path):
     if hdr is None:
         sys.stderr.write("owner-form: không thấy dòng tiêu đề 'Câu hỏi' trong file\n")
         return 1
+    head = {gc.clean(v).lower(): c for c, v in rows[hdr].items()}
+    a_col = next((c for h, c in head.items() if "duyệt" in h), "D")
+    id_col = head.get("mã", "")
     qp, dp = os.path.join(root, P, "questions.md"), os.path.join(root, P, "defaults.md")
     qm, qrows = gc.table(gc.read(root, "questions.md") or "", "q", "câu hỏi", "đề xuất", "ai trả lời")
     dm, drows = gc.table(gc.read(root, "defaults.md") or "", "d", "mục", "đề xuất")
@@ -270,8 +322,8 @@ def cmd_import(root, path):
     who = {gc.clean(r[qm["q"]]): gc.first_word(r[qm["ai trả lời"]]).capitalize() or "Owner" for r in qrows} if qm else {}
     qu, du, stat, blank, again = {}, {}, {"ok": 0, "no": 0, "own": 0}, [], []
     for r in rows[hdr + 1:]:
-        rid = gc.clean(r.get("E", "")) or by_text.get(gc.clean(r.get("B", "")), "")
-        ans = r.get("D", "").strip()
+        rid = gc.clean(r.get(id_col, "")) or by_text.get(gc.clean(r.get("B", "")), "")
+        ans = r.get(a_col, "").strip()
         if not re.match(r"[QD]-", rid):  # dòng tên mục / tiêu đề
             continue
         if not ans:

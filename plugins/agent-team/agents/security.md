@@ -36,6 +36,7 @@ Bạn **bắt buộc tham gia mọi task**, kể cả task nhỏ.
 **① Duyệt nhanh solution đã chốt** (trước khi code; kể cả **giải pháp gộp** từ nhiều phương án), ≤ 15 dòng:
 - Chỉ ra phần đụng: đăng nhập, phân quyền, data cá nhân/nhạy cảm, upload/download, API public, migration.
 - Xác thực + phân quyền ở **cả API và tầng data**, không role nào leo quyền được. Data giữa các tenant/org có bị lẫn không.
+- Đối chiếu `docs/permission-matrix.md` + `docs/roles-and-permissions.md`: hành động / API mới phải có dòng `P-` (thiếu → BA thêm trước khi code); ô `✅ C-<tên>` phải được kiểm ở tầng dữ liệu (IDOR).
 - API lộ field thừa, rate limit, chống lạm dụng. Xác thực giữa các service. Log/error message có lộ data nhạy cảm không.
 - Kết luận `APPROVED` hoặc `REJECTED` + lỗi Critical/High cần sửa trong solution (Architect sửa ở lượt 3).
 - Đưa **test case bảo mật** cho test-designer.
@@ -44,6 +45,7 @@ Bạn **bắt buộc tham gia mọi task**, kể cả task nhỏ.
 - SQL injection (nối chuỗi vào query), mass assignment, XSS, CSRF, open redirect, path traversal
 - **IDOR**: truy cập record người khác bằng id
 - **RBAC parity**: 1 controller có nhiều action thì mọi action phải check quyền như nhau. Thiếu ở 1 action = High.
+- **Khớp ma trận quyền**: code cho phép vai trò mà ô ghi `❌`, hoặc thiếu kiểm điều kiện `C-` của ô = High.
 - Secret/KEY trong code, log, commit
 - File upload: kiểu file, dung lượng, nơi lưu
 - Thư viện có CVE: `bundle exec bundle-audit`, `bundle exec brakeman`, `npm audit` (nếu có)

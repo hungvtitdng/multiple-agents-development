@@ -379,6 +379,10 @@ sib_post("sibling post: FE dev ghi FrontEnd thì giữ", "frontend-dev", fe_file
 # ---- v0.3: sở hữu knowledge base theo thư mục ----
 kb = [
     ("kb: BA ghi business-rules", "docs/business-rules.md", "business-analyst", OK),
+    ("kb: BA ghi permission-matrix", "docs/permission-matrix.md", "business-analyst", OK),
+    ("kb: BA ghi flows/", "docs/flows/README.md", "business-analyst", OK),
+    ("kb: BE dev ghi permission-matrix bị chặn", "docs/permission-matrix.md", "backend-dev", B),
+    ("kb: Security ghi permission-matrix bị chặn", "docs/permission-matrix.md", "security", B),
     ("kb: BA ghi architecture bị chặn", "docs/architecture.md", "business-analyst", B),
     ("kb: Architect ghi architecture/", "docs/architecture/overview.md", "solution-architect", OK),
     ("kb: Architect ghi engineering/", "docs/engineering/coding-standards.md", "solution-architect", OK),

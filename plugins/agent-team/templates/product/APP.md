@@ -4,9 +4,10 @@
 
 ## Cổng (Lead cập nhật, hook kiểm)
 - Intake: TODO (YES khi intake.md đủ, không còn TODO)
-- Challenger: TODO (DONE khi A4 săn gap trên nháp xong, không còn gap mới. Có DONE mới build được form)
+- Challenger: TODO (DONE khi A4 săn gap trên nháp + mockup xong, không còn gap mới)
+- Debate: TODO (DONE khi team đã debate chốt câu hỏi + đề xuất. Cần Challenger + Debate DONE mới build được form)
 - Gap-check: TODO (PASS = `.claude/agent-team/gap-check.py` exit 0; hook tự chạy lại)
-- Owner duyệt: TODO (APPROVED khi owner đã xác nhận mockup + flow + defaults)
+- Owner duyệt: TODO (APPROVED khi owner trả lời hết form cuối)
 
 ## Module (thứ tự build)
 > Mỗi module là 1 task `/agent-team:run`. Không có remote (`PUSH=0`): branch module sau tạo từ branch module trước, user merge theo thứ tự.

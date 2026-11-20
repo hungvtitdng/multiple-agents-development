@@ -37,15 +37,17 @@ Lead giao cho bạn **một mảng** và **danh sách file KB bạn sở hữu**
 | Routes / router / controller / handler | Danh sách endpoint, method, quyền cần có, input → `api/endpoints.md` |
 | Service / use-case / interactor / job / worker | Luồng nghiệp vụ, thứ tự bước, điều kiện rẽ nhánh → `business-rules.md`, `modules/<tên>/README.md` |
 | Model / entity | Validation, quan hệ, enum/trạng thái và chuyển trạng thái, callback, scope → `domain-model.md`, `business-rules.md` |
-| Policy / ability / guard / middleware / role | Ai được làm gì → `roles-and-permissions.md` |
+| Policy / ability / guard / middleware / role / scope | Vai trò + điều kiện dữ liệu `C-<tên>` (của mình, chi nhánh, tenant) → `roles-and-permissions.md`; vai trò × hành động `P-<tài nguyên>.<hành động>` (✅ / ❌ / ✅ C-, không ô trống) → `permission-matrix.md` |
 | Migration / schema / seed | Bảng, cột, ràng buộc, index → `database/schema.md` |
 | Client gọi ngoài, webhook, queue, mailer | Tích hợp → `integrations/` |
 | Tên test (spec/test) | Quy tắc mà test đang khẳng định → `business-rules.md` (kèm `file:dòng` của test) |
 
 Mỗi quy tắc nghiệp vụ: `BR-<n> | quy tắc một câu | điều kiện | ngoại lệ | nhãn | file:dòng`. Thuật ngữ lặp lại trong code, UI → `glossary.md`.
+Nguồn `file:dòng` ghi **đường dẫn từ gốc repo** (`app/policies/booking_policy.rb:12`, không chỉ tên file): `kb-check.py` mở đúng file, đúng dòng để kiểm.
+**Logic ở 1 chỗ:** quy tắc dùng ở nhiều page → `BR-`; quyền → `P-` / `C-`; luồng qua nhiều page → `flows/` `F-n`. Page, action, luồng chỉ ghi mã, không chép nội dung (chép là sẽ lệch).
 
 ### Cách đọc logic (frontend)
-Routes/pages → màn hình; component quan trọng; chỗ gọi API (màn hình nào gọi endpoint nào); validation form; chỗ ẩn/hiện theo quyền → `modules/<tên>/screens/`, `actions/`.
+Routes/pages → mỗi page 1 file `modules/<tên>/screens/<màn>.md` theo **mẫu trong `modules/README.md`** (Route, File, Vai trò, Quyền `P-`, API, Quy tắc `BR-`, Luồng `F-n bước k`, Trạng thái, logic riêng của màn, `verified-at`) + 1 dòng bảng **Tra page** (`Route | Module | File KB | File code`) trong `modules/README.md`. Chỗ ẩn/hiện theo quyền → ghi mã `P-`; mã chưa có trong `permission-matrix.md` → báo Lead.
 
 ### Cách đọc quy chuẩn code (`engineering/coding-standards.md`)
 **Đếm** pattern đang dùng (đặt tên, phân tầng, xử lý lỗi, logging, validation, style API, quy ước DB/migration/test, comment): ghi pattern chiếm đa số kèm ví dụ `file:dòng`, nhãn `Observed`. Nhận diện lệnh lint/format và báo Lead để điền `LINT_CMD`, `FORMAT_CMD`.
@@ -56,9 +58,9 @@ Routes/pages → màn hình; component quan trọng; chỗ gọi API (màn hình
 | Bản đồ | Liệt kê repo, module/thư mục chính, entry point, lệnh chạy; trả cho Lead (không ghi file) |
 | Module (một nhóm ≤ 5 module) | Chỉ `modules/<tên>/README.md` của các module được giao: chức năng, API, bảng DB, **bảng quy tắc `BR-<tên>-<n>`**, quyền, test liên quan |
 | Kiến trúc + API + DB | `project-overview.md`, `architecture.md`, `tech-stack.md`, `api/endpoints.md`, `database/schema.md`, `database/migration-rules.md`, `integrations/` |
-| Frontend | Chỉ file mới `modules/<tên>/screens/*.md`, `actions/*.md` (không sửa `README.md` của module) |
+| Frontend | Chỉ file mới `modules/<tên>/screens/*.md`, `actions/*.md` + bảng **Tra page** trong `modules/README.md` (không sửa `README.md` của từng module) |
 | Quy chuẩn + test | `engineering/coding-standards.md`, `engineering/review-checklist.md` (mục "Mẫu tìm lỗi theo stack"), `testing/test-strategy.md`, `testing/automation-guide.md`, `security/review-patterns.md` |
-| Tổng hợp nghiệp vụ (chạy sau khi các mảng module xong) | `domain-model.md`, `business-rules.md`, `roles-and-permissions.md`, `glossary.md`: đọc `modules/*/README.md` đã có, gộp quy tắc thành bảng chung (giữ nguồn `file:dòng`), đọc thêm policy/guard để hoàn thiện quyền, bỏ trùng |
+| Tổng hợp nghiệp vụ (chạy sau khi các mảng module xong) | `domain-model.md`, `business-rules.md`, `roles-and-permissions.md`, `permission-matrix.md`, `flows/README.md`, `glossary.md`: đọc `modules/*/README.md` + `screens/` đã có, gộp quy tắc thành bảng chung (giữ nguồn `file:dòng`), đọc policy/guard/scope để dựng ma trận quyền đủ mọi vai trò × hành động, nối các page thành luồng `F-n` (bước → page, `P-`, `BR-`), bỏ trùng |
 
 **File theo stack** (`database/migration-rules.md`, `testing/automation-guide.md`, `security/review-patterns.md`, mục "Mẫu tìm lỗi theo stack" của `engineering/review-checklist.md`): ghi cách làm **của chính dự án** (công cụ, cú pháp, mẫu grep, cách kiểm quyền), mỗi dòng có ví dụ `file:dòng` lấy từ code thật, nhãn `Observed`. Không chép kiến thức chung của framework; nguyên tắc chung đã nằm trong skill của plugin.
 - Tài liệu có sẵn của dự án (README, wiki, docs cũ) là nguồn đối chiếu, **không ghi đè, không di chuyển**. Mâu thuẫn giữa tài liệu và code: tin code, ghi chỗ lệch.

@@ -21,23 +21,23 @@ Không hỏi user. Không commit (để user xem). Không đụng code.
 Gọi `agent-team:scout` mảng **Bản đồ**: mọi repo trong `REPOS`, module/thư mục chính, entry point, lệnh chạy, nơi để routes, services, models, policies, migrations, tests, frontend. Trả danh sách module (tên + đường dẫn + ước lượng quy mô). **Không ghi file.**
 
 ## 2. Đọc sâu song song (nhiều Scout trong cùng một message)
-Chia việc dựa trên bản đồ. **Mỗi file KB chỉ một Scout ghi** (tránh ghi đè nhau). Mỗi Scout nhận: mảng, danh sách file sở hữu, đường dẫn repo/module phải đọc, nhắc phải đọc **logic thật** theo bảng trong định nghĩa Scout.
+Chia việc dựa trên bản đồ. Bạn ghi bảng **Danh sách module** (`Module | Code`) trong `docs/modules/README.md` từ bản đồ (kb-check báo module chưa có README). **Mỗi file KB chỉ một Scout ghi** (tránh ghi đè nhau). Mỗi Scout nhận: mảng, danh sách file sở hữu, đường dẫn repo/module phải đọc, nhắc phải đọc **logic thật** theo bảng trong định nghĩa Scout.
 
 | Scout | File KB sở hữu |
 |---|---|
 | Module nhóm 1..k (mỗi nhóm ≤ 5 module; tối đa 4 Scout song song, nhiều hơn thì làm lượt sau) | `modules/<tên>/README.md` của các module trong nhóm (chức năng, API, bảng DB, bảng quy tắc `BR-<tên>-<n>`, quyền, test liên quan) |
 | Kiến trúc + API + DB | `project-overview.md`, `architecture.md`, `tech-stack.md`, `api/endpoints.md`, `database/schema.md`, `database/migration-rules.md`, `integrations/` |
-| Frontend (nếu có repo FE) | `modules/<tên>/screens/*.md`, `actions/*.md` (file mới, không sửa README của module) |
+| Frontend (nếu có repo FE) | `modules/<tên>/screens/*.md`, `actions/*.md` (theo mẫu trong `modules/README.md`) + bảng **Tra page** trong `modules/README.md` |
 | Quy chuẩn + test | `engineering/coding-standards.md`, `engineering/review-checklist.md` (mục "Mẫu tìm lỗi theo stack"), `testing/test-strategy.md`, `testing/automation-guide.md`, `security/review-patterns.md` (+ báo lệnh lint/format cho Lead) |
 
 Argument là một module/mảng → chỉ gọi đúng Scout cho phần đó.
 
 ## 3. Tổng hợp nghiệp vụ (1 Scout, sau khi bước 2 xong)
-Gọi `agent-team:scout` mảng **Tổng hợp nghiệp vụ**: sở hữu `domain-model.md`, `business-rules.md`, `roles-and-permissions.md`, `glossary.md`. Đọc `modules/*/README.md` đã có, gộp quy tắc thành bảng chung (giữ `file:dòng`, bỏ trùng), đọc thêm policy/guard để hoàn thiện quyền, rút thuật ngữ.
+Gọi `agent-team:scout` mảng **Tổng hợp nghiệp vụ**: sở hữu `domain-model.md`, `business-rules.md`, `roles-and-permissions.md` (vai trò + điều kiện `C-`), `permission-matrix.md` (vai trò × hành động `P-`, không ô trống), `flows/README.md` (luồng qua nhiều page `F-n`), `glossary.md`. Đọc `modules/*/README.md` + `screens/` đã có, gộp quy tắc thành bảng chung (giữ `file:dòng`, bỏ trùng), đọc policy/guard/scope để dựng ma trận quyền, rút thuật ngữ.
 
 ## 4. Kiểm và lặp (bắt buộc, không bỏ qua)
 1. Chạy `.claude/agent-team/kb-check.py`.
-2. File nào còn `THIEU`: gọi lại **đúng Scout phụ trách file đó** với lý do thiếu (chưa có `verified-at`, thiếu nguồn `file:dòng`...). Tối đa 2 vòng.
+2. File nào còn `THIEU`: gọi lại **đúng Scout phụ trách file đó** với lý do thiếu (chưa có `verified-at`, nguồn `file:dòng` sai, `CŨ`, mã `BR-`/`P-`/`F-` trỏ tới không có, ô ma trận trống...). Tối đa 2 vòng.
 3. Hết 2 vòng vẫn `THIEU`: **không giấu**. Liệt kê file, lý do (vd "module X quá lớn, mới đọc 3/12 service"), và việc cần làm tiếp (chạy lại `/agent-team:kb <module>`).
 4. Lệnh lint/format Scout báo → điền `LINT_CMD`, `FORMAT_CMD` trong config nếu đang trống.
 

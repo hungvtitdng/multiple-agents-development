@@ -127,32 +127,35 @@ Hook chặn S5 khi task có UI mà `E2E` không PASS, hoặc thiếu ảnh ở m
 PHASE A: chỉ tài liệu (stage S1-S2)
  A0 Intake        Lead tách ý owner B-n, điền phiếu; câu nghiệp vụ ghi sổ OWNER, câu kỹ thuật ghi sổ DEV
  A1 Vấn đề        BA: mục tiêu G-n + 12 góc nhìn (không ô trống), mỗi câu hỏi có 1 đề xuất
- A2 Giải pháp     debate như run (WHY, chấm điểm, Security): kiến trúc + stack đề xuất (câu DEV)
+ A2 Debate        như run (WHY, chấm điểm, Security): team tự làm rõ, chỉ điều client phải quyết mới thành câu hỏi
  A3 Nháp          mặc định từ catalog/ → BA nháp trọn app theo đề xuất (Assumption Q-n/D-n): requirements, flows, data
- A4 Săn gap       challenger (chỉ đọc ý tưởng gốc) ∥ test-designer ∥ security ∥ BA trên nháp → FORM 1 lần (A owner, B dev)
- ⛔ Owner chốt    logic chốt bằng form (owner không đọc tài liệu, không xem wireframe)
- A3b Wireframe    ui-designer: mọi màn S-n, đen trắng, 5 trạng thái + gap-check --spec
+ A3b Mockup       ui-designer: mọi màn S-n theo nháp, đen trắng, 5 trạng thái (TRƯỚC khi hỏi)
+ A4 Săn gap       challenger ∥ test-designer ∥ security ∥ BA ∥ ui-designer trên nháp + mockup
+ Debate chốt      gộp câu vụn, bỏ câu team tự chốt được, 1 đề xuất/câu → FORM CUỐI theo hành trình
+ ⛔ Owner chốt    trả lời form (kèm mockup) → sửa mockup + gap-check --spec
  A5 Chia module   APP.md: M-0 khung project, M-1..n theo phụ thuộc, M-E2E
 PHASE B: M-0 trong task app (S3-S6), M-1..n mỗi module 1 /agent-team:run, lần lượt
 ```
 
 **Form hỏi owner + dev** (`owner-form.py build` → `docs/product/owner-form-<n>.xlsx`, mở bằng Excel hoặc Google Sheet). 1 file, 2 mục; mục A cho owner:
 
-| # | Câu hỏi | Đề xuất của team | Owner duyệt / góp ý |
-|---|---|---|---|
-| 1 | Khách đã đặt lịch muốn huỷ thì sao? | Cho huỷ trước 2 giờ, sau đó không huỷ online được | *(owner ghi `OK` hoặc góp ý)* |
+| # | Câu hỏi | Màn / mockup | Đề xuất của team | Owner duyệt / góp ý |
+|---|---|---|---|---|
+| | **3. F-1 Đặt lịch** | | | |
+| 1 | Luồng: chọn dịch vụ → chọn giờ → xác nhận → nhắc lịch. Đúng chưa? | S-1 Đặt lịch `design/mockup-dat-lich.html` | Đúng như mockup | *(owner ghi `OK` hoặc góp ý)* |
+| 2 | Khách đã đặt lịch muốn huỷ thì sao? | S-4 Chi tiết lịch `design/mockup-chi-tiet-lich.html` | Cho huỷ trước 2 giờ, sau đó nút Huỷ mờ + hotline | |
 
 Mục B cho dev:
 
-| # | Câu hỏi | Đề xuất của team | Dev duyệt / góp ý |
-|---|---|---|---|
-| 1 | Server có SMTP nội bộ không? | Có, cấu hình bằng `.env` | *(dev ghi `OK` hoặc trả lời)* |
+| # | Câu hỏi | Màn / mockup | Đề xuất của team | Dev duyệt / góp ý |
+|---|---|---|---|---|
+| 1 | Server có SMTP nội bộ không? | | Có, cấu hình bằng `.env` | *(dev ghi `OK` hoặc trả lời)* |
 
 Gửi lại file → `owner-form.py import <file .xlsx|.csv>`: `OK` = duyệt đề xuất · `không` = BA / Architect đề xuất lại lượt sau · chữ khác = góp ý, ghi nguyên văn · để trống = vẫn chờ. Mẫu: `examples/owner-form-sample.xlsx`, `examples/owner-form-sample.html`.
 
 | Khác `run` | Chi tiết |
 |---|---|
-| Hỏi owner / dev | Không `AskUserQuestion`: mọi câu vào 1 form, mục A nghiệp vụ (`OWNER`), mục B kỹ thuật (`DEV`), mỗi câu 1 đề xuất best solution, hỏi 1 lần sau khi săn gap (form chặn khi `Challenger` chưa DONE); lượt 2 chỉ cho câu "không" / góp ý đổi logic. Câu kỹ thuật làm đổi logic → tách câu logic cho owner + câu hạ tầng cho dev. Câu mức CAO phải có câu trả lời của owner; THẤP được giả định. Chờ owner: task `BLOCKED`, nhận file rồi `/agent-team:resume <task-id> <file>` |
+| Hỏi owner / dev | Không `AskUserQuestion`: mọi câu vào 1 form, mục A nghiệp vụ (`OWNER`), mục B kỹ thuật (`DEV`), mỗi câu 1 đề xuất best solution, form cuối dựa trên debate + mockup, xếp theo hành trình (cột `Nhóm`, `Màn`); script chặn khi chưa `Debate` / `Challenger` DONE, chưa có mockup, luồng chưa có câu. Lượt 2 chỉ cho câu "không" / góp ý đổi logic. Câu kỹ thuật làm đổi logic → tách câu logic cho owner + câu hạ tầng cho dev. Câu mức CAO phải có câu trả lời của owner; THẤP được giả định. Chờ owner: task `BLOCKED`, nhận file rồi `/agent-team:resume <task-id> <file>` |
 | Tài liệu sản phẩm | `docs/product/` (mẫu ở `templates/product/`, cột cố định) |
 | Chống sót ý | 12 góc nhìn · `catalog/` mặc định theo loại app · flow có cột "Nếu lỗi" · Dữ liệu × CRUD · vòng đời trạng thái · vai trò × màn · truy vết B → R → S · challenger mù |
 | Cổng | Hook chặn S3 của task APP khi `gap-check.py --gate` còn thiếu; chặn S3 của mọi module khi `APP.md` chưa `Owner duyệt: APPROVED` |
@@ -181,8 +184,11 @@ Nguồn theo thứ tự: KB (`docs/`) → `LESSONS.md` → `TASK.md` các task t
 
 ```
 docs/
-├── project-overview, architecture, tech-stack, domain-model, business-rules,
-│   roles-and-permissions, glossary (.md)
+├── project-overview, architecture, tech-stack, domain-model, business-rules (BR-), glossary (.md)
+├── roles-and-permissions.md   vai trò + điều kiện dữ liệu C-   (AI · TRÊN DỮ LIỆU NÀO)
+├── permission-matrix.md       vai trò × hành động P-, không ô trống (LÀM GÌ)
+├── flows/         luồng qua nhiều page F-n
+├── modules/README.md  danh sách module + tra Route → file KB page
 ├── engineering/   quy chuẩn code + checklist clean code
 ├── api/ database/ integrations/ decisions/ modules/<tên>/
 ├── testing/       strategy, cases/<task-id>.md, coverage-matrix, test-report
@@ -191,7 +197,8 @@ docs/
 ```
 - Mỗi thư mục có chủ ghi riêng (hook chặn), nhãn `Verified/Unverified/Planned/Deprecated`, `verified-at: <commit>`.
 - `/agent-team:init` dự án có sẵn code: dựng luôn KB bằng quy trình của `/agent-team:kb`: Bản đồ → nhiều Scout đọc sâu logic song song (module, kiến trúc/API/DB, frontend, quy chuẩn/test) → Scout tổng hợp nghiệp vụ → `kb-check.py` kiểm, gọi lại Scout cho file còn thiếu (tối đa 2 vòng). Mọi mục `Observed/Unverified/Assumption` kèm `file:dòng` và `verified-at`. `--skip-kb` để bỏ qua.
-- `kb-check.py`: file KB nào còn là khung (thiếu `verified-at: <commit>` hoặc thiếu nguồn `file:dòng`). Phần chưa quét được ghi trong `docs/README.md` mục "Tình trạng KB", không giấu.
+- **Logic ở 1 chỗ:** quy tắc chung `BR-`, quyền `P-` / `C-`, luồng `F-` nằm ở KB tổng; page (`modules/<tên>/screens/<màn>.md`) chỉ ghi mã.
+- `kb-check.py`: file còn là khung (thiếu `verified-at`), nguồn `file:dòng` không có thật / vượt cuối file, **CŨ** (code trích dẫn đổi sau `verified-at`), dòng `BR-` thiếu nhãn / nguồn, ma trận quyền ô trống / vai trò lạ / `C-` không có, page trỏ mã không có, module chưa có README, route chưa có file KB. `kb-check.py --index`: tra ngược mã → page / luồng (sửa `BR-5` đụng page nào). Phần chưa quét được ghi trong `docs/README.md` mục "Tình trạng KB", không giấu.
 - `/agent-team:kb [--check | <module>]`: dựng/làm đầy/làm mới KB bất cứ lúc nào, tiếp tục được theo module. Không chạy khi đang có task (hook chặn Scout ghi KB).
 - Task đổi API/DB/rule/màn hình mà chưa cập nhật KB → không sang S6.
 - Quy chuẩn code lấy từ pattern đang dùng nhiều nhất; Code Reviewer review theo `docs/engineering/`. Dev chạy `LINT_CMD`/`FORMAT_CMD` trước khi commit.

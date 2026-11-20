@@ -1,3 +1,23 @@
+# Release notes - 20/11/2026 (v0.16.0)
+
+## Thay đổi
+- **App Mode: form cuối dựa trên debate + mockup.** Thứ tự mới: A2 debate (team tự làm rõ) → A3 nháp trọn app → A3b mockup mọi màn → A4 săn gap (thêm ui-designer) → debate chốt câu hỏi → form. Lượt 2 chỉ cho câu "không", ô trống, góp ý đổi logic.
+- **Form xếp theo hành trình:** `questions.md` thêm cột `Nhóm`, `Màn` (cuối bảng). Form có cột `Màn / mockup`, dòng tiêu đề mỗi nhóm, mỗi luồng F-n có câu xác nhận luồng.
+- `owner-form.py build` chặn khi: `APP.md` chưa `Debate: DONE` / `Challenger: DONE`, chưa có mockup, câu OWNER thiếu `Nhóm`, câu trong luồng thiếu `Màn`, luồng F-n chưa có câu.
+- `import` đọc cột trả lời / mã theo dòng tiêu đề (đọc được cả form bản cũ).
+- Sửa theo: `app.md`, `resume.md`, `business-analyst`, `ui-designer`, `templates/product/APP.md`, `questions.md`, README. Test owner-form: 62 case.
+- **KB: quyền 3 tầng + logic ở 1 chỗ.** `roles-and-permissions.md` = vai trò + điều kiện `C-`; mẫu mới `permission-matrix.md` (vai trò × hành động `P-`, không ô trống); mẫu mới `flows/README.md` (luồng qua nhiều page `F-n`); `modules/README.md` có danh sách module, bảng tra Route → file KB, mẫu `screens/<màn>.md`. Page chỉ ghi mã `BR-` / `P-` / `F-`.
+- `kb-check.py`: kiểm nguồn `file:dòng` có thật (theo `REPOS`), **CŨ** khi code trích dẫn đổi sau `verified-at`, `BR-` đủ nhãn + nguồn, ma trận quyền, mã trỏ tới có thật, module / route có KB. `--index` tra ngược mã → page. Test: 29 case.
+- Guard: `docs/permission-matrix.md`, `docs/flows/` do BA ghi. Sửa theo: `scout`, `security`, `business-analyst`, skill `test-case-design` (mỗi ô ma trận 1 case), `kb.md`, `templates/kb/README.md`.
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update kevin-agent-team`, khởi động lại Claude Code.
+- Project đã init: copy lại `scripts/owner-form.py` + `gap-check.py` → `.claude/agent-team/` (chmod +x).
+- App đang dở: thêm 2 cột `| Nhóm | Màn |` vào cuối bảng `questions.md`, thêm `- Debate: TODO` vào `APP.md`. Chưa build form thì làm A3b + A4 + debate trước.
+- Mẫu `examples/owner-form-sample.xlsx` / `.html` còn bố cục cũ.
+- Project đã init: copy lại `scripts/kb-check.py` → `.claude/agent-team/` (chmod +x); copy `templates/kb/permission-matrix.md`, `templates/kb/flows/` vào `docs/` (không ghi đè), thêm 2 bảng `Danh sách module`, `Tra page` vào `docs/modules/README.md`. Rồi chạy `/agent-team:kb` để Scout dựng ma trận + luồng.
+- KB cũ ghi nguồn chỉ tên file (`booking_policy.rb:12`) → `kb-check` báo "không có file": sửa thành đường dẫn từ gốc repo.
+
 # Release notes - 20/11/2026 (v0.15.0)
 
 ## Thay đổi

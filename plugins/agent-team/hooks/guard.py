@@ -27,7 +27,7 @@ _ARCH = {"solution-architect", "technical-architect"}
 # Knowledge base: thư mục/file -> role được ghi. Lead ghi được tất cả. Không nằm trong danh sách = chỉ Lead.
 KB_OWNERS = [
     ("docs/domain/", _BA), ("docs/business-rules.md", _BA), ("docs/domain-model.md", _BA),
-    ("docs/roles-and-permissions.md", _BA), ("docs/glossary.md", _BA),
+    ("docs/roles-and-permissions.md", _BA), ("docs/permission-matrix.md", _BA), ("docs/flows/", _BA), ("docs/glossary.md", _BA),
     ("docs/project-overview.md", _ARCH), ("docs/architecture.md", _ARCH), ("docs/tech-stack.md", _ARCH),
     ("docs/architecture/", _ARCH), ("docs/engineering/", _ARCH), ("docs/decisions/", _ARCH),
     ("docs/integrations/", _ARCH),

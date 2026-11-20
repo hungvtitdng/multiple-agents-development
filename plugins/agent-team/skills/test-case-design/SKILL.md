@@ -37,6 +37,7 @@ Task có UI: mỗi màn trong wireframe → case E2E cho **mỗi trạng thái**
 - Bằng chứng: ảnh `docs/testing/evidence/<task-id>/<TC>-<trạng thái>-<chiều rộng>.png`.
 
 ## Ma trận phân quyền tối thiểu
+Nguồn: `docs/permission-matrix.md`. Mỗi dòng `P-` mà task đụng → **mỗi ô vai trò 1 case** (ô `❌` phải bị chặn; ô `✅ C-<tên>` thêm case dữ liệu ngoài điều kiện, vd bản ghi người khác). Hành động chưa có dòng `P-` → báo Lead.
 Với mỗi endpoint/hành động mới: khách chưa đăng nhập → 401; user không có quyền → 403; user có quyền nhưng **bản ghi của người khác / tenant khác** → 403/404 (không lộ tồn tại); user đúng → thành công.
 
 ## Mẫu `docs/testing/cases/<task-id>.md`
