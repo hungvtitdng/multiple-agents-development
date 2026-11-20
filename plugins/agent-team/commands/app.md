@@ -65,7 +65,7 @@ M-0 khung project (task này, S3-S6) → M-1..n: mỗi module 1 /agent-team:run 
 ## 2. A0 Intake (bạn làm)
 1. `docs/product/brief.md`: ý tưởng nguyên văn + tách thành ý nhỏ `B-1, B-2, ...` (mỗi câu/ý owner 1 dòng, không thêm ý của bạn). APP.md: dòng đầu `# <tên app>` (tên này là tiêu đề form).
 2. Nhận diện loại app → file trong `<plugin>/catalog/` (luôn kèm `chung.md`). Không có loại phù hợp → chỉ dùng `chung.md`, ghi `Loại app: khác: <mô tả>` và nêu ở báo cáo "nên thêm catalog".
-3. Điền `docs/product/intake.md`. Ô nghiệp vụ (người dùng, quy mô, thanh toán, ngôn ngữ, responsive) → Q-n `OWNER` có đề xuất. Ô kỹ thuật (hosting, git remote, hạ tầng) → Q-n `DEV` có đề xuất; stack → "Để team đề xuất" (A2 ghi Q-n `DEV`). Tất cả đi form lượt 1, không hỏi ngay. Git remote chưa có → `PUSH=0` trong config.
+3. Điền `docs/product/intake.md`. Có `docs/product/project-setup.md` dev đã điền → đọc trước, ô đã điền thì chép sang intake + config, không tạo Q-n `DEV`. Ô nghiệp vụ (người dùng, quy mô, thanh toán, ngôn ngữ, responsive) → Q-n `OWNER` có đề xuất. Ô kỹ thuật (hosting, git remote, hạ tầng) → Q-n `DEV` có đề xuất; stack → "Để team đề xuất" (A2 ghi Q-n `DEV`). Tất cả đi form lượt 1, không hỏi ngay. Git remote chưa có → `PUSH=0` trong config.
 4. `docs/product/APP.md`: `- Intake: YES` khi intake không còn TODO (ô chờ owner ghi "chờ form, Q-n"). `echo S2 > .agent-team/stage`.
 
 ## 3. A1 Vấn đề + 12 góc nhìn

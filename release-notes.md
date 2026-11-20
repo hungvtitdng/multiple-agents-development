@@ -1,3 +1,13 @@
+# Release notes - 20/11/2026 (v0.14.1)
+
+## Thay đổi
+- Template mới `templates/product/project-setup.md`: dev điền stack, DB, hạ tầng, env, deploy.
+- `init` (dự án mới) copy phiếu vào `docs/product/`; `app` A0 đọc phiếu, ô đã điền không tạo Q-n `DEV`.
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update kevin-agent-team`, khởi động lại Claude Code.
+- Project đã init: copy `templates/product/project-setup.md` → `docs/product/`, điền trước khi chạy `/agent-team:app`.
+
 # Release notes - 20/11/2026 (v0.14.0)
 
 ## Thay đổi

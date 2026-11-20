@@ -7,6 +7,7 @@
 |---|---|---|
 | `APP.md` | Lead | Điều kiện qua cổng, danh sách module + thứ tự build |
 | `brief.md` | Lead | Ý tưởng gốc nguyên văn + tách thành ý `B-n` |
+| `project-setup.md` | Dev | Phiếu khởi động: stack, DB (MySQL...), hạ tầng, env, deploy. Lead đọc ở A0 |
 | `intake.md` | Lead | Phiếu: loại app, nền tảng, stack, ràng buộc |
 | `questions.md` | Lead | Sổ câu hỏi `Q-n`: đề xuất của team, ai trả lời (OWNER / DEV), mức CAO phải trả lời hết |
 | `owner-form-<n>.xlsx` | Lead (sinh bằng `owner-form.py build`) | Form 1 file 2 mục: A. Owner (nghiệp vụ), B. Dev (kỹ thuật); mỗi mục `# · Câu hỏi · Đề xuất của team · <người> duyệt / góp ý`. Nhập lại: `owner-form.py import <file>` |

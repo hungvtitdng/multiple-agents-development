@@ -20,6 +20,7 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
 2a. **Dự án mới (App Mode):**
    - Chưa có git → `git init -b main`, `BASE_BRANCH=main`. Chưa có code nên `BE_PATHS`, `FE_PATHS`, `TEST_PATHS`, lệnh test/lint để `TODO`: Architect điền sau khi chốt stack (`/agent-team:app` mục 9).
    - Không có remote (`git remote` rỗng) → `PUSH=0` (không fetch/push, branch nằm ở máy). Có remote → `PUSH=1`.
+   - Copy `templates/product/project-setup.md` → `docs/product/project-setup.md` (không ghi đè). Báo user: dev điền phiếu này trước khi chạy `/agent-team:app`.
 2b. **Nhiều repo → chọn repo chính** (chỉ hỏi khi ≥ 2 repo, 1 câu hỏi duy nhất bằng AskUserQuestion):
    - Câu hỏi: "Chọn repo chính, nơi chứa `.claude/`, `docs/`, `CLAUDE.md`". Mỗi lựa chọn là tên 1 repo tìm thấy. Gợi ý đầu tiên: repo BE/API.
    - Mọi file init tạo **trong repo chính**. **Không tạo gì ở thư mục cha.**
