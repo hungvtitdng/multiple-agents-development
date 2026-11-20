@@ -311,11 +311,11 @@ Checklist bảo mật, quy tắc trả lời ngắn và nguyên tắc code ít n
 ```
 1. Trong Claude Code:
    /plugin marketplace add hungvtitdng/multiple-agents-development
-   /plugin install agent-team@kevin-agent-team
+   /plugin install agent-team@kevin
 2. Mở project → /agent-team:init → kiểm tra .claude/agent-team.config
 3. /agent-team:task <task>      (dang dở: /agent-team:resume <task-id>)
 ```
-Cập nhật: `/plugin marketplace update kevin-agent-team`, khởi động lại Claude Code. Không còn cần `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`.
+Cập nhật: `/plugin marketplace update kevin`, khởi động lại Claude Code. Không còn cần `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`.
 
 ## Kiểm tra sau khi cài
 
