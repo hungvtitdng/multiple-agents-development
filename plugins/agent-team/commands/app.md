@@ -1,5 +1,5 @@
 ---
-description: Lead dựng cả app từ 1 ý tưởng - gom câu nghiệp vụ thành form gửi owner (mỗi câu 1 đề xuất của team), chốt logic, rồi wireframe, chia module và build từng module bằng /agent-team:run.
+description: Lead dựng cả app từ 1 ý tưởng - gom mọi câu hỏi vào 1 form (mục A owner, mục B dev; mỗi câu 1 đề xuất của team), chốt logic, rồi wireframe, chia module và build từng module bằng /agent-team:run.
 argument-hint: <ý tưởng app>
 model: opus
 ---
@@ -14,7 +14,7 @@ Mục tiêu: **app đủ thành phần, không sót ý của owner**. Logic chư
 ```
 PHASE A (chỉ tài liệu, stage S1-S2)
 A0 Intake → A1 Vấn đề + 12 góc nhìn → A2 Giải pháp (debate) → A3 Nghiệp vụ → A4 Săn gap
-   └─ câu nghiệp vụ gom vào FORM gửi owner (lượt 1, 2...) ─┘
+   └─ mọi câu hỏi gom vào 1 FORM: A. Owner · B. Dev (lượt 1, 2...) ─┘
 → ⛔ Owner chốt logic → A3b Wireframe → A5 Chia module
 PHASE B (code)
 M-0 khung project (task này, S3-S6) → M-1..n: mỗi module 1 /agent-team:run → M-E2E
@@ -22,31 +22,38 @@ M-0 khung project (task này, S3-S6) → M-1..n: mỗi module 1 /agent-team:run 
 - **Người chạy lệnh thường là dev, không phải owner.** Không hỏi dev câu nghiệp vụ. Mỗi câu trong `docs/product/questions.md` có cột `Ai trả lời`:
   | Ai trả lời | Gồm | Cách hỏi |
   |---|---|---|
-  | `DEV` | stack, hosting, git remote, môi trường, tích hợp kỹ thuật | `AskUserQuestion` với người đang chạy lệnh |
-  | `OWNER` | nghiệp vụ, quy tắc, tiền, quyền, dữ liệu, tính năng mặc định | **Form** gửi owner (mục 0b), không hỏi dev |
+  | `OWNER` | nghiệp vụ, quy tắc, tiền, quyền, dữ liệu, tính năng mặc định | **Form, mục A** (mục 0b), không hỏi dev |
+  | `DEV` | stack, hosting, git remote, môi trường, hạ tầng (SMTP, storage...) | **Form, mục B** (cùng file) |
+- **Không hỏi bằng `AskUserQuestion`** trong App Mode: mọi câu vào sổ `questions.md`, đi form. Ngoại lệ duy nhất: `/agent-team:init` (repo, git).
+- Câu kỹ thuật làm đổi logic (vd "server có SMTP không?" quyết định cách quên mật khẩu) → **tách 2 câu**: câu logic cho owner ("Quên mật khẩu thì sao?" đề xuất: gửi link email, mail lỗi thì quản lý cấp mật khẩu tạm) + câu hạ tầng cho dev. Logic không phụ thuộc vào câu trả lời của dev.
 - Agent vẫn **không** hỏi ai: trả câu hỏi về bạn, bạn ghi sổ `questions.md`.
 - Mức `CAO` (sai thì làm lại nhiều: luồng tiền, quyền, dữ liệu, quy tắc cốt lõi) **phải** được owner trả lời, không được giả định. Mức `THẤP` được `GIẢ ĐỊNH` (ghi lý do, liệt kê ở báo cáo).
 - Debate, board, model, Security, bài học: như `run.md` (mục 2-4, 11). Đọc `run.md` của plugin trước khi bắt đầu.
 
-## 0b. Form gửi owner
-- **Mỗi câu 1 đề xuất best solution** của team (BA đề xuất, kèm 1 câu "vì sao"), **không** đưa danh sách phương án khác. Hỏi bằng tình huống cụ thể ("Khách đặt xong muốn huỷ thì sao?"), không hỏi trừu tượng.
+## 0b. Form hỏi owner + dev (1 file, 2 mục)
+- **Mỗi câu 1 đề xuất best solution** của team (câu OWNER: BA đề xuất; câu DEV: Architect đề xuất; kèm 1 câu "vì sao"), **không** đưa danh sách phương án khác. Hỏi bằng tình huống cụ thể ("Khách đặt xong muốn huỷ thì sao?"), không hỏi trừu tượng.
 - Sinh form: `.claude/agent-team/owner-form.py build` → `docs/product/owner-form-<n>.xlsx`:
   ```
   <Tên app>
+
+  A. Owner: nghiệp vụ
   | # | Câu hỏi | Đề xuất của team | Owner duyệt / góp ý |   ← cột cuối để trống
+
+  B. Dev: kỹ thuật
+  | # | Câu hỏi | Đề xuất của team | Dev duyệt / góp ý |     ← cột cuối để trống
   ```
-  Gồm: câu `OWNER` đang `MỞ` / `CHỜ OWNER` (CAO lên đầu) + mặc định chưa chốt trong `defaults.md`. Script đổi trạng thái sang `CHỜ OWNER`. Câu OWNER thiếu đề xuất → script từ chối, giao BA bổ sung.
-- Gửi file cho owner (mở bằng Excel, hoặc tải lên Google Sheet). Owner ghi `OK`, `không`, hoặc góp ý vào cột cuối rồi gửi lại.
+  Mục A: câu `OWNER` đang `MỞ` / `CHỜ OWNER` (CAO lên đầu) + mặc định chưa chốt trong `defaults.md` → `CHỜ OWNER`. Mục B: câu `DEV` đang `MỞ` / `CHỜ DEV` → `CHỜ DEV`. Mục không có câu thì không in. Câu thiếu đề xuất → script từ chối, giao BA / Architect bổ sung.
+- Gửi file (mở bằng Excel, hoặc tải lên Google Sheet): owner điền mục A, dev điền mục B, ghi `OK`, `không`, hoặc góp ý vào cột cuối rồi gửi lại.
 - Nhập câu trả lời: `.claude/agent-team/owner-form.py import <file .xlsx | .csv>`:
-  | Owner ghi | Câu hỏi (Q) | Mặc định (D) |
+  | Owner / dev ghi | Câu hỏi (Q) | Mặc định (D) |
   |---|---|---|
   | OK / đồng ý / duyệt | `ĐÃ TRẢ LỜI`, trả lời = đề xuất | `GIỮ` |
-  | không / không cần / bỏ | `MỞ`: BA đề xuất lại ở lượt sau | `BỎ` |
-  | chữ khác (góp ý) | `ĐÃ TRẢ LỜI`, trả lời = nguyên văn owner | `KHÁC` + ghi chú |
-  | để trống | vẫn `CHỜ OWNER` | vẫn `CHỜ OWNER` |
+  | không / không cần / bỏ | `MỞ`: BA (A) / Architect (B) đề xuất lại ở lượt sau | `BỎ` |
+  | chữ khác (góp ý) | `ĐÃ TRẢ LỜI`, trả lời = nguyên văn | `KHÁC` + ghi chú |
+  | để trống | vẫn `CHỜ OWNER` / `CHỜ DEV` | vẫn `CHỜ OWNER` |
   Câu trả lời của owner chép vào tài liệu với nhãn `Confirmed`. Góp ý làm phát sinh câu mới → ghi Q-n cho lượt sau.
 - **Gom ít lượt nhất:** lượt 1 = mọi câu từ A1 + toàn bộ mặc định (mục 5.1), gửi **trước** khi BA viết yêu cầu. Lượt sau chỉ gồm câu owner ghi "không" (BA đề xuất lại) + câu mới từ A4.
-- **Chờ owner:** TASK.md `Trạng thái: BLOCKED (chờ owner, form lượt <n>)`. Báo user: gửi file `owner-form-<n>.xlsx` cho owner, nhận lại rồi chạy `/agent-team:resume <task-id> <đường dẫn file trả lời>`. Trong lúc chờ, team làm tiếp phần không phụ thuộc (A2 kiến trúc, câu DEV).
+- **Chờ trả lời:** TASK.md `Trạng thái: BLOCKED (chờ owner, form lượt <n>)`. Báo user: gửi file `owner-form-<n>.xlsx` cho owner (mục A) và dev (mục B), nhận lại rồi chạy `/agent-team:resume <task-id> <đường dẫn file trả lời>`. Dev trả lời trước hay sau owner đều được; logic chỉ chốt theo mục A.
 
 ## 1. Chuẩn bị
 1. Thư mục plugin: `find ~/.claude/plugins -type d -path "*agent-team" -exec test -f {}/scripts/gap-check.py \; -print | head -1` (dùng cho `catalog/`, `templates/product/`).
@@ -58,7 +65,7 @@ M-0 khung project (task này, S3-S6) → M-1..n: mỗi module 1 /agent-team:run 
 ## 2. A0 Intake (bạn làm)
 1. `docs/product/brief.md`: ý tưởng nguyên văn + tách thành ý nhỏ `B-1, B-2, ...` (mỗi câu/ý owner 1 dòng, không thêm ý của bạn). APP.md: dòng đầu `# <tên app>` (tên này là tiêu đề form).
 2. Nhận diện loại app → file trong `<plugin>/catalog/` (luôn kèm `chung.md`). Không có loại phù hợp → chỉ dùng `chung.md`, ghi `Loại app: khác: <mô tả>` và nêu ở báo cáo "nên thêm catalog".
-3. Điền `docs/product/intake.md`. Ô kỹ thuật (stack, hosting, git remote) → hỏi dev; stack chưa biết → "Để team đề xuất" (A2). Ô nghiệp vụ (người dùng, quy mô, thanh toán, ngôn ngữ, responsive) → ghi Q-n `OWNER` có đề xuất, đi form lượt 1. Git remote chưa có → `PUSH=0` trong config.
+3. Điền `docs/product/intake.md`. Ô nghiệp vụ (người dùng, quy mô, thanh toán, ngôn ngữ, responsive) → Q-n `OWNER` có đề xuất. Ô kỹ thuật (hosting, git remote, hạ tầng) → Q-n `DEV` có đề xuất; stack → "Để team đề xuất" (A2 ghi Q-n `DEV`). Tất cả đi form lượt 1, không hỏi ngay. Git remote chưa có → `PUSH=0` trong config.
 4. `docs/product/APP.md`: `- Intake: YES` khi intake không còn TODO (ô chờ owner ghi "chờ form, Q-n"). `echo S2 > .agent-team/stage`.
 
 ## 3. A1 Vấn đề + 12 góc nhìn
@@ -66,14 +73,14 @@ M-0 khung project (task này, S3-S6) → M-1..n: mỗi module 1 /agent-team:run 
 
 ## 4. A2 Giải pháp (debate)
 Debate theo `run.md` mục 4 (board, WHY, chấm điểm, Security duyệt), đối tượng là **cả app**:
-- `solution-architect` (+ `technical-architect`): 2-3 hướng kiến trúc + stack, ghi `docs/tech-stack.md`, `docs/architecture.md`, `docs/decisions/` (skill `decision-record`). Stack là việc kỹ thuật: dev chốt (`AskUserQuestion`), không hỏi owner.
+- `solution-architect` (+ `technical-architect`): 2-3 hướng kiến trúc + stack, ghi `docs/tech-stack.md`, `docs/architecture.md`, `docs/decisions/` (skill `decision-record`). Stack là việc kỹ thuật: ghi Q-n `DEV` với stack đề xuất, dev chốt ở mục B form lượt 1, không hỏi owner.
 - BA, Test Design, Security hỏi WHY như thường.
 - TASK.md: `- Phương án chốt:`, `- Security duyệt solution: APPROVED`.
 - Làm được trong lúc chờ owner trả lời form.
 
 ## 5. A3 Nghiệp vụ
 1. **Mặc định (bù phần owner không nghĩ tới):** BA chép mục từ `catalog/chung.md` + `catalog/<loại>.md` vào `defaults.md` (bỏ mục đã rõ trong brief): `Mục` = câu hỏi tình huống ngắn, `Đề xuất mặc định` = lựa chọn đầu của catalog, `Owner chọn` = `CHƯA`.
-2. **Form lượt 1:** `owner-form.py build` (câu A0, A1 + mặc định). Gửi owner, chờ, `import` (mục 0b).
+2. **Form lượt 1:** `owner-form.py build` (câu A0, A1, A2 + mặc định). Gửi owner + dev, chờ, `import` (mục 0b).
 3. Có câu trả lời: BA viết `requirements.md` (mỗi R-n có Nguồn B/G/D, Vai trò, Màn, AC), `flows.md` (mỗi F-n có sơ đồ Mermaid + bảng có cột "Nếu lỗi"; mỗi vai trò chính có luồng "1 ngày của <vai trò>"), `data.md` (CRUD + vòng đời trạng thái), cập nhật `docs/roles-and-permissions.md`, `docs/domain-model.md`, `docs/business-rules.md`, `docs/glossary.md`. Cột `Màn` dùng tên màn dự kiến `S-n` (ui-designer vẽ ở A3b).
 4. Câu hỏi mới phát sinh → `questions.md` (có đề xuất) → lượt form sau.
 
@@ -117,7 +124,7 @@ Xong: chạy `.claude/agent-team/gap-check.py --spec`, sửa hết `THIEU` → `
 - GAP khi code (run.md mục 7b) mà nguyên nhân là "Phase A bỏ sót" → ghi bài học **và** nêu ở báo cáo: "nên thêm vào `catalog/<loại>.md` của plugin: <mục, câu hỏi tình huống, đề xuất>". Lần sau app cùng loại sẽ được hỏi sớm.
 
 ## 12. Báo cáo
-- **Mỗi lượt form:** dòng đầu "Gửi file `docs/product/owner-form-<n>.xlsx` cho owner" + số câu (số câu CAO). Việc tiếp theo: nhận file trả lời rồi `/agent-team:resume <task-id> <file>`.
+- **Mỗi lượt form:** dòng đầu "Gửi file `docs/product/owner-form-<n>.xlsx`: owner điền mục A, dev điền mục B" + số câu mỗi mục (số câu CAO). Việc tiếp theo: nhận file trả lời rồi `/agent-team:resume <task-id> <file>`.
 - **Cuối Phase A:** dòng đầu "Owner đã chốt logic" (hoặc còn chờ gì). Kèm: đường dẫn `docs/product/SPEC.md`, số yêu cầu, số luồng, số màn, danh sách module + thứ tự, các `GIẢ ĐỊNH` mức THẤP.
 - **Sau mỗi module:** như `run.md` mục 10, thêm "Module tiếp theo: M-<n>".
 - Cuối cùng: đúng 1 việc user làm tiếp (≤ 2 phút).

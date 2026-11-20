@@ -720,7 +720,7 @@ PHASE B
 ### 19.1 Khác với `run`
 | Điểm | `run` | App Mode |
 |---|---|---|
-| Thiếu thông tin | Lead chọn + `Assumption` | Câu nghiệp vụ → **form `.xlsx` gửi owner** (`owner-form.py`): mỗi câu 1 đề xuất của team, owner ghi OK / không / góp ý; câu kỹ thuật hỏi dev. CAO bắt buộc owner trả lời, THẤP được giả định. Agent vẫn không hỏi |
+| Thiếu thông tin | Lead chọn + `Assumption` | Câu nghiệp vụ → **form `.xlsx` gửi owner** (`owner-form.py`): mỗi câu 1 đề xuất của team, owner ghi OK / không / góp ý; câu kỹ thuật ở mục B cùng file cho dev. CAO bắt buộc owner trả lời, THẤP được giả định. Agent vẫn không hỏi |
 | Owner | Đọc REPORT.html | Không đọc tài liệu, không xem wireframe: chốt logic bằng 1 bảng `# · Câu hỏi · Đề xuất của team · Owner duyệt / góp ý` |
 | Tài liệu | `docs/agent-tasks/<id>/` | Thêm `docs/product/` (cột cố định) + `SPEC.md` gộp toàn bộ |
 | Debate | Mỗi task VỪA/LỚN | A2 (kiến trúc, stack) + module VỪA/LỚN; không debate ở bước hỏi / wireframe / săn gap |

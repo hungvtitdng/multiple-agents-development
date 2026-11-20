@@ -1,12 +1,12 @@
 ---
 description: Làm tiếp task dang dở (hết quota, lỗi, đóng phiên) - đọc TASK.md, stage, board rồi tiếp tục đúng bước, không tạo task mới.
-argument-hint: <task-id> [file trả lời của owner .xlsx/.csv] (bỏ trống = task mới nhất)
+argument-hint: <task-id> [file form đã trả lời .xlsx/.csv] (bỏ trống = task mới nhất)
 model: opus
 ---
 
 Bạn là **Team Lead**. Làm tiếp task: $ARGUMENTS
 
-Trạng thái nằm trên đĩa nên làm tiếp được. Không hỏi user (task `APP`: câu nghiệp vụ đi form gửi owner, câu kỹ thuật hỏi dev; xem mục 2), không tạo task-id hoặc branch mới.
+Trạng thái nằm trên đĩa nên làm tiếp được. Không hỏi user (task `APP`: mọi câu đi form, mục A owner, mục B dev; xem mục 2), không tạo task-id hoặc branch mới.
 
 ## 1. Khôi phục trạng thái
 1. Đọc `CLAUDE.md`, `.claude/agent-team.config`. Chưa có thì báo user chạy `/agent-team:init`.
@@ -27,8 +27,8 @@ Trạng thái nằm trên đĩa nên làm tiếp được. Không hỏi user (ta
 | Stage S6 | Điền TASK.md, `agent-db-clone.sh down`, push, báo cáo |
 | TASK.md mục 14 có gap chưa `Closed` | Xử lý gap đó theo `run.md` mục 7b (`board.py status` xem lượt debate nhỏ đang mở), rồi giao dev làm tiếp phần đã dừng |
 | TASK.md ghi `BLOCKED` | Đọc lý do + điều kiện tiếp tục; còn thiếu thì báo user, đủ thì mở khoá |
-| `Loại: APP`, `BLOCKED (chờ owner, form lượt n)` | Có đường dẫn file trả lời trong `$ARGUMENTS` → `.claude/agent-team/owner-form.py import <file>`, báo số OK / góp ý / không / để trống, rồi làm tiếp theo `app.md` mục 0b. Chưa có file → báo user vẫn đang chờ owner (đường dẫn `docs/product/owner-form-<n>.xlsx`), làm phần không phụ thuộc (A2, câu DEV) |
-| `Loại: APP`, stage S1-S2 (Phase A) | Làm tiếp theo `app.md` (plugin). Bước dang dở suy từ `docs/product/`: `APP.md` `Intake` chưa YES → A0 · `coverage.md` còn TODO → A1 · chưa `Phương án chốt` → A2 · `defaults.md` còn `CHƯA` hoặc chưa có `requirements` → A3 (form lượt 1) · `Challenger` chưa DONE → A4 · `Owner duyệt` chưa APPROVED → mục 7 · `screens.md` trống → A3b · chưa có bảng Module → A5. Câu nghiệp vụ hỏi owner **qua form**, không hỏi dev |
+| `Loại: APP`, `BLOCKED (chờ owner, form lượt n)` | Có đường dẫn file trả lời trong `$ARGUMENTS` → `.claude/agent-team/owner-form.py import <file>`, báo số OK / góp ý / không / để trống, rồi làm tiếp theo `app.md` mục 0b. Chưa có file → báo user vẫn đang chờ owner / dev (đường dẫn `docs/product/owner-form-<n>.xlsx`), làm phần không phụ thuộc (A2) |
+| `Loại: APP`, stage S1-S2 (Phase A) | Làm tiếp theo `app.md` (plugin). Bước dang dở suy từ `docs/product/`: `APP.md` `Intake` chưa YES → A0 · `coverage.md` còn TODO → A1 · chưa `Phương án chốt` → A2 · `defaults.md` còn `CHƯA` hoặc chưa có `requirements` → A3 (form lượt 1) · `Challenger` chưa DONE → A4 · `Owner duyệt` chưa APPROVED → mục 7 · `screens.md` trống → A3b · chưa có bảng Module → A5. Câu hỏi đi **form** (A owner, B dev), không `AskUserQuestion` |
 | Có `docs/product/APP.md`, task module | Như `run`; module tiếp theo xem cột Trạng thái của bảng Module trong `APP.md` |
 
 Ghi vào TASK.md mục "Phán quyết"/SUMMARY: "Resume từ <bước>" kèm lý do dừng nếu biết (hết quota, lỗi...).

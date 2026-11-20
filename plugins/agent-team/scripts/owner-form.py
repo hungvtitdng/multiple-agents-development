@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""owner-form - form gửi owner chốt logic (App Mode). Không cần thư viện ngoài.
+"""owner-form - form hỏi owner + dev (App Mode). Không cần thư viện ngoài.
 
 Dùng (Lead chạy, trong project):
   owner-form.py build  [thư mục project]          → docs/product/owner-form-<n>.xlsx
   owner-form.py import <file .xlsx|.csv> [project] → ghi câu trả lời vào questions.md, defaults.md
 
-Form: tên app + 1 bảng 4 cột: # · Câu hỏi · Đề xuất của team · Owner duyệt / góp ý (ô trống).
-Owner ghi "OK" (duyệt), "không" (không đồng ý / không cần), hoặc góp ý. Mã câu nằm ở cột E (ẩn).
+Form: tên app + 2 mục, mỗi mục 1 bảng: # · Câu hỏi · Đề xuất của team · <người> duyệt / góp ý (ô trống).
+  A. Owner: nghiệp vụ (câu OWNER + mặc định)   B. Dev: kỹ thuật (câu DEV)
+Ghi "OK" (duyệt), "không" (không đồng ý / không cần), hoặc góp ý. Mã câu nằm ở cột E (ẩn).
 Mở được bằng Excel, Numbers, Google Sheet (tải lên). Exit 0 = xong, 1 = lỗi dữ liệu, 2 = chưa có docs/product.
 """
 import csv
@@ -24,7 +25,7 @@ gc = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(gc)
 
 P = "docs/product"
-HEAD = ["#", "Câu hỏi", "Đề xuất của team", "Owner duyệt / góp ý", "Mã"]
+SECTIONS = [("OWNER", "A. Owner: nghiệp vụ", "Owner duyệt / góp ý"), ("DEV", "B. Dev: kỹ thuật", "Dev duyệt / góp ý")]
 OK_WORDS = {"ok", "oke", "okay", "đồng ý", "duyệt", "được", "đúng", "yes", "y", "✓", "v"}
 NO_WORDS = {"không", "ko", "k", "no", "không đồng ý", "không duyệt", "không cần", "bỏ", "x"}
 
@@ -75,25 +76,27 @@ def app_name(root):
     return "App" if not name or name.startswith("<") else name
 
 
-def owner_rows(root):
-    """(câu hỏi cho owner, mặc định chưa chốt, lỗi). Câu CAO lên trước."""
-    errs, qs, ds = [], [], []
+def form_rows(root):
+    """({OWNER: [...], DEV: [...]} câu hỏi, mặc định chưa chốt, lỗi). Câu CAO lên trước."""
+    errs, qs, ds = [], {"OWNER": [], "DEV": []}, []
     qm, qrows = gc.table(gc.read(root, "questions.md") or "", "q", "câu hỏi", "đề xuất", "vì sao", "mức", "ai trả lời", "trạng thái")
     if not qm:
         errs.append("questions.md thiếu cột: Q | Câu hỏi | Đề xuất của team | Vì sao | Mức | Ai trả lời | Trạng thái (bản cũ: copy lại templates/product/questions.md)")
     for r in qrows if qm else []:
         q = gc.clean(r[qm["q"]])
-        if not q or gc.first_word(r[qm["ai trả lời"]]) != "OWNER":
+        who = gc.first_word(r[qm["ai trả lời"]])
+        if not q or who not in qs:
             continue
-        if gc.clean(r[qm["trạng thái"]]).upper() not in ("MỞ", "CHỜ OWNER"):
+        if gc.clean(r[qm["trạng thái"]]).upper() not in ("MỞ", "CHỜ OWNER", "CHỜ DEV"):
             continue
         if gc.empty(r[qm["đề xuất"]]):
             errs.append(f"{q} chưa có Đề xuất của team")
             continue
         why = gc.clean(r[qm["vì sao"]])
         sug = gc.clean(r[qm["đề xuất"]]) + (f"\n{why}" if why and not gc.empty(why) else "")
-        qs.append((q, gc.clean(r[qm["câu hỏi"]]), sug, gc.clean(r[qm["mức"]]).upper() == "CAO"))
-    qs.sort(key=lambda x: not x[3])
+        qs[who].append((q, gc.clean(r[qm["câu hỏi"]]), sug, gc.clean(r[qm["mức"]]).upper() == "CAO"))
+    for v in qs.values():
+        v.sort(key=lambda x: not x[3])
     dm, drows = gc.table(gc.read(root, "defaults.md") or "", "d", "mục", "đề xuất", "owner chọn")
     for r in drows if dm else []:
         d = gc.clean(r[dm["d"]])
@@ -137,19 +140,27 @@ def _height(cells):
     return max(30, 16 * lines)
 
 
-def write_xlsx(path, title, rows):
-    xml = [_row_xml(1, [_c("A1", title, 1)], 24)]
-    xml.append(_row_xml(2, [_c(f"{'ABCDE'[k]}2", h, 2) for k, h in enumerate(HEAD)], 20))
-    for n, (rid, q, sug, _cao) in enumerate(rows, 1):
-        r = n + 2
-        vals = [n, q, sug, "", rid]
-        xml.append(_row_xml(r, [_c(f"{'ABCDE'[k]}{r}", v, 4 if k == 3 else 3) for k, v in enumerate(vals)], _height(vals)))
+def write_xlsx(path, title, sections):
+    """sections: [(tên mục, tiêu đề cột trả lời, rows)]. Mục rỗng thì bỏ."""
+    xml, r = [_row_xml(1, [_c("A1", title, 1)], 24)], 1
+    for name, answer, rows in sections:
+        if not rows:
+            continue
+        r += 2  # chừa 1 dòng trống
+        xml.append(_row_xml(r, [_c(f"A{r}", name, 1)], 22))
+        r += 1
+        head = ["#", "Câu hỏi", "Đề xuất của team", answer, "Mã"]
+        xml.append(_row_xml(r, [_c(f"{'ABCDE'[k]}{r}", h, 2) for k, h in enumerate(head)], 20))
+        for n, (rid, q, sug, _cao) in enumerate(rows, 1):
+            r += 1
+            vals = [n, q, sug, "", rid]
+            xml.append(_row_xml(r, [_c(f"{'ABCDE'[k]}{r}", v, 4 if k == 3 else 3) for k, v in enumerate(vals)], _height(vals)))
     hidden = ' hidden="1"'  # cột E (mã câu) ẩn với owner
     cols = "".join(f'<col min="{k + 1}" max="{k + 1}" width="{w}" customWidth="1"{hidden if k == 4 else ""}/>'
                    for k, w in enumerate(WIDTHS))
     sheet = ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
              '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-             '<sheetViews><sheetView workbookViewId="0"><pane ySplit="2" topLeftCell="A3" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
+             '<sheetViews><sheetView workbookViewId="0"/></sheetViews>'
              f'<cols>{cols}</cols><sheetData>{"".join(xml)}</sheetData></worksheet>')
     ns = "http://schemas.openxmlformats.org"
     files = {
@@ -161,7 +172,7 @@ def write_xlsx(path, title, rows):
         "_rels/.rels": f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="{ns}/package/2006/relationships">'
         f'<Relationship Id="rId1" Type="{ns}/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
         "xl/workbook.xml": f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="{ns}/spreadsheetml/2006/main" '
-        f'xmlns:r="{ns}/officeDocument/2006/relationships"><sheets><sheet name="Owner" sheetId="1" r:id="rId1"/></sheets></workbook>',
+        f'xmlns:r="{ns}/officeDocument/2006/relationships"><sheets><sheet name="Form" sheetId="1" r:id="rId1"/></sheets></workbook>',
         "xl/_rels/workbook.xml.rels": f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="{ns}/package/2006/relationships">'
         f'<Relationship Id="rId1" Type="{ns}/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
         f'<Relationship Id="rId2" Type="{ns}/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
@@ -217,23 +228,26 @@ def verdict(text):
 
 
 def cmd_build(root):
-    qs, ds, errs = owner_rows(root)
+    qs, ds, errs = form_rows(root)
     if errs:
         sys.stderr.write("owner-form: chưa gửi được, sửa trước:\n" + "\n".join(f"  - {e}" for e in errs) + "\n")
         return 1
-    rows = qs + ds
-    if not rows:
-        print("Không có câu nào cần owner trả lời (OWNER + MỞ / CHỜ OWNER, mặc định CHƯA).")
+    own, dev = qs["OWNER"] + ds, qs["DEV"]
+    if not own and not dev:
+        print("Không có câu nào cần trả lời (OWNER / DEV đang MỞ, mặc định CHƯA).")
         return 0
     n = 1 + len([f for f in os.listdir(os.path.join(root, P)) if re.match(r"owner-form-\d+\.xlsx$", f)])
     out = os.path.join(root, P, f"owner-form-{n}.xlsx")
-    write_xlsx(out, app_name(root), rows)
+    write_xlsx(out, app_name(root), [(SECTIONS[0][1], SECTIONS[0][2], own), (SECTIONS[1][1], SECTIONS[1][2], dev)])
     qp, dp = os.path.join(root, P, "questions.md"), os.path.join(root, P, "defaults.md")
-    if qs:
-        patch(qp, "q", ["q", "trạng thái"], {q[0]: {"trạng thái": "CHỜ OWNER"} for q in qs})
+    upd = {q[0]: {"trạng thái": f"CHỜ {who}"} for who, v in qs.items() for q in v}
+    if upd:
+        patch(qp, "q", ["q", "trạng thái"], upd)
     if ds:
         patch(dp, "d", ["d", "owner chọn"], {d[0]: {"owner chọn": "CHỜ OWNER"} for d in ds})
-    print(f"{os.path.relpath(out, root)}: {len(qs)} câu hỏi ({sum(q[3] for q in qs)} mức CAO) + {len(ds)} mặc định. Gửi file cho owner.")
+    cao = sum(q[3] for q in qs["OWNER"])
+    print(f"{os.path.relpath(out, root)}: A. Owner {len(qs['OWNER'])} câu ({cao} mức CAO) + {len(ds)} mặc định · "
+          f"B. Dev {len(dev)} câu. Gửi file cho owner (mục A) và dev (mục B).")
     return 0
 
 
@@ -244,16 +258,17 @@ def cmd_import(root, path):
         sys.stderr.write("owner-form: không thấy dòng tiêu đề 'Câu hỏi' trong file\n")
         return 1
     qp, dp = os.path.join(root, P, "questions.md"), os.path.join(root, P, "defaults.md")
-    qm, qrows = gc.table(gc.read(root, "questions.md") or "", "q", "câu hỏi", "đề xuất")
+    qm, qrows = gc.table(gc.read(root, "questions.md") or "", "q", "câu hỏi", "đề xuất", "ai trả lời")
     dm, drows = gc.table(gc.read(root, "defaults.md") or "", "d", "mục", "đề xuất")
     by_text = {gc.clean(r[qm["câu hỏi"]]): gc.clean(r[qm["q"]]) for r in qrows} if qm else {}
     by_text.update({gc.clean(r[dm["mục"]]): gc.clean(r[dm["d"]]) for r in drows} if dm else {})
     sug = {gc.clean(r[qm["q"]]): gc.clean(r[qm["đề xuất"]]) for r in qrows} if qm else {}
+    who = {gc.clean(r[qm["q"]]): gc.first_word(r[qm["ai trả lời"]]).capitalize() or "Owner" for r in qrows} if qm else {}
     qu, du, stat, blank, again = {}, {}, {"ok": 0, "no": 0, "own": 0}, [], []
     for r in rows[hdr + 1:]:
         rid = gc.clean(r.get("E", "")) or by_text.get(gc.clean(r.get("B", "")), "")
         ans = r.get("D", "").strip()
-        if not rid:
+        if not re.match(r"[QD]-", rid):  # dòng tên mục / tiêu đề
             continue
         if not ans:
             blank.append(rid)
@@ -261,9 +276,11 @@ def cmd_import(root, path):
         v = verdict(ans)
         stat[v] += 1
         if rid.startswith("Q-"):
-            qu[rid] = {"ok": {"trạng thái": "ĐÃ TRẢ LỜI", "trả lời": f"Owner OK: {sug.get(rid, '')}"},
-                       "no": {"trạng thái": "MỞ", "trả lời": "Owner không đồng ý đề xuất, BA đề xuất lại"},
-                       "own": {"trạng thái": "ĐÃ TRẢ LỜI", "trả lời": f"Owner: {ans}"}}[v]
+            w = who.get(rid, "Owner")
+            redo = "BA" if w == "Owner" else "Architect"
+            qu[rid] = {"ok": {"trạng thái": "ĐÃ TRẢ LỜI", "trả lời": f"{w} OK: {sug.get(rid, '')}"},
+                       "no": {"trạng thái": "MỞ", "trả lời": f"{w} không đồng ý đề xuất, {redo} đề xuất lại"},
+                       "own": {"trạng thái": "ĐÃ TRẢ LỜI", "trả lời": f"{w}: {ans}"}}[v]
             if v == "no":
                 again.append(rid)
         elif rid.startswith("D-"):
@@ -275,9 +292,9 @@ def cmd_import(root, path):
         patch(dp, "d", ["d", "owner chọn", "ghi chú"], du)
     print(f"Đã nhập: {stat['ok']} OK, {stat['own']} góp ý, {stat['no']} không đồng ý / không cần, {len(blank)} để trống.")
     if again:
-        print(f"BA đề xuất lại (lượt sau): {', '.join(again)}")
+        print(f"Đề xuất lại (lượt sau): {', '.join(again)}")
     if blank:
-        print(f"Owner chưa trả lời (vẫn CHỜ OWNER): {', '.join(blank)}")
+        print(f"Chưa trả lời (vẫn CHỜ OWNER / CHỜ DEV): {', '.join(blank)}")
     return 0
 
 

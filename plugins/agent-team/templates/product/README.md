@@ -9,7 +9,7 @@
 | `brief.md` | Lead | Ý tưởng gốc nguyên văn + tách thành ý `B-n` |
 | `intake.md` | Lead | Phiếu: loại app, nền tảng, stack, ràng buộc |
 | `questions.md` | Lead | Sổ câu hỏi `Q-n`: đề xuất của team, ai trả lời (OWNER / DEV), mức CAO phải trả lời hết |
-| `owner-form-<n>.xlsx` | Lead (sinh bằng `owner-form.py build`) | Form gửi owner: `# · Câu hỏi · Đề xuất của team · Owner duyệt / góp ý`. Nhập lại: `owner-form.py import <file>` |
+| `owner-form-<n>.xlsx` | Lead (sinh bằng `owner-form.py build`) | Form 1 file 2 mục: A. Owner (nghiệp vụ), B. Dev (kỹ thuật); mỗi mục `# · Câu hỏi · Đề xuất của team · <người> duyệt / góp ý`. Nhập lại: `owner-form.py import <file>` |
 | `problem.md` | BA | Vấn đề, mục tiêu `G-n`, thước đo, ngoài phạm vi |
 | `coverage.md` | BA | 12 góc nhìn, không ô nào trống |
 | `defaults.md` | BA | Mục mặc định `D-n` từ catalog, owner chọn GIỮ/BỎ/KHÁC |

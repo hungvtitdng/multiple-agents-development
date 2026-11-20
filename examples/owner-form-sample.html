@@ -28,14 +28,21 @@ td.own:focus{box-shadow:inset 0 0 0 2px var(--accent)}
   td.own{min-height:60px}
   td.own::before{content:"Owner duyệt / góp ý";display:block;font-size:12px;color:var(--muted)}
 }
+h2{font-size:15px;margin:22px 0 8px}
 </style>
 </head>
 <body>
 <div class="wrap">
 <h1>Salon Tóc Mây</h1>
+<h2>A. Owner: nghiệp vụ</h2>
 <table>
   <thead><tr><th>#</th><th style="width:32%">Câu hỏi</th><th style="width:40%">Đề xuất của team</th><th>Owner duyệt / góp ý</th></tr></thead>
   <tbody id="t"></tbody>
+</table>
+<h2>B. Dev: kỹ thuật</h2>
+<table>
+  <thead><tr><th>#</th><th style="width:32%">Câu hỏi</th><th style="width:40%">Đề xuất của team</th><th>Dev duyệt / góp ý</th></tr></thead>
+  <tbody id="d"></tbody>
 </table>
 </div>
 <script>
@@ -50,10 +57,16 @@ const R=[
  ["D-2","Có lưu lịch sử khách không?","Có, ghi chú từng lần làm (màu nhuộm, kiểu cắt)",""],
  ["D-3","Tính hoa hồng thợ?","Báo cáo doanh thu theo thợ, xuất Excel cuối tháng",""],
  ["D-4","Dùng trên điện thoại?","Có, co giãn đủ điện thoại, tablet, máy tính",""]];
-document.getElementById("t").innerHTML=R.map(([id,q,s,why],i)=>`<tr data-id="${id}">
+const DEV=[
+ ["Q-6","Server có SMTP nội bộ để gửi email không?","Có, cấu hình bằng .env","Gửi link quên mật khẩu; mail lỗi thì quản lý cấp mật khẩu tạm."],
+ ["Q-7","Deploy app bằng gì?","Docker Compose trên máy chủ Ubuntu nội bộ",""],
+ ["Q-8","Stack?","Next.js + NestJS + PostgreSQL","Một ngôn ngữ (TypeScript) cho cả FE và BE."]];
+const rows=L=>L.map(([id,q,s,why],i)=>`<tr data-id="${id}">
  <td class="n">${i+1}</td><td>${q}</td>
  <td>${s}${why?`<div class="why">${why}</div>`:""}</td>
  <td class="own" contenteditable="true"></td></tr>`).join("");
+document.getElementById("t").innerHTML=rows(R);
+document.getElementById("d").innerHTML=rows(DEV);
 </script>
 </body>
 </html>
