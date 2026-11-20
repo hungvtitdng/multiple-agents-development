@@ -6,7 +6,7 @@ description: Quy trình review diff chung cho mọi stack - thứ tự đọc, n
 # Review diff
 
 ## 0. Đọc checklist riêng của dự án trước
-`docs/engineering/review-checklist.md` (gồm mục "Mẫu tìm lỗi theo stack") và `docs/engineering/coding-standards.md`.
+`docs/engineering/review-checklist.md` (gồm mục "Mẫu tìm lỗi theo stack"), `docs/engineering/coding-standards.md` (chung) và `backend.md` / `frontend.md` theo phần diff.
 - Chưa có mẫu cho nhóm lỗi nào → suy từ code dự án, làm theo nguyên tắc dưới, ghi **"Đề xuất bổ sung review-checklist.md"** trong kết quả (Architect cập nhật khi đóng task).
 
 ## 1. Thứ tự (dừng sớm ở lỗi nặng, không sa vào style)
@@ -33,7 +33,7 @@ description: Quy trình review diff chung cho mọi stack - thứ tự đọc, n
 Đối chiếu diff với bài `Active` trong mục "Bài học" của CONTEXT.md và `docs/LESSONS.md`. Vi phạm "Cách tránh" = **High**, ghi "LẶP LẠI bài học <task>".
 
 ## 4. Viết issue
-`[Mức] file:dòng | vấn đề | tác động | đề xuất sửa cụ thể`
+`[Mức] file:dòng | vấn đề (dẫn mã quy tắc nếu có: BE-n / FE-n / BR-n) | tác động | đề xuất sửa cụ thể`
 - **Critical**: sai dữ liệu/tiền, mất dữ liệu, N+1 trên list chính, lỗ hổng quyền.
 - **High**: thiếu phân trang list, thiếu test cho logic chính, KB không khớp, **hàm mới trùng nghĩa hàm có sẵn**, **thiếu / sai dòng chỉ mục hàm**, lặp lỗi cũ, thay đổi ngoài phạm vi đáng kể.
 - **Medium**: vi phạm quy chuẩn ảnh hưởng bảo trì, xử lý lỗi chưa đủ.

@@ -13,7 +13,7 @@ Mục tiêu: các agent khác **không phải tự quét lại repo**. Bash ch�
 1. File/module liên quan (đường dẫn thật, 1 dòng mỗi file nói nó làm gì).
 2. Pattern đang dùng + 1-2 file mẫu nên bắt chước.
 3. Schema/bảng DB liên quan, API/route liên quan.
-4. Quy chuẩn code liên quan task (trích từ `docs/engineering/`, không chép cả file).
+4. Quy chuẩn code liên quan task (trích từ `docs/engineering/coding-standards.md` + `backend.md` / `frontend.md` theo phần task chạm, không chép cả file).
 5. KB nghi lỗi thời: so `verified-at` trong KB với `git log` của module, ghi module nào KB cũ.
 6. Câu hỏi còn mở (nhãn `Assumption`).
 6b. **Hàm có sẵn liên quan**: với mỗi model / bảng task chạm tới, chép từ `docs/functions/<model>.md` các dòng có thể dùng lại (≤ 10 dòng: Hàm | Ý nghĩa | file:dòng). Model chưa có file chỉ mục → ghi "chưa có chỉ mục <model>" để Lead biết.
@@ -51,8 +51,8 @@ Nguồn `file:dòng` ghi **đường dẫn từ gốc repo** (`app/policies/book
 ### Cách đọc logic (frontend)
 Routes/pages → mỗi page 1 file `modules/<tên>/screens/<màn>.md` theo **mẫu trong `modules/README.md`** (Route, File, Vai trò, Quyền `P-`, API, Quy tắc `BR-`, Luồng `F-n bước k`, Trạng thái, logic riêng của màn, `verified-at`) + 1 dòng bảng **Tra page** (`Route | Module | File KB | File code`) trong `modules/README.md`. Chỗ ẩn/hiện theo quyền → ghi mã `P-`; mã chưa có trong `permission-matrix.md` → báo Lead.
 
-### Cách đọc quy chuẩn code (`engineering/coding-standards.md`)
-**Đếm** pattern đang dùng (đặt tên, phân tầng, xử lý lỗi, logging, validation, style API, quy ước DB/migration/test, comment): ghi pattern chiếm đa số kèm ví dụ `file:dòng`, nhãn `Observed`. Nhận diện lệnh lint/format và báo Lead để điền `LINT_CMD`, `FORMAT_CMD`.
+### Cách đọc quy chuẩn code (`engineering/coding-standards.md` chung, `backend.md` BE, `frontend.md` FE)
+**Đếm** pattern đang dùng, ghi pattern chiếm đa số kèm ví dụ `file:dòng`, nhãn `Observed`, đúng file: phần dùng chung (đặt tên, xử lý lỗi chung, logging, config, comment) → `coding-standards.md`; code trong `BE_PATHS` (phân tầng, controller, service, model, validation, kiểm quyền, style API, query, job, test BE) → `backend.md`; code trong `FE_PATHS` (cấu trúc, component, state, gọi API, form, trạng thái màn, theme, responsive, test FE) → `frontend.md`. Không ghi trùng một quy tắc ở 2 file. `backend.md` / `frontend.md`: mỗi quy tắc 1 dòng trong bảng `Mã | Nhóm | Quy tắc | Đúng | Sai | Nguồn | Nhãn` (mã `BE-n` / `FE-n`, tăng dần, không dùng lại), xoá dòng mẫu `Example`. Nhận diện lệnh lint/format và báo Lead để điền `LINT_CMD`, `FORMAT_CMD`.
 
 ### Mảng thường được giao
 | Mảng | File KB |
@@ -62,7 +62,7 @@ Routes/pages → mỗi page 1 file `modules/<tên>/screens/<màn>.md` theo **m�
 | Kiến trúc + API + DB | `project-overview.md`, `architecture.md`, `tech-stack.md`, `api/endpoints.md`, `database/schema.md`, `database/migration-rules.md`, `integrations/` |
 | Frontend | Chỉ file mới `modules/<tên>/screens/*.md`, `actions/*.md` + bảng **Tra page** trong `modules/README.md` (không sửa `README.md` của từng module) |
 | Chỉ mục hàm (mỗi Scout ≤ 5 model) | Chỉ `functions/<model>.md` của các model được giao + 1 dòng mục lục trong `functions/README.md`. Danh sách hàm cần ghi: `.claude/agent-team/kb-check.py --functions` (graph đã liệt kê sẵn tên + `file:dòng`, chỉ chọn hàm thuộc model của mình). **Đọc thân hàm** rồi viết Ý nghĩa: điều kiện lọc, điều kiện được chạy, tác dụng phụ; đủ để phân biệt với hàm gần giống. Hàm chạm nhiều model: ghi ở model chính nó thay đổi, model kia 1 dòng `→ xem <file>.md` |
-| Quy chuẩn + test | `engineering/coding-standards.md`, `engineering/review-checklist.md` (mục "Mẫu tìm lỗi theo stack"), `testing/test-strategy.md`, `testing/automation-guide.md`, `security/review-patterns.md` |
+| Quy chuẩn + test | `engineering/coding-standards.md` (chung), `engineering/backend.md` (BE), `engineering/frontend.md` (FE, nếu có `FE_PATHS`), `engineering/review-checklist.md` (mục "Mẫu tìm lỗi theo stack"), `testing/test-strategy.md`, `testing/automation-guide.md`, `security/review-patterns.md` |
 | Tổng hợp nghiệp vụ (chạy sau khi các mảng module xong) | `domain-model.md`, `business-rules.md`, `roles-and-permissions.md`, `permission-matrix.md`, `flows/README.md`, `glossary.md`: đọc `modules/*/README.md` + `screens/` đã có, gộp quy tắc thành bảng chung (giữ nguồn `file:dòng`), đọc policy/guard/scope để dựng ma trận quyền đủ mọi vai trò × hành động, nối các page thành luồng `F-n` (bước → page, `P-`, `BR-`), bỏ trùng |
 
 **File theo stack** (`database/migration-rules.md`, `testing/automation-guide.md`, `security/review-patterns.md`, mục "Mẫu tìm lỗi theo stack" của `engineering/review-checklist.md`): ghi cách làm **của chính dự án** (công cụ, cú pháp, mẫu grep, cách kiểm quyền), mỗi dòng có ví dụ `file:dòng` lấy từ code thật, nhãn `Observed`. Không chép kiến thức chung của framework; nguyên tắc chung đã nằm trong skill của plugin.

@@ -29,7 +29,7 @@ Chia việc dựa trên bản đồ. Bạn ghi bảng **Danh sách module** (`Mo
 | Kiến trúc + API + DB | `project-overview.md`, `architecture.md`, `tech-stack.md`, `api/endpoints.md`, `database/schema.md`, `database/migration-rules.md`, `integrations/` |
 | Frontend (nếu có repo FE) | `modules/<tên>/screens/*.md`, `actions/*.md` (theo mẫu trong `modules/README.md`) + bảng **Tra page** trong `modules/README.md` |
 | Chỉ mục hàm (khi config có `FUNCTION_INDEX_PATHS`; mỗi Scout ≤ 5 model, chạy sau khi có graph: `graphify update .`) | `functions/<model>.md` của các model được giao (bạn ghi mục lục `functions/README.md` từ bản đồ trước). Scout lấy danh sách hàm bằng `kb-check.py --functions` |
-| Quy chuẩn + test | `engineering/coding-standards.md`, `engineering/review-checklist.md` (mục "Mẫu tìm lỗi theo stack"), `testing/test-strategy.md`, `testing/automation-guide.md`, `security/review-patterns.md` (+ báo lệnh lint/format cho Lead) |
+| Quy chuẩn + test | `engineering/coding-standards.md` (chung), `engineering/backend.md` (BE), `engineering/frontend.md` (FE, nếu có `FE_PATHS`), `engineering/review-checklist.md` (mục "Mẫu tìm lỗi theo stack"), `testing/test-strategy.md`, `testing/automation-guide.md`, `security/review-patterns.md` (+ báo lệnh lint/format cho Lead) |
 
 Argument là một module/mảng → chỉ gọi đúng Scout cho phần đó.
 

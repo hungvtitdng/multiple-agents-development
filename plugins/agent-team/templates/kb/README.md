@@ -9,7 +9,7 @@ Mọi agent **đọc** trước khi làm. Mỗi thư mục có chủ sở hữu 
 | `business-rules.md`, `domain-model.md`, `roles-and-permissions.md`, `glossary.md` | BA | Nghiệp vụ |
 | `roles-and-permissions.md` (vai trò + điều kiện `C-`), `permission-matrix.md` (vai trò × hành động `P-`) | BA (Security đọc, Test Design sinh test) | Quyền: ai · làm gì · trên dữ liệu nào |
 | `flows/` | BA | Luồng qua nhiều page `F-n` |
-| `engineering/` | Architect | Quy chuẩn code, checklist clean code |
+| `engineering/` | Architect | Quy chuẩn code: `coding-standards.md` (chung), `backend.md` (BE), `frontend.md` (FE); `review-checklist.md` (checklist clean code, mẫu tìm lỗi) |
 | `modules/<tên>/` | BA, Architect, dev | Chức năng, màn hình, hành động, API, test liên quan. `modules/README.md`: danh sách module + bảng tra Route → file KB |
 | `functions/` | Architect, backend-dev, frontend-dev (Scout dựng lần đầu) | Chỉ mục hàm: mỗi model 1 file, mỗi hàm public 1 dòng ý nghĩa. Dev đọc trước khi viết hàm mới; `kb-check.py` so với graph |
 | `testing/` | Test Design, Test Execution | Chiến lược, test case, ma trận, kết quả |

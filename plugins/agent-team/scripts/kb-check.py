@@ -34,6 +34,8 @@ REQUIRED = {
     "docs/database/schema.md": 1,
     "docs/testing/test-strategy.md": 0,
     "docs/engineering/coding-standards.md": 1,
+    "docs/engineering/backend.md": 0,  # bỏ qua khi config không có BE_PATHS; kiểm từng dòng BE- (check_rules)
+    "docs/engineering/frontend.md": 0,  # bỏ qua khi config không có FE_PATHS; kiểm từng dòng FE-
     "docs/database/migration-rules.md": 0,
     "docs/testing/automation-guide.md": 0,
     "docs/security/review-patterns.md": 0,
@@ -133,7 +135,7 @@ def stale(sha, used):
 
 
 def kb_files(root):
-    rels = [r for r in REQUIRED if os.path.isfile(os.path.join(root, r))]
+    rels = [r for r in required(root) if os.path.isfile(os.path.join(root, r))]
     extra = glob.glob(os.path.join(root, "docs", "modules", "**", "*.md"), recursive=True)
     extra += glob.glob(os.path.join(root, "docs", "flows", "*.md"))
     extra += func_files(root)
@@ -165,6 +167,31 @@ def check_br(text):
             why.append(f"{cells[0]} thiếu nhãn")
         if not (CITE_RE.search(" ".join(cells)) or TASK_RE.search(" ".join(cells))):
             why.append(f"{cells[0]} thiếu nguồn file:dòng / task-id")
+    return why
+
+
+RULE_FILES = {"docs/engineering/backend.md": "BE-", "docs/engineering/frontend.md": "FE-"}
+
+
+def check_rules(text, prefix):
+    """Quy chuẩn BE- / FE-: có ít nhất 1 dòng, không trùng mã, đủ nhãn + nguồn, không còn dòng mẫu Example."""
+    rows = rows_of(text, prefix)
+    rows = [r for r in rows if re.match(rf"{prefix}\d+$", r[0])]
+    if not rows:
+        return [f"chưa có quy tắc {prefix}n nào"]
+    why, seen = [], set()
+    for r in rows:
+        if r[0] in seen:
+            why.append(f"{r[0]} trùng mã")
+        seen.add(r[0])
+        low = r[-1].lower()  # cột cuối = Nhãn
+        if "example" in low:
+            why.append(f"{r[0]} còn là dòng mẫu Example")
+            continue
+        if not any(lb in low for lb in LABELS):
+            why.append(f"{r[0]} thiếu nhãn")
+        if "planned" not in low and not (CITE_RE.search(" ".join(r)) or TASK_RE.search(" ".join(r))):
+            why.append(f"{r[0]} thiếu nguồn file:dòng / task-id")
     return why
 
 
@@ -379,9 +406,15 @@ def functions_report(root):
     return "\n".join(out)
 
 
+def required(root):
+    """REQUIRED, bỏ quy chuẩn BE / FE khi dự án không có BE_PATHS / FE_PATHS."""
+    skip = {f"docs/engineering/{k}.md" for k, key in (("backend", "BE_PATHS"), ("frontend", "FE_PATHS")) if not cfg(root, key)}
+    return {k: v for k, v in REQUIRED.items() if k not in skip}
+
+
 def check(root):
     rows, repo_dirs, ids = [], repos(root), defined(root)
-    for rel, min_cite in REQUIRED.items():
+    for rel, min_cite in required(root).items():
         if not os.path.isfile(os.path.join(root, rel)):
             rows.append({"file": rel, "ok": False, "why": "chưa có file"})
     for rel in kb_files(root):
@@ -399,6 +432,8 @@ def check(root):
             why.append(f"CŨ: code đổi sau verified-at {m.group(1)}: {', '.join(sorted(set(old))[:5])}")
         if rel == "docs/business-rules.md" or re.match(r"docs/modules/[^/]+/README\.md$", rel):
             why += check_br(text)[:5]
+        if rel in RULE_FILES:
+            why += check_rules(text, RULE_FILES[rel])[:5]
         if rel.startswith(("docs/modules/", "docs/flows/")):
             for k, found in refs(text, ("BR", "P", "C", "F")).items():
                 why += [f"trỏ tới {x} không có trong KB tổng" for x in sorted(found - ids[k])][:5]

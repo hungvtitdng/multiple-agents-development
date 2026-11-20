@@ -1,3 +1,15 @@
+# Release notes - 20/11/2026 (v0.18.1)
+
+## Thay đổi
+- **Quy chuẩn code tách BE / FE** trong KB dự án `docs/engineering/`: `coding-standards.md` (chung: đặt tên, xử lý lỗi chung, logging, config, comment, git) · `backend.md` (phân tầng, controller, service, model, validation, kiểm quyền, style API, query, job, gọi dịch vụ ngoài, test BE) · `frontend.md` (cấu trúc, component, state, gọi API, form, trạng thái màn, theme, responsive, a11y, ẩn/hiện theo quyền, test FE). Mỗi quy tắc: 1 câu + ví dụ đúng / sai + `file:dòng` + nhãn.
+- backend-dev đọc chung + `backend.md`; frontend-dev đọc chung + `frontend.md`; Code Reviewer đọc theo phần diff; Scout ghi đúng file khi init / kb; test-executor đọc mục Test.
+- `kb-check.py`: bắt buộc `backend.md` khi config có `BE_PATHS`, `frontend.md` khi có `FE_PATHS`. Test: `test_kb_check.py` 42 case.
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update multiple-agent`, khởi động lại Claude Code.
+- Project đã init: copy `templates/kb/engineering/backend.md`, `frontend.md` → `docs/engineering/` (không ghi đè); chuyển phần riêng BE / FE đang nằm trong `docs/engineering/coding-standards.md` sang 2 file mới (hoặc chạy `/agent-team:kb engineering` để Scout làm); copy lại `scripts/kb-check.py` → `.claude/agent-team/` (chmod +x). Chưa làm thì `kb-check` báo `THIEU` 2 file mới.
+- Không có ENV / key mới.
+
 # Release notes - 20/11/2026 (đổi tên marketplace)
 
 ## Thay đổi

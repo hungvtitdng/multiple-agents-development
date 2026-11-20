@@ -69,6 +69,9 @@ for rel in ("project-overview", "architecture", "tech-stack", "domain-model", "b
             "database/schema", "testing/test-strategy", "engineering/coding-standards", "database/migration-rules",
             "testing/automation-guide", "security/review-patterns"):
     write(proj, f"docs/{rel}.md", "# t\n" + FILLED)
+RULES = (f"# BE\nverified-at: {SHA}\n| Mã | Nhóm | Quy tắc | Đúng | Sai | Nguồn | Nhãn |\n|---|---|---|---|---|---|---|\n"
+         "| BE-1 | API | lỗi 1 dạng | a | b | app/a.rb:2 | Observed |\n| BE-2 | Job | job idempotent | a | b | 20261120-job | Planned |\n")
+write(proj, "docs/engineering/backend.md", RULES)
 write(proj, "docs/roles-and-permissions.md", ROLES)
 write(proj, "docs/permission-matrix.md", MATRIX)
 write(proj, "docs/flows/README.md", FLOWS)
@@ -108,6 +111,15 @@ case("page thiếu verified-at -> thiếu", "docs/modules/trip/screens/huy.md", 
 case("module trong danh sách chưa có README", "docs/modules/README.md", "| Module | Code |\n|---|---|\n| order | app/order |\n", "order", "docs/modules/README.md")
 case("route trỏ file KB không có", "docs/modules/README.md", "| Route | Module | File KB | File code |\n|---|---|---|---|\n| /x | trip | trip/screens/khong.md | |\n", "không có", "docs/modules/README.md")
 
+# ---- quy chuẩn BE-n / FE-n ----
+BE = "docs/engineering/backend.md"
+case("BE: còn dòng mẫu Example -> thiếu", BE, RULES + "| BE-3 | API | x | a | b | | Example |\n", "BE-3 còn là dòng mẫu")
+case("BE: trùng mã -> thiếu", BE, RULES + "| BE-1 | Test | y | a | b | app/a.rb:3 | Observed |\n", "BE-1 trùng mã")
+case("BE: thiếu nguồn (không Planned) -> thiếu", BE, RULES + "| BE-3 | API | x | a | b | | Verified |\n", "BE-3 thiếu nguồn")
+case("BE: thiếu nhãn -> thiếu", BE, RULES + "| BE-3 | API | x | a | b | app/a.rb:3 | |\n", "BE-3 thiếu nhãn")
+case("BE: không có dòng BE- nào -> thiếu", BE, f"# BE\nverified-at: {SHA}\n", "chưa có quy tắc BE-n")
+case("BE: Planned không cần file:dòng -> đạt", BE, RULES + "| BE-3 | Job | x | a | b | | Planned |\n", "", None)
+
 write(proj, "docs/modules/README.md", "| Route | Module | File KB | File code |\n|---|---|---|---|\n| /b/:id | trip | trip/screens/huy.md | app/a.rb |\n")
 check("route trỏ file KB có thật -> đạt", run(proj)[0], 0)
 
@@ -121,6 +133,17 @@ r = subprocess.run([sys.executable, SCRIPT, "--index", proj], capture_output=Tru
 idx = dict(ln.split("\t") for ln in r.stdout.splitlines())
 check("--index: BR-2 → page huỷ", idx.get("BR-2"), "modules/trip/screens/huy.md")
 check("--index: P-booking.cancel → luồng + page", sorted(idx.get("P-booking.cancel", "").split(", ")), ["flows/README.md", "modules/trip/screens/huy.md"])
+
+# ---- quy chuẩn tách BE / FE: chỉ bắt buộc khi config có BE_PATHS / FE_PATHS ----
+code, rows = run(proj)
+check("có BE_PATHS, không FE_PATHS: không đòi engineering/frontend.md", "docs/engineering/frontend.md" in [r["file"] for r in rows], False)
+write(proj, ".claude/agent-team.config", 'BE_PATHS="app"\nFE_PATHS="web"\n')
+code, rows = run(proj)
+check("thêm FE_PATHS: đòi engineering/frontend.md (khung chưa điền -> thiếu)", "verified-at" in why(rows, "docs/engineering/frontend.md"), True)
+write(proj, ".claude/agent-team.config", 'FE_PATHS="web"\n')
+code, rows = run(proj)
+check("không BE_PATHS: không đòi engineering/backend.md", "docs/engineering/backend.md" in [r["file"] for r in rows], False)
+write(proj, ".claude/agent-team.config", 'BE_PATHS="app"\n')
 
 nocfg = tempfile.mkdtemp()
 r = subprocess.run([sys.executable, SCRIPT, nocfg], capture_output=True, text=True)

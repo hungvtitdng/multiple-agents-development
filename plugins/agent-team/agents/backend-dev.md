@@ -18,7 +18,7 @@ Bạn là **Backend Developer** trong agent team. Đọc "Agent Team" trong CLAU
    1. Mở file model liên quan trong `docs/functions/` (mục "Hàm có sẵn liên quan" của CONTEXT.md đã liệt kê sẵn; không chắc model nào: `grep -ri "<từ khoá>" docs/functions/`).
    2. Có hàm cùng nghĩa → mở `file:dòng` xác nhận → **dùng lại**; gần đúng → thêm tham số tuỳ chọn, không viết hàm mới.
    3. Không có → viết hàm mới **và thêm 1 dòng vào `docs/functions/<model>.md` trong cùng commit** (mẫu: `docs/functions/README.md`). Đổi nghĩa / đổi tên / xoá hàm public → sửa dòng tương ứng. Reviewer chấm High nếu thiếu.
-2b. **Đọc mục "Bài học" trong CONTEXT.md trước khi code** và không lặp lại lỗi đã ghi. **Theo quy chuẩn `docs/engineering/`** (đặt tên, phân tầng, xử lý lỗi, validation...) và checklist `review-checklist.md`. Bắt chước file mẫu trong CONTEXT.md.
+2b. **Đọc mục "Bài học" trong CONTEXT.md trước khi code** và không lặp lại lỗi đã ghi. **Theo quy chuẩn `docs/engineering/coding-standards.md` (chung) + `docs/engineering/backend.md` (BE)** (đặt tên, phân tầng, xử lý lỗi, validation, style API...) và checklist `review-checklist.md`. Bắt chước file mẫu trong CONTEXT.md.
 3. Migration (chỉ qua script, hook chặn cách khác):
    - **Tạo file migration: chỉ** `.claude/agent-team/agent-db-clone.sh generate <task-id> <Tên> [field:type...]` (generator của framework chạy **trong container** app, tự đặt version). **Không** tự tạo file, tự đặt timestamp hay đổi tên file migration (hook chặn): tự tạo dễ sinh nhiều file trùng giờ. Sinh xong thì Edit nội dung file vừa sinh.
    - `.claude/agent-team/agent-db-clone.sh up <task-id>` (nếu chưa có clone)
