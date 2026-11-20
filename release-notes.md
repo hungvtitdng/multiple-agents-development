@@ -1,16 +1,16 @@
 # Release notes - 20/11/2026 (đổi tên marketplace)
 
 ## Thay đổi
-- Tên marketplace trong `.claude-plugin/marketplace.json`: `kevin-agent-team` → `kevin` (lệnh cài: `agent-team@kevin`, không lặp chữ). Tên plugin và lệnh `/agent-team:...` giữ nguyên.
+- Tên marketplace trong `.claude-plugin/marketplace.json`: `kevin-agent-team` → `multiple-agent` (lệnh cài: `agent-team@multiple-agent`). Tên plugin và lệnh `/agent-team:...` giữ nguyên.
 
 ## Cần làm thủ công (mỗi máy đã cài, 1 lần)
 - Trong Claude Code:
 ```
-/plugin marketplace remove kevin-agent-team
+/plugin marketplace remove kevin-agent-team   (đã cài bản tên kevin: remove kevin)
 /plugin marketplace add <repo GitHub hoặc đường dẫn thư mục 03.Multiple-Agents>
-/plugin install agent-team@kevin
+/plugin install agent-team@multiple-agent
 ```
-- Khởi động lại Claude Code. Từ nay cập nhật bằng `/plugin marketplace update kevin`.
+- Khởi động lại Claude Code. Từ nay cập nhật bằng `/plugin marketplace update multiple-agent`.
 
 # Release notes - 20/11/2026 (v0.18.0)
 
