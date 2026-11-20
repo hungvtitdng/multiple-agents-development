@@ -4,7 +4,7 @@
 
 ## Cổng (Lead cập nhật, hook kiểm)
 - Intake: TODO (YES khi intake.md đủ, không còn TODO)
-- Challenger: TODO (DONE khi đã đối chiếu danh sách của challenger với requirements)
+- Challenger: TODO (DONE khi A4 săn gap trên nháp xong, không còn gap mới. Có DONE mới build được form)
 - Gap-check: TODO (PASS = `.claude/agent-team/gap-check.py` exit 0; hook tự chạy lại)
 - Owner duyệt: TODO (APPROVED khi owner đã xác nhận mockup + flow + defaults)
 

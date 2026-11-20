@@ -13,8 +13,8 @@ Mục tiêu: **app đủ thành phần, không sót ý của owner**. Logic chư
 ## 0. Khác `/agent-team:run` ở đâu
 ```
 PHASE A (chỉ tài liệu, stage S1-S2)
-A0 Intake → A1 Vấn đề + 12 góc nhìn → A2 Giải pháp (debate) → A3 Nghiệp vụ → A4 Săn gap
-   └─ mọi câu hỏi gom vào 1 FORM: A. Owner · B. Dev (lượt 1, 2...) ─┘
+A0 Intake → A1 Vấn đề + 12 góc nhìn → A2 Giải pháp (debate) → A3 Nháp trọn app → A4 Săn gap trên nháp
+   → 1 FORM gom mọi câu: A. Owner · B. Dev (lượt 2 chỉ khi có "không" / góp ý đổi logic)
 → ⛔ Owner chốt logic → A3b Wireframe → A5 Chia module
 PHASE B (code)
 M-0 khung project (task này, S3-S6) → M-1..n: mỗi module 1 /agent-team:run → M-E2E
@@ -52,7 +52,7 @@ M-0 khung project (task này, S3-S6) → M-1..n: mỗi module 1 /agent-team:run 
   | chữ khác (góp ý) | `ĐÃ TRẢ LỜI`, trả lời = nguyên văn | `KHÁC` + ghi chú |
   | để trống | vẫn `CHỜ OWNER` / `CHỜ DEV` | vẫn `CHỜ OWNER` |
   Câu trả lời của owner chép vào tài liệu với nhãn `Confirmed`. Góp ý làm phát sinh câu mới → ghi Q-n cho lượt sau.
-- **Gom ít lượt nhất:** lượt 1 = mọi câu từ A1 + toàn bộ mặc định (mục 5.1), gửi **trước** khi BA viết yêu cầu. Lượt sau chỉ gồm câu owner ghi "không" (BA đề xuất lại) + câu mới từ A4.
+- **Hỏi 1 lần:** form lượt 1 chỉ build **sau** A4 (`Challenger: DONE`, script chặn nếu chưa), gồm mọi câu A0-A4 + toàn bộ mặc định. Câu phụ thuộc câu khác gửi cùng lượt dạng "Nếu Q-n CÓ: ..." (có đề xuất). Lượt 2 chỉ gồm câu ghi "không", ô để trống, câu mới do góp ý làm đổi logic.
 - **Chờ trả lời:** TASK.md `Trạng thái: BLOCKED (chờ owner, form lượt <n>)`. Báo user: gửi file `owner-form-<n>.xlsx` cho owner (mục A) và dev (mục B), nhận lại rồi chạy `/agent-team:resume <task-id> <đường dẫn file trả lời>`. Dev trả lời trước hay sau owner đều được; logic chỉ chốt theo mục A.
 
 ## 1. Chuẩn bị
@@ -76,15 +76,13 @@ Debate theo `run.md` mục 4 (board, WHY, chấm điểm, Security duyệt), đ�
 - `solution-architect` (+ `technical-architect`): 2-3 hướng kiến trúc + stack, ghi `docs/tech-stack.md`, `docs/architecture.md`, `docs/decisions/` (skill `decision-record`). Stack là việc kỹ thuật: ghi Q-n `DEV` với stack đề xuất, dev chốt ở mục B form lượt 1, không hỏi owner.
 - BA, Test Design, Security hỏi WHY như thường.
 - TASK.md: `- Phương án chốt:`, `- Security duyệt solution: APPROVED`.
-- Làm được trong lúc chờ owner trả lời form.
 
 ## 5. A3 Nghiệp vụ
 1. **Mặc định (bù phần owner không nghĩ tới):** BA chép mục từ `catalog/chung.md` + `catalog/<loại>.md` vào `defaults.md` (bỏ mục đã rõ trong brief): `Mục` = câu hỏi tình huống ngắn, `Đề xuất mặc định` = lựa chọn đầu của catalog, `Owner chọn` = `CHƯA`.
-2. **Form lượt 1:** `owner-form.py build` (câu A0, A1, A2 + mặc định). Gửi owner + dev, chờ, `import` (mục 0b).
-3. Có câu trả lời: BA viết `requirements.md` (mỗi R-n có Nguồn B/G/D, Vai trò, Màn, AC), `flows.md` (mỗi F-n có sơ đồ Mermaid + bảng có cột "Nếu lỗi"; mỗi vai trò chính có luồng "1 ngày của <vai trò>"), `data.md` (CRUD + vòng đời trạng thái), cập nhật `docs/roles-and-permissions.md`, `docs/domain-model.md`, `docs/business-rules.md`, `docs/glossary.md`. Cột `Màn` dùng tên màn dự kiến `S-n` (ui-designer vẽ ở A3b).
-4. Câu hỏi mới phát sinh → `questions.md` (có đề xuất) → lượt form sau.
+2. **Nháp trọn app (chưa gửi form):** mọi Q-n / D-n chưa trả lời coi như owner chọn đề xuất của team, ghi nhãn `Assumption (Q-n)` / `Assumption (D-n)` ngay chỗ dùng. BA viết `requirements.md` (mỗi R-n có Nguồn B/G/D, Vai trò, Màn, AC), `flows.md` (mỗi F-n có sơ đồ Mermaid + bảng có cột "Nếu lỗi"; mỗi vai trò chính có luồng "1 ngày của <vai trò>"), `data.md` (CRUD + vòng đời trạng thái), cập nhật `docs/roles-and-permissions.md`, `docs/domain-model.md`, `docs/business-rules.md`, `docs/glossary.md`. Cột `Màn` dùng tên màn dự kiến `S-n` (ui-designer vẽ ở A3b).
+3. Câu hỏi mới phát sinh → `questions.md` (có đề xuất), nháp tiếp theo đề xuất đó. Chưa build form.
 
-## 6. A4 Săn gap (logic, song song, lặp tới khi sạch)
+## 6. A4 Săn gap trên nháp (song song, trước khi hỏi)
 Gọi cùng lượt:
 | Agent | Nhận gì | Trả gì |
 |---|---|---|
@@ -95,8 +93,9 @@ Gọi cùng lượt:
 
 Rồi bạn:
 1. So danh sách của challenger với `requirements.md`: mục chưa có → thêm R (nếu brief / owner đã nói) hoặc ghi Q-n `OWNER` có đề xuất. Không tự thêm tính năng owner chưa đồng ý.
-2. Câu mới / câu owner ghi "không" → BA đề xuất (lại) → form lượt sau → `import`.
-3. Lặp tới khi: `questions.md` không còn câu CAO chưa `ĐÃ TRẢ LỜI`, `defaults.md` không còn `CHƯA` / `CHỜ OWNER`. Ghi `- Challenger: DONE` trong `APP.md`.
+2. Gap → BA sửa nháp + Q-n mới (có đề xuất). Gọi lại A4 cho phần vừa sửa, tối đa 2 vòng, tới khi không còn gap mới. Ghi `- Challenger: DONE` trong `APP.md`.
+3. **Form lượt 1 (lần hỏi chính):** `owner-form.py build` (mục 0b). Gửi owner + dev, chờ, `import`.
+4. Sau `import`: câu OK → đổi `Assumption (Q-n)` thành `Confirmed`. Câu "không" / góp ý đổi logic → BA sửa đúng phần dùng câu đó + đề xuất lại, A4 chỉ soát phần đã sửa → form lượt sau.
 
 ## 7. ⛔ Owner chốt logic
 Đủ khi lượt form cuối nhập vào không còn ô trống, không còn câu "không", gap-check không còn `THIEU` ở `questions.md`, `defaults.md`, `requirements.md`, `flows.md`, `data.md` (bỏ qua lỗi "màn S-n chưa có trong screens.md": màn vẽ ở A3b). Owner **không phải đọc tài liệu hay xem wireframe**: chốt bằng form là đủ.

@@ -128,8 +128,8 @@ PHASE A: chỉ tài liệu (stage S1-S2)
  A0 Intake        Lead tách ý owner B-n, điền phiếu; câu nghiệp vụ ghi sổ OWNER, câu kỹ thuật ghi sổ DEV
  A1 Vấn đề        BA: mục tiêu G-n + 12 góc nhìn (không ô trống), mỗi câu hỏi có 1 đề xuất
  A2 Giải pháp     debate như run (WHY, chấm điểm, Security): kiến trúc + stack đề xuất (câu DEV)
- A3 Nghiệp vụ     mặc định từ catalog/ → FORM lượt 1 (A owner, B dev) → BA: requirements R-n, flows F-n, data
- A4 Săn gap       challenger (chỉ đọc ý tưởng gốc) ∥ test-designer ∥ security ∥ BA → câu mới → form lượt sau
+ A3 Nháp          mặc định từ catalog/ → BA nháp trọn app theo đề xuất (Assumption Q-n/D-n): requirements, flows, data
+ A4 Săn gap       challenger (chỉ đọc ý tưởng gốc) ∥ test-designer ∥ security ∥ BA trên nháp → FORM 1 lần (A owner, B dev)
  ⛔ Owner chốt    logic chốt bằng form (owner không đọc tài liệu, không xem wireframe)
  A3b Wireframe    ui-designer: mọi màn S-n, đen trắng, 5 trạng thái + gap-check --spec
  A5 Chia module   APP.md: M-0 khung project, M-1..n theo phụ thuộc, M-E2E
@@ -152,7 +152,7 @@ Gửi lại file → `owner-form.py import <file .xlsx|.csv>`: `OK` = duyệt đ
 
 | Khác `run` | Chi tiết |
 |---|---|
-| Hỏi owner / dev | Không `AskUserQuestion`: mọi câu vào 1 form, mục A nghiệp vụ (`OWNER`), mục B kỹ thuật (`DEV`), mỗi câu 1 đề xuất best solution, gom ít lượt nhất. Câu kỹ thuật làm đổi logic → tách câu logic cho owner + câu hạ tầng cho dev. Câu mức CAO phải có câu trả lời của owner; THẤP được giả định. Chờ owner: task `BLOCKED`, nhận file rồi `/agent-team:resume <task-id> <file>` |
+| Hỏi owner / dev | Không `AskUserQuestion`: mọi câu vào 1 form, mục A nghiệp vụ (`OWNER`), mục B kỹ thuật (`DEV`), mỗi câu 1 đề xuất best solution, hỏi 1 lần sau khi săn gap (form chặn khi `Challenger` chưa DONE); lượt 2 chỉ cho câu "không" / góp ý đổi logic. Câu kỹ thuật làm đổi logic → tách câu logic cho owner + câu hạ tầng cho dev. Câu mức CAO phải có câu trả lời của owner; THẤP được giả định. Chờ owner: task `BLOCKED`, nhận file rồi `/agent-team:resume <task-id> <file>` |
 | Tài liệu sản phẩm | `docs/product/` (mẫu ở `templates/product/`, cột cố định) |
 | Chống sót ý | 12 góc nhìn · `catalog/` mặc định theo loại app · flow có cột "Nếu lỗi" · Dữ liệu × CRUD · vòng đời trạng thái · vai trò × màn · truy vết B → R → S · challenger mù |
 | Cổng | Hook chặn S3 của task APP khi `gap-check.py --gate` còn thiếu; chặn S3 của mọi module khi `APP.md` chưa `Owner duyệt: APPROVED` |

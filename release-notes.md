@@ -1,3 +1,15 @@
+# Release notes - 20/11/2026 (v0.15.0)
+
+## Thay đổi
+- **App Mode hỏi 1 lần:** BA viết nháp trọn app theo đề xuất của team (`Assumption (Q-n)`), A4 săn gap trên nháp, rồi mới build form. Lượt 2 chỉ cho câu "không", ô trống, góp ý đổi logic.
+- `owner-form.py build` từ chối khi `APP.md` chưa `Challenger: DONE`.
+- Sửa theo: `app.md` (0, 0b, A2-A4), `resume.md`, `business-analyst`, `templates/product/APP.md`, README.
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update kevin-agent-team`, khởi động lại Claude Code.
+- Project đã init: copy lại `scripts/owner-form.py` → `.claude/agent-team/` (chmod +x).
+- App đang dở chưa có `Challenger: DONE`: chạy A3 nháp + A4 trước rồi mới `build`.
+
 # Release notes - 20/11/2026 (v0.14.1)
 
 ## Thay đổi

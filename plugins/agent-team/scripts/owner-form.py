@@ -228,6 +228,10 @@ def verdict(text):
 
 
 def cmd_build(root):
+    app = gc.fields(gc.read_raw(os.path.join(root, P, "APP.md")) or "")
+    if gc.first_word(app.get("Challenger", "")) != "DONE":
+        sys.stderr.write("owner-form: chưa săn gap (APP.md Challenger chưa DONE). Làm A3 nháp + A4 trước, rồi mới hỏi 1 lần.\n")
+        return 1
     qs, ds, errs = form_rows(root)
     if errs:
         sys.stderr.write("owner-form: chưa gửi được, sửa trước:\n" + "\n".join(f"  - {e}" for e in errs) + "\n")

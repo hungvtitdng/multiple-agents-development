@@ -48,7 +48,7 @@ def project(questions=QUESTIONS, defaults=DEFAULTS):
     open(os.path.join(root, ".claude", "agent-team.config"), "w").write("")
     pd = os.path.join(root, "docs", "product")
     os.makedirs(pd)
-    for name, text in {"APP.md": "# Salon Tóc Mây\n", "questions.md": "# Sổ\n\n" + questions,
+    for name, text in {"APP.md": "# Salon Tóc Mây\n- Challenger: DONE\n", "questions.md": "# Sổ\n\n" + questions,
                        "defaults.md": "# Mặc định\n\n" + defaults}.items():
         open(os.path.join(pd, name), "w", encoding="utf-8").write(text)
     return root
@@ -186,6 +186,10 @@ check("chỉ có câu DEV → bỏ mục A", ([r.get("A") for r in rows_o if (r.
 check("questions.md bản cũ → báo copy template", "bản cũ" in run("build", old)[1], True)
 none = project(questions=QH, defaults=DH)
 check("không có câu nào → báo, không sinh file", (run("build", none)[0], os.path.isfile(os.path.join(none, "docs/product/owner-form-1.xlsx"))), (0, False))
+nogap = project()
+open(os.path.join(nogap, "docs/product/APP.md"), "w").write("# Salon\n- Challenger: TODO\n")
+code, out = run("build", nogap)
+check("Challenger chưa DONE → không sinh form", (code, "săn gap" in out, os.path.isfile(os.path.join(nogap, "docs/product/owner-form-1.xlsx"))), (1, True, False))
 check("chưa có docs/product → exit 2", run("build", tempfile.mkdtemp())[0], 2)
 
 # ---- đọc chữ owner ----
