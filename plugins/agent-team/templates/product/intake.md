@@ -1,6 +1,6 @@
 # Phiếu intake
 
-> Lead điền. Thiếu thì hỏi owner (AskUserQuestion), có lựa chọn đề xuất. Không còn TODO mới qua A1.
+> Lead điền. Thiếu thì ghi Q-n vào `questions.md` (nghiệp vụ: OWNER, kỹ thuật: DEV) có đề xuất, ô ghi "chờ form, Q-n". Không hỏi ngay. Không còn TODO mới qua A1.
 > Stack: owner chọn, hoặc "Để team đề xuất" → Architect đề xuất ở A2 (debate), owner duyệt.
 
 - Loại app: TODO (tên file trong catalog/, vd quan-ly-noi-bo, dat-lich; không có thì "khác: <mô tả>")

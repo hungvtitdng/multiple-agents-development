@@ -18,7 +18,7 @@ ID_RE = re.compile(r"\b([BGDRSFQ])-(\d+)\b")
 EMPTY = {"", "-", "—", "..."}
 COVERAGE_OK = {"RÕ", "LOẠI", "CHƯA BIẾT"}
 CHOICES = {"GIỮ", "BỎ", "KHÁC"}
-Q_STATES = {"MỞ", "CHỜ OWNER", "ĐÃ TRẢ LỜI", "GIẢ ĐỊNH"}
+Q_STATES = {"MỞ", "CHỜ OWNER", "CHỜ DEV", "ĐÃ TRẢ LỜI", "GIẢ ĐỊNH"}
 
 
 def find_root(start):
@@ -141,17 +141,18 @@ def check(root, gate=False):
             continue
         qids.add(q)
         lvl, st = clean(r[m["mức"]]).upper(), clean(r[m["trạng thái"]]).upper()
-        if first_word(col(r, "ai trả lời")) == "OWNER" and empty(col(r, "đề xuất")):
-            why.append(f"{q} gửi owner nhưng chưa có Đề xuất của team")
+        who = first_word(col(r, "ai trả lời"))
+        if who in ("OWNER", "DEV") and empty(col(r, "đề xuất")):
+            why.append(f"{q} gửi {who.lower()} nhưng chưa có Đề xuất của team")
         if st not in Q_STATES:
             why.append(f"{q} trạng thái '{st or 'trống'}'")
         elif st == "GIẢ ĐỊNH" and lvl == "CAO":
             why.append(f"{q} mức CAO không được GIẢ ĐỊNH, phải hỏi owner")
-        elif lvl == "CAO" and st == "CHỜ OWNER":
-            why.append(f"{q} mức CAO đang chờ owner trả lời form")
+        elif lvl == "CAO" and st in ("CHỜ OWNER", "CHỜ DEV"):
+            why.append(f"{q} mức CAO đang chờ {st[4:].lower()} trả lời form")
         elif lvl == "CAO" and st != "ĐÃ TRẢ LỜI":
             why.append(f"{q} mức CAO chưa được owner trả lời")
-        elif st not in ("MỞ", "CHỜ OWNER") and empty(r[m["trả lời"]]):
+        elif st not in ("MỞ", "CHỜ OWNER", "CHỜ DEV") and empty(r[m["trả lời"]]):
             why.append(f"{q} thiếu câu trả lời")
     add("questions.md: sổ câu hỏi", why if m else ["thiếu bảng Q | Mức | Trạng thái | Trả lời"])
 

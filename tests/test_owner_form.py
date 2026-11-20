@@ -62,6 +62,17 @@ def row_of(text, rid):
     return next(ln for ln in text.splitlines() if ln.startswith(f"| {rid} "))
 
 
+def section(rows, name):
+    """Các dòng dữ liệu của mục name (A. Owner / B. Dev)."""
+    k = next(i for i, r in enumerate(rows) if (r.get("A") or "").startswith(name))
+    out = []
+    for r in rows[k + 2:]:
+        if not (r.get("E") or "").startswith(("Q-", "D-")):
+            break
+        out.append(r)
+    return out
+
+
 def excel_like(path, rows):
     """Ghi lại file như Excel lưu: chữ nằm trong sharedStrings (t="s")."""
     strings, cells_xml = [], []
@@ -87,8 +98,14 @@ check("build thành công", code, 0)
 check("có file owner-form-1.xlsx", os.path.isfile(xlsx), True)
 rows = of.read_xlsx(xlsx)
 check("dòng 1 = tên app", rows[0].get("A"), "Salon Tóc Mây")
-check("dòng 2 = 4 cột + mã", [rows[1].get(c) for c in "ABCDE"], ["#", "Câu hỏi", "Đề xuất của team", "Owner duyệt / góp ý", "Mã"])
-data = rows[2:]
+check("dòng 3 = mục A. Owner", rows[1].get("A"), "A. Owner: nghiệp vụ")
+check("tiêu đề mục A = 4 cột + mã", [rows[2].get(c) for c in "ABCDE"], ["#", "Câu hỏi", "Đề xuất của team", "Owner duyệt / góp ý", "Mã"])
+data = section(rows, "A. Owner")
+dev = section(rows, "B. Dev")
+hdev = rows[rows.index(dev[0]) - 1]
+check("mục B. Dev có tiêu đề riêng", [hdev.get(c) for c in "ABCDE"], ["#", "Câu hỏi", "Đề xuất của team", "Dev duyệt / góp ý", "Mã"])
+check("mục B chỉ có câu DEV", [r.get("E") for r in dev], ["Q-3"])
+check("mục B đánh số lại từ 1", dev[0].get("A"), "1")
 check("chỉ câu OWNER chưa trả lời + mặc định CHƯA (4 dòng)", [r.get("E") for r in data], ["Q-2", "Q-1", "D-1", "D-2"])
 check("câu CAO lên đầu", data[0].get("E"), "Q-2")
 check("đề xuất kèm vì sao", data[1].get("C"), "Cho huỷ trước 2 giờ\nGiữ chỗ cho khách khác")
@@ -101,13 +118,13 @@ check("có đủ file OOXML", sorted(zipfile.ZipFile(xlsx).namelist()) == sorted
     ["[Content_Types].xml", "_rels/.rels", "xl/workbook.xml", "xl/_rels/workbook.xml.rels", "xl/styles.xml", "xl/worksheets/sheet1.xml"]), True)
 q = doc(root, "questions.md")
 check("Q-1, Q-2 chuyển CHỜ OWNER", ("CHỜ OWNER" in row_of(q, "Q-1"), "CHỜ OWNER" in row_of(q, "Q-2")), (True, True))
-check("câu DEV giữ nguyên MỞ", "| MỞ |" in row_of(q, "Q-3"), True)
+check("câu DEV chuyển CHỜ DEV", "| CHỜ DEV |" in row_of(q, "Q-3"), True)
 d = doc(root, "defaults.md")
 check("D-1, D-2 chuyển CHỜ OWNER, D-3 giữ GIỮ", ("CHỜ OWNER" in row_of(d, "D-1"), "CHỜ OWNER" in row_of(d, "D-2"), "GIỮ" in row_of(d, "D-3")), (True, True, True))
 
 # ---- import từ file Excel đã lưu (sharedStrings) ----
 filled = [dict(r) for r in rows]
-answers = {"Q-2": "Cọc 50k cho lịch cuối tuần | trừ khách quen", "Q-1": "Ok.", "D-1": "không cần", "D-2": ""}
+answers = {"Q-2": "Cọc 50k cho lịch cuối tuần | trừ khách quen", "Q-1": "Ok.", "D-1": "không cần", "D-2": "", "Q-3": "Ubuntu nội bộ"}
 for r in filled:
     if r.get("E") in answers:
         r["D"] = answers[r["E"]]
@@ -115,11 +132,13 @@ back = os.path.join(root, "tra-loi.xlsx")
 excel_like(back, filled)
 code, out = run("import", back, root)
 check("import thành công", code, 0)
-check("báo số liệu", "1 OK, 1 góp ý, 1 không đồng ý / không cần, 1 để trống" in out, True)
+check("báo số liệu", "1 OK, 2 góp ý, 1 không đồng ý / không cần, 1 để trống" in out, True)
 check("báo dòng owner bỏ trống", "D-2" in out.split("chưa trả lời")[-1], True)
 q = doc(root, "questions.md")
 check("Q-1 OK → ĐÃ TRẢ LỜI + chép đề xuất", ("ĐÃ TRẢ LỜI" in row_of(q, "Q-1"), "Owner OK: Cho huỷ trước 2 giờ" in row_of(q, "Q-1")), (True, True))
 check("Q-2 góp ý → ĐÃ TRẢ LỜI nguyên văn owner (| đổi thành /)", "Owner: Cọc 50k cho lịch cuối tuần / trừ khách quen" in row_of(q, "Q-2"), True)
+check("Q-3 dev trả lời → ĐÃ TRẢ LỜI ghi 'Dev:'", ("ĐÃ TRẢ LỜI" in row_of(q, "Q-3"), "Dev: Ubuntu nội bộ" in row_of(q, "Q-3")), (True, True))
+check("dòng tiêu đề mục không bị đếm", "Mã" not in out, True)
 check("bảng không vỡ cột sau khi ghi", row_of(q, "Q-2").count("|"), 9)
 d = doc(root, "defaults.md")
 check("D-1 'không cần' → BỎ", "| BỎ |" in row_of(d, "D-1"), True)
@@ -137,13 +156,14 @@ open(csvp, "w", encoding="utf-8-sig").write(
     "4,Lưu lịch sử khách?,Ghi chú từng lần làm,OK,D-2\n")
 code, out = run("import", csvp, root2)
 check("import CSV (Google Sheet tải về)", code, 0)
-check("báo câu BA phải đề xuất lại", "BA đề xuất lại (lượt sau): Q-2" in out, True)
+check("báo câu phải đề xuất lại", "Đề xuất lại (lượt sau): Q-2" in out, True)
+check("owner không đồng ý → ghi BA đề xuất lại", "BA đề xuất lại" in row_of(doc(root2, "questions.md"), "Q-2"), True)
 q, d = doc(root2, "questions.md"), doc(root2, "defaults.md")
 check("Q-2 không đồng ý → MỞ", "| MỞ |" in row_of(q, "Q-2"), True)
 check("D-1 góp ý → KHÁC + ghi chú", ("KHÁC" in row_of(d, "D-1"), "QR tại quầy" in row_of(d, "D-1")), (True, True))
 code, out = run("build", root2)
 rows2 = of.read_xlsx(os.path.join(root2, "docs", "product", "owner-form-2.xlsx"))
-check("lượt 2 chỉ gửi Q-2 (sau khi BA sửa đề xuất)", [r.get("E") for r in rows2[2:]], ["Q-2"])
+check("lượt 2: mục A chỉ Q-2, mục B vẫn Q-3 (dev chưa trả lời)", ([r.get("E") for r in section(rows2, "A. Owner")], [r.get("E") for r in section(rows2, "B. Dev")]), (["Q-2"], ["Q-3"]))
 
 # ---- mất cột mã: tìm theo câu hỏi ----
 root3 = project()
@@ -158,6 +178,11 @@ bad = project(questions=QH + "| Q-1 | Có cọc không? | | | CAO | OWNER | MỞ
 code, out = run("build", bad)
 check("câu OWNER thiếu đề xuất → không sinh form", (code, "chưa có Đề xuất" in out, os.path.isfile(os.path.join(bad, "docs/product/owner-form-1.xlsx"))), (1, True, False))
 old = project(questions="| Q | Câu hỏi | Mức | Trạng thái | Trả lời |\n|---|---|---|---|---|\n| Q-1 | x | CAO | MỞ | |\n")
+dv = project(questions=QH + "| Q-1 | SMTP? | | | THẤP | DEV | MỞ | |\n")
+check("câu DEV thiếu đề xuất → không sinh form", run("build", dv)[0], 1)
+only = project(questions=QH + "| Q-1 | SMTP? | Có | | THẤP | DEV | MỞ | |\n", defaults=DH)
+rows_o = of.read_xlsx(os.path.join(only, "docs/product/owner-form-1.xlsx")) if run("build", only)[0] == 0 else []
+check("chỉ có câu DEV → bỏ mục A", ([r.get("A") for r in rows_o if (r.get("A") or "")[:2] in ("A.", "B.")]), ["B. Dev: kỹ thuật"])
 check("questions.md bản cũ → báo copy template", "bản cũ" in run("build", old)[1], True)
 none = project(questions=QH, defaults=DH)
 check("không có câu nào → báo, không sinh file", (run("build", none)[0], os.path.isfile(os.path.join(none, "docs/product/owner-form-1.xlsx"))), (0, False))
@@ -177,6 +202,10 @@ check("gap-check: câu OWNER thiếu đề xuất", "Q-1 gửi owner nhưng chư
 g = gap(project(questions=QH + "| Q-1 | Cọc? | Có | | CAO | OWNER | CHỜ OWNER | |\n"))
 check("gap-check: câu CAO đang chờ owner", "Q-1 mức CAO đang chờ owner" in g, True)
 g = gap(project(questions=QH + "| Q-1 | Cọc? | Có | | THẤP | OWNER | CHỜ OWNER | |\n"))
+g = gap(project(questions=QH + "| Q-1 | SMTP? | Có | | THẤP | DEV | CHỜ DEV | |\n"))
+check("gap-check: CHỜ DEV hợp lệ", "trạng thái 'CHỜ DEV'" in g, False)
+g = gap(project(questions=QH + "| Q-1 | SMTP? | | | THẤP | DEV | MỞ | |\n"))
+check("gap-check: câu DEV thiếu đề xuất", "Q-1 gửi dev nhưng chưa có Đề xuất" in g, True)
 check("gap-check: CHỜ OWNER là trạng thái hợp lệ", "trạng thái 'CHỜ OWNER'" in g, False)
 
 print(f"\n{total - fail}/{total} passed")

@@ -125,10 +125,10 @@ Hook chặn S5 khi task có UI mà `E2E` không PASS, hoặc thiếu ảnh ở m
 
 ```
 PHASE A: chỉ tài liệu (stage S1-S2)
- A0 Intake        Lead tách ý owner B-n, điền phiếu; câu kỹ thuật hỏi dev, câu nghiệp vụ ghi sổ cho owner
+ A0 Intake        Lead tách ý owner B-n, điền phiếu; câu nghiệp vụ ghi sổ OWNER, câu kỹ thuật ghi sổ DEV
  A1 Vấn đề        BA: mục tiêu G-n + 12 góc nhìn (không ô trống), mỗi câu hỏi có 1 đề xuất
- A2 Giải pháp     debate như run (WHY, chấm điểm, Security): kiến trúc + stack (làm trong lúc chờ owner)
- A3 Nghiệp vụ     mặc định từ catalog/ → FORM lượt 1 gửi owner → BA: requirements R-n, flows F-n, data
+ A2 Giải pháp     debate như run (WHY, chấm điểm, Security): kiến trúc + stack đề xuất (câu DEV)
+ A3 Nghiệp vụ     mặc định từ catalog/ → FORM lượt 1 (A owner, B dev) → BA: requirements R-n, flows F-n, data
  A4 Săn gap       challenger (chỉ đọc ý tưởng gốc) ∥ test-designer ∥ security ∥ BA → câu mới → form lượt sau
  ⛔ Owner chốt    logic chốt bằng form (owner không đọc tài liệu, không xem wireframe)
  A3b Wireframe    ui-designer: mọi màn S-n, đen trắng, 5 trạng thái + gap-check --spec
@@ -136,17 +136,23 @@ PHASE A: chỉ tài liệu (stage S1-S2)
 PHASE B: M-0 trong task app (S3-S6), M-1..n mỗi module 1 /agent-team:run, lần lượt
 ```
 
-**Form gửi owner** (`owner-form.py build` → `docs/product/owner-form-<n>.xlsx`, mở bằng Excel hoặc Google Sheet):
+**Form hỏi owner + dev** (`owner-form.py build` → `docs/product/owner-form-<n>.xlsx`, mở bằng Excel hoặc Google Sheet). 1 file, 2 mục; mục A cho owner:
 
 | # | Câu hỏi | Đề xuất của team | Owner duyệt / góp ý |
 |---|---|---|---|
 | 1 | Khách đã đặt lịch muốn huỷ thì sao? | Cho huỷ trước 2 giờ, sau đó không huỷ online được | *(owner ghi `OK` hoặc góp ý)* |
 
-Owner gửi lại file → `owner-form.py import <file .xlsx|.csv>`: `OK` = duyệt đề xuất · `không` = BA đề xuất lại lượt sau · chữ khác = góp ý, ghi nguyên văn · để trống = vẫn chờ. Mẫu: `examples/owner-form-sample.xlsx`, `examples/owner-form-sample.html`.
+Mục B cho dev:
+
+| # | Câu hỏi | Đề xuất của team | Dev duyệt / góp ý |
+|---|---|---|---|
+| 1 | Server có SMTP nội bộ không? | Có, cấu hình bằng `.env` | *(dev ghi `OK` hoặc trả lời)* |
+
+Gửi lại file → `owner-form.py import <file .xlsx|.csv>`: `OK` = duyệt đề xuất · `không` = BA / Architect đề xuất lại lượt sau · chữ khác = góp ý, ghi nguyên văn · để trống = vẫn chờ. Mẫu: `examples/owner-form-sample.xlsx`, `examples/owner-form-sample.html`.
 
 | Khác `run` | Chi tiết |
 |---|---|
-| Hỏi owner | Câu nghiệp vụ (`OWNER`) **không hỏi dev**: gom vào form, mỗi câu 1 đề xuất best solution, gom ít lượt nhất. Câu kỹ thuật (`DEV`) hỏi người chạy lệnh. Câu mức CAO phải có câu trả lời của owner; THẤP được giả định. Chờ owner: task `BLOCKED`, nhận file rồi `/agent-team:resume <task-id> <file>` |
+| Hỏi owner / dev | Không `AskUserQuestion`: mọi câu vào 1 form, mục A nghiệp vụ (`OWNER`), mục B kỹ thuật (`DEV`), mỗi câu 1 đề xuất best solution, gom ít lượt nhất. Câu kỹ thuật làm đổi logic → tách câu logic cho owner + câu hạ tầng cho dev. Câu mức CAO phải có câu trả lời của owner; THẤP được giả định. Chờ owner: task `BLOCKED`, nhận file rồi `/agent-team:resume <task-id> <file>` |
 | Tài liệu sản phẩm | `docs/product/` (mẫu ở `templates/product/`, cột cố định) |
 | Chống sót ý | 12 góc nhìn · `catalog/` mặc định theo loại app · flow có cột "Nếu lỗi" · Dữ liệu × CRUD · vòng đời trạng thái · vai trò × màn · truy vết B → R → S · challenger mù |
 | Cổng | Hook chặn S3 của task APP khi `gap-check.py --gate` còn thiếu; chặn S3 của mọi module khi `APP.md` chưa `Owner duyệt: APPROVED` |

@@ -1,3 +1,21 @@
+# Release notes - 20/11/2026 (v0.14.0)
+
+## Thay đổi
+- **App Mode: 1 form, 2 mục.** `owner-form-<n>.xlsx` có mục **A. Owner: nghiệp vụ** (cột `Owner duyệt / góp ý`) và **B. Dev: kỹ thuật** (cột `Dev duyệt / góp ý`). Mục không có câu thì không in.
+- **Không hỏi dev bằng `AskUserQuestion` nữa** (trước đây câu `DEV` như SMTP, hosting, stack bị hỏi ngay giữa Phase A). Mọi câu ghi sổ `questions.md`, đi form. Ngoại lệ: `/agent-team:init`.
+- Câu kỹ thuật làm đổi logic (vd SMTP → cách quên mật khẩu) → BA tách 2 câu: câu logic cho owner (đề xuất có đường dự phòng) + câu hạ tầng cho dev.
+- Câu `DEV` bắt buộc có `Đề xuất của team` (Architect đề xuất). Trạng thái mới `CHỜ DEV`. Dev ghi "không" → Architect đề xuất lại lượt sau.
+- `gap-check.py`: câu DEV thiếu đề xuất → thiếu; `CHỜ DEV` hợp lệ; câu CAO `CHỜ DEV` → thiếu.
+- `import` ghi `Owner: ...` hoặc `Dev: ...` theo người trả lời; bỏ qua dòng tên mục / tiêu đề.
+- Sửa theo: `app.md` (mục 0, 0b, A0, A2, A3, báo cáo), `resume.md`, `business-analyst`, `templates/product/questions.md`, `intake.md`, `README.md` (product), README, `docs/design.md`. Mẫu `examples/owner-form-sample.xlsx` / `.html` có 2 mục.
+- `tests/test_owner_form.py`: 54 case (thêm mục Dev, CHỜ DEV, câu DEV thiếu đề xuất, chỉ có câu DEV).
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update kevin-agent-team`, khởi động lại Claude Code.
+- Project đã init: copy lại `scripts/owner-form.py` và `scripts/gap-check.py` → `.claude/agent-team/` (chmod +x).
+- App đang làm dở: không đổi cột `questions.md`. Câu `DEV` đang `MỞ` chưa có đề xuất → bổ sung `Đề xuất của team`, nếu không `owner-form.py build` từ chối.
+- Không có key config mới.
+
 # Release notes - 20/11/2026 (v0.13.0)
 
 ## Thay đổi
