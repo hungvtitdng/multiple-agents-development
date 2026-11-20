@@ -1,6 +1,6 @@
 ## Agent Team
 
-Project dùng plugin `agent-team`. Chạy task: `/agent-team:run <task>`. Làm cả app từ ý tưởng: `/agent-team:app <ý tưởng>` (tài liệu sản phẩm ở `docs/product/`, owner duyệt rồi mới code). Làm tiếp task dang dở: `/agent-team:resume <task-id>`. Hỏi về logic dự án (chỉ đọc, có dẫn nguồn): `/agent-team:ask <câu hỏi>`. Dựng/làm đầy KB từ code: `/agent-team:kb`.
+Project dùng plugin `agent-team`. Chạy task: `/agent-team:task <task>`. Module mới trong app đang chạy (owner duyệt qua form, rồi chia task con): `/agent-team:module <ý tưởng>`. Làm cả app từ ý tưởng: `/agent-team:app <ý tưởng>` (tài liệu sản phẩm ở `docs/product/`, owner duyệt rồi mới code). Làm tiếp task dang dở: `/agent-team:resume <task-id>`. Hỏi về logic dự án (chỉ đọc, có dẫn nguồn): `/agent-team:ask <câu hỏi>`. Dựng/làm đầy KB từ code: `/agent-team:kb`.
 
 - Config project: `.claude/agent-team.config` (nhánh gốc, đường dẫn BE/FE/test, DB clone, lint/format, `REPOS` nếu nhiều repo)
 - Mọi tài liệu nằm trong `docs/` (Knowledge Base, **đọc trước khi làm**, mỗi thư mục có chủ ghi riêng, xem `docs/README.md`). Quy chuẩn code ở `docs/engineering/`.

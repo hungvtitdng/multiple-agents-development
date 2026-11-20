@@ -16,6 +16,7 @@ Mục tiêu: các agent khác **không phải tự quét lại repo**. Bash ch�
 4. Quy chuẩn code liên quan task (trích từ `docs/engineering/`, không chép cả file).
 5. KB nghi lỗi thời: so `verified-at` trong KB với `git log` của module, ghi module nào KB cũ.
 6. Câu hỏi còn mở (nhãn `Assumption`).
+6b. **Hàm có sẵn liên quan**: với mỗi model / bảng task chạm tới, chép từ `docs/functions/<model>.md` các dòng có thể dùng lại (≤ 10 dòng: Hàm | Ý nghĩa | file:dòng). Model chưa có file chỉ mục → ghi "chưa có chỉ mục <model>" để Lead biết.
 7. Bài học liên quan (để team không vấp lại lỗi cũ): nếu `LESSONS_PATH` có trong config và file tồn tại, chép vào CONTEXT.md tối đa 5 bài `Active` liên quan module/loại việc của task, mỗi bài gồm "Sai gì" + "Cách tránh" + task nguồn. Ưu tiên bài đụng đúng phần task sẽ sửa và bài có `Lặp lại` cao. Bài đã `Promoted` thì bỏ qua (đã nằm trong checklist). Bài bị code hiện tại phản bác thì đánh dấu `Unverified`.
 - Nhiều repo (`REPOS`): quét tất cả repo trong config.
 - Có `graphify-out/` (Graphify): đọc `GRAPH_REPORT.md`, query `graphify explain "<Tên|file>"` (ai gọi, gọi ai, `file:dòng`) · `graphify affected "<Tên>"` (sửa thì ảnh hưởng đâu) · `graphify query "<câu hỏi>"` · `graphify path "A" "B"`. Nhiều repo: thêm `--graph graphify-out/merged-graph.json`. Cạnh INFERRED chỉ là gợi ý.
@@ -41,6 +42,7 @@ Lead giao cho bạn **một mảng** và **danh sách file KB bạn sở hữu**
 | Migration / schema / seed | Bảng, cột, ràng buộc, index → `database/schema.md` |
 | Client gọi ngoài, webhook, queue, mailer | Tích hợp → `integrations/` |
 | Tên test (spec/test) | Quy tắc mà test đang khẳng định → `business-rules.md` (kèm `file:dòng` của test) |
+| Hàm public trong `FUNCTION_INDEX_PATHS` (service, repository, model...) | Mỗi hàm 1 dòng `Hàm | Ý nghĩa (1 dòng, theo nghiệp vụ) | Tham số chính | Trả về | file:dòng` → `functions/<model>.md` |
 
 Mỗi quy tắc nghiệp vụ: `BR-<n> | quy tắc một câu | điều kiện | ngoại lệ | nhãn | file:dòng`. Thuật ngữ lặp lại trong code, UI → `glossary.md`.
 Nguồn `file:dòng` ghi **đường dẫn từ gốc repo** (`app/policies/booking_policy.rb:12`, không chỉ tên file): `kb-check.py` mở đúng file, đúng dòng để kiểm.
@@ -59,6 +61,7 @@ Routes/pages → mỗi page 1 file `modules/<tên>/screens/<màn>.md` theo **m�
 | Module (một nhóm ≤ 5 module) | Chỉ `modules/<tên>/README.md` của các module được giao: chức năng, API, bảng DB, **bảng quy tắc `BR-<tên>-<n>`**, quyền, test liên quan |
 | Kiến trúc + API + DB | `project-overview.md`, `architecture.md`, `tech-stack.md`, `api/endpoints.md`, `database/schema.md`, `database/migration-rules.md`, `integrations/` |
 | Frontend | Chỉ file mới `modules/<tên>/screens/*.md`, `actions/*.md` + bảng **Tra page** trong `modules/README.md` (không sửa `README.md` của từng module) |
+| Chỉ mục hàm (mỗi Scout ≤ 5 model) | Chỉ `functions/<model>.md` của các model được giao + 1 dòng mục lục trong `functions/README.md`. Danh sách hàm cần ghi: `.claude/agent-team/kb-check.py --functions` (graph đã liệt kê sẵn tên + `file:dòng`, chỉ chọn hàm thuộc model của mình). **Đọc thân hàm** rồi viết Ý nghĩa: điều kiện lọc, điều kiện được chạy, tác dụng phụ; đủ để phân biệt với hàm gần giống. Hàm chạm nhiều model: ghi ở model chính nó thay đổi, model kia 1 dòng `→ xem <file>.md` |
 | Quy chuẩn + test | `engineering/coding-standards.md`, `engineering/review-checklist.md` (mục "Mẫu tìm lỗi theo stack"), `testing/test-strategy.md`, `testing/automation-guide.md`, `security/review-patterns.md` |
 | Tổng hợp nghiệp vụ (chạy sau khi các mảng module xong) | `domain-model.md`, `business-rules.md`, `roles-and-permissions.md`, `permission-matrix.md`, `flows/README.md`, `glossary.md`: đọc `modules/*/README.md` + `screens/` đã có, gộp quy tắc thành bảng chung (giữ nguồn `file:dòng`), đọc policy/guard/scope để dựng ma trận quyền đủ mọi vai trò × hành động, nối các page thành luồng `F-n` (bước → page, `P-`, `BR-`), bỏ trùng |
 

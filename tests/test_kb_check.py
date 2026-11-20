@@ -126,5 +126,58 @@ nocfg = tempfile.mkdtemp()
 r = subprocess.run([sys.executable, SCRIPT, nocfg], capture_output=True, text=True)
 check("không có config -> exit 2", r.returncode, 2)
 
+# ---- chỉ mục hàm docs/functions/ so với graph ----
+fp = tempfile.mkdtemp()
+write(fp, ".claude/agent-team.config", 'FUNCTION_INDEX_PATHS="app/services"\nUSE_CODE_GRAPH=1\n')
+write(fp, "app/services/order_service.rb", "class OrderService\n  def list_active(u)\n  end\n\n  def cancel(id)\n  end\n\n  private\n\n  def restock(o)\n  end\nend\n")
+write(fp, "app/services/cart.ts", "export function addItem(c) { return c }\nfunction helper() { return 1 }\n")
+for c in (("init", "-q"), ("-c", "user.email=t@t", "-c", "user.name=t", "add", "-A"), ("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "i")):
+    git(fp, *c)
+FSHA = subprocess.run(["git", "-C", fp, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+
+
+def node(i, label, f, line, cls=False):
+    return {"id": i, "label": label, "_callable": True, "_callable_class": cls, "source_file": f, "source_location": f"L{line}"}
+
+
+GRAPH = {"built_at_commit": FSHA, "nodes": [
+    node("svc_order", "OrderService", "app/services/order_service.rb", 1, True),
+    node("svc_order_list_active", ".list_active()", "app/services/order_service.rb", 2),
+    node("svc_order_cancel", ".cancel()", "app/services/order_service.rb", 5),
+    node("svc_order_restock", ".restock()", "app/services/order_service.rb", 10),
+    node("svc_cart_additem", "addItem()", "app/services/cart.ts", 1),
+    node("svc_cart_helper", "helper()", "app/services/cart.ts", 2)], "links": []}
+write(fp, "graphify-out/graph.json", json.dumps(GRAPH))
+FROW = "docs/functions/ (so với graph)"
+IDX = (f"# Order\nverified-at: {FSHA[:7]}\n| Hàm | Ý nghĩa | Tham số chính | Trả về | Nguồn |\n|---|---|---|---|---|\n"
+       "| `OrderService.list_active` | đơn chưa huỷ | u | ds | app/services/order_service.rb:2 |\n")
+code, rows = run(fp)
+check("FUNCTION_INDEX_PATHS có, chưa có file chỉ mục -> thiếu", "chưa có file chỉ mục" in why(rows, FROW), True)
+write(fp, "docs/functions/order.md", IDX)
+code, rows = run(fp)
+w = why(rows, FROW)
+check("thiếu hàm public: cancel + addItem", ("OrderService.cancel" in w, "addItem" in w), (True, True))
+check("không đòi hàm private (Ruby private) / không export (TS)", ("restock" in w, "helper" in w), (False, False))
+write(fp, "docs/functions/order.md", IDX + "| `OrderService.cancel` | huỷ + hoàn kho | id | đơn | app/services/order_service.rb:5 |\n"
+      "| `OrderService#old` | đã xoá | | | app/services/order_service.rb:1 |\n")
+write(fp, "docs/functions/_shared.md", f"# Dùng chung\nverified-at: {FSHA[:7]}\n| Hàm | Ý nghĩa | Tham số chính | Trả về | Nguồn |\n|---|---|---|---|---|\n"
+      "| `addItem()` | thêm vào giỏ | c | giỏ | app/services/cart.ts:1 |\n| `Order.x` | → xem order.md | | | |\n")
+code, rows = run(fp)
+w = why(rows, FROW)
+check("hàm trong chỉ mục không còn trong code -> thừa (OrderService#old)", "OrderService.old" in w and "thiếu" not in w, True)
+check("dòng tham chiếu → không bị coi là thừa", "Order.x" in w, False)
+write(fp, "docs/functions/order.md", IDX + "| `OrderService.cancel` | huỷ + hoàn kho | id | đơn | app/services/order_service.rb:5 |\n")
+code, rows = run(fp)
+check("chỉ mục khớp graph -> dòng so khớp đạt", next(r["ok"] for r in rows if r["file"] == FROW), True)
+check("file chỉ mục được kiểm nguồn file:dòng như KB", "docs/functions/order.md" in [r["file"] for r in rows], True)
+r = subprocess.run([sys.executable, SCRIPT, "--functions", fp], capture_output=True, text=True)
+check("--functions in danh sách đã đủ", "đã có trong chỉ mục: 3" in r.stdout and "(không)" in r.stdout, True)
+os.remove(os.path.join(fp, "graphify-out/graph.json"))
+code, rows = run(fp)
+check("chưa có graph -> báo chạy graphify update", "graphify update" in why(rows, FROW), True)
+write(fp, ".claude/agent-team.config", "")
+code, rows = run(fp)
+check("không có FUNCTION_INDEX_PATHS -> không kiểm chỉ mục", FROW in [r["file"] for r in rows], False)
+
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

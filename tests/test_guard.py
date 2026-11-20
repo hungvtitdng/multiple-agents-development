@@ -695,5 +695,64 @@ kb_gate("KB YES, sửa docs/product/requirements.md", {"docs/product/requirement
 kb_gate("KB KHÔNG CẦN, chỉ đổi code", {}, OK, task=DONE.replace("Cập nhật KB: YES", "Cập nhật KB: KHÔNG CẦN"))
 kb_gate("không tìm thấy nhánh gốc -> bỏ qua kiểm", {}, OK, base="khong-co")
 
+# ---- chỉ mục hàm docs/functions/ ----
+fz = [
+    ("backend-dev ghi chỉ mục hàm", "Write", {"file_path": "docs/functions/order.md"}, "backend-dev", gp, OK),
+    ("frontend-dev ghi chỉ mục hàm", "Edit", {"file_path": "docs/functions/cart.md"}, "frontend-dev", gp, OK),
+    ("Architect ghi chỉ mục hàm", "Edit", {"file_path": "docs/functions/README.md"}, "solution-architect", gp, OK),
+    ("BA ghi chỉ mục hàm bị chặn", "Write", {"file_path": "docs/functions/order.md"}, "business-analyst", gp, B),
+    ("test-executor ghi chỉ mục hàm bị chặn", "Write", {"file_path": "docs/functions/order.md"}, "test-executor", gp, B),
+]
+for c in fz:
+    check(*c)
+total += len(fz)
+
+# ---- module mới (/agent-team:module): docs/product/modules/<tên>/, cổng MODULE.md ----
+import shutil as _sh
+mq = tempfile.mkdtemp()
+os.makedirs(os.path.join(mq, ".claude"))
+os.makedirs(os.path.join(mq, "docs/agent-tasks/M1"))
+open(os.path.join(mq, ".claude/agent-team.config"), "w").write('BE_PATHS="app"\n')
+mz = "docs/product/modules/thanh-toan/"
+mo = [
+    ("BA ghi requirements của module", "Write", {"file_path": mz + "requirements.md"}, "business-analyst", mq, OK),
+    ("ui-designer ghi mockup của module", "Write", {"file_path": mz + "design/mockup-a.html"}, "ui-designer", mq, OK),
+    ("BA ghi MODULE.md bị chặn (chỉ Lead)", "Write", {"file_path": mz + "MODULE.md"}, "business-analyst", mq, B),
+    ("ui-designer ghi requirements của module bị chặn", "Write", {"file_path": mz + "requirements.md"}, "ui-designer", mq, B),
+]
+for c in mo:
+    check(*c)
+total += len(mo)
+MDIR = os.path.join(mq, mz)
+
+
+def mod_gate(desc, task, exp, status=None, stage=None, docs=True, broken=False):
+    global fail, total
+    _sh.rmtree(os.path.join(mq, "docs/product"), ignore_errors=True)
+    if docs:
+        for rel, text in GOOD.items():
+            name = "MODULE.md" if rel == "APP.md" else rel
+            os.makedirs(os.path.dirname(os.path.join(MDIR, name)), exist_ok=True)
+            open(os.path.join(MDIR, name), "w", encoding="utf-8").write(status if (name == "MODULE.md" and status) else text)
+        subprocess.run([sys.executable, GAP, "--spec", f"--dir={mz}", mq], capture_output=True)
+        if broken:
+            open(os.path.join(MDIR, "brief.md"), "a", encoding="utf-8").write("- B-3: báo cáo\n")
+    open(os.path.join(mq, "docs/agent-tasks/M1/TASK.md"), "w").write(task)
+    got = run("Bash", stage or S3, None, mq)
+    fail += got != exp
+    total += 1
+    print(f"{'PASS' if got == exp else 'FAIL'}  module gate: {desc}  (expect {exp}, got {got})")
+
+
+MOD_TASK = "- Loại: MODULE\n- Module: docs/product/modules/thanh-toan\n- Phương án chốt: A\n- Security duyệt solution: APPROVED\n"
+CHILD = "- Loại: VỪA\n- Module: docs/product/modules/thanh-toan\n- Phương án chốt: A\n- Security duyệt solution: APPROVED\n- Workflow: N/A\n- UI mockup: N/A\n"
+mod_gate("task MODULE không được sang S3 (chỉ tài liệu)", MOD_TASK, B)
+mod_gate("task con khi owner đã duyệt -> S3", CHILD, OK)
+mod_gate("task con khi owner chưa duyệt bị chặn", CHILD, B, status=GOOD["APP.md"].replace("APPROVED", "TODO"))
+mod_gate("task con trỏ module chưa có MODULE.md bị chặn", CHILD, B, docs=False)
+mod_gate("task Module: N/A -> như task thường", CHILD.replace("docs/product/modules/thanh-toan", "N/A"), OK, docs=False)
+mod_gate("S6 task con: tài liệu module khớp", DONE + "- Module: docs/product/modules/thanh-toan\n", OK, stage=S6)
+mod_gate("S6 task con: tài liệu module thiếu (ý owner chưa có yêu cầu)", DONE + "- Module: docs/product/modules/thanh-toan\n", B, stage=S6, broken=True)
+
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

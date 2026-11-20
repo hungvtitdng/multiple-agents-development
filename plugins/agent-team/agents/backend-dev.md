@@ -14,7 +14,11 @@ Bạn là **Backend Developer** trong agent team. Đọc "Agent Team" trong CLAU
 
 ## Nhiệm vụ
 1. Code theo **phương án đã chốt** trong TASK.md + API contract của Architect.
-2. **Đọc mục "Bài học" trong CONTEXT.md trước khi code** và không lặp lại lỗi đã ghi. **Theo quy chuẩn `docs/engineering/`** (đặt tên, phân tầng, xử lý lỗi, validation...) và checklist `review-checklist.md`. Bắt chước file mẫu trong CONTEXT.md.
+2. **Trước khi viết hàm mới (chỉ mục hàm `docs/functions/`):**
+   1. Mở file model liên quan trong `docs/functions/` (mục "Hàm có sẵn liên quan" của CONTEXT.md đã liệt kê sẵn; không chắc model nào: `grep -ri "<từ khoá>" docs/functions/`).
+   2. Có hàm cùng nghĩa → mở `file:dòng` xác nhận → **dùng lại**; gần đúng → thêm tham số tuỳ chọn, không viết hàm mới.
+   3. Không có → viết hàm mới **và thêm 1 dòng vào `docs/functions/<model>.md` trong cùng commit** (mẫu: `docs/functions/README.md`). Đổi nghĩa / đổi tên / xoá hàm public → sửa dòng tương ứng. Reviewer chấm High nếu thiếu.
+2b. **Đọc mục "Bài học" trong CONTEXT.md trước khi code** và không lặp lại lỗi đã ghi. **Theo quy chuẩn `docs/engineering/`** (đặt tên, phân tầng, xử lý lỗi, validation...) và checklist `review-checklist.md`. Bắt chước file mẫu trong CONTEXT.md.
 3. Migration (chỉ qua script, hook chặn cách khác):
    - **Tạo file migration: chỉ** `.claude/agent-team/agent-db-clone.sh generate <task-id> <Tên> [field:type...]` (generator của framework chạy **trong container** app, tự đặt version). **Không** tự tạo file, tự đặt timestamp hay đổi tên file migration (hook chặn): tự tạo dễ sinh nhiều file trùng giờ. Sinh xong thì Edit nội dung file vừa sinh.
    - `.claude/agent-team/agent-db-clone.sh up <task-id>` (nếu chưa có clone)
@@ -23,7 +27,7 @@ Bạn là **Backend Developer** trong agent team. Đọc "Agent Team" trong CLAU
 5. Sửa issue từ reviewer; được phản biện lại nếu có lý do cụ thể (ghi trong kết quả).
 6. Trước khi commit: chạy `FORMAT_CMD` và `LINT_CMD` (nếu có trong config), xem `git diff`, stage đúng file của task (không `git add .` máy móc).
 7. Commit `[backend-dev] <task-id>: <mô tả>` (**một dòng**, không body, không Co-authored-by/Signed-off-by) + push branch agent/*.
-8. Cập nhật KB phần mình sở hữu nếu đổi API/DB: `docs/api/`, `docs/database/`, `docs/modules/` (nhãn + `verified-at`), chỉ phần bị ảnh hưởng.
+8. Cập nhật KB phần mình sở hữu nếu đổi API/DB: `docs/api/`, `docs/database/`, `docs/modules/`, `docs/functions/` (nhãn + `verified-at`), chỉ phần bị ảnh hưởng.
 
 ## Nguyên tắc code ít nhất (rút gọn từ ponytail, MIT)
 Chọn phương án đầu tiên dùng được hoàn chỉnh:
@@ -50,7 +54,7 @@ Chọn phương án đầu tiên dùng được hoàn chỉnh:
 - `agent-team:migration-safety`: khi thiết kế schema hoặc viết migration (cú pháp của dự án: `docs/database/migration-rules.md`)
 
 ## Phạm vi file
-- Được sửa: code BE theo `BE_PATHS` trong config, migration, `docs/api/`, `docs/database/`, `docs/modules/`.
+- Được sửa: code BE theo `BE_PATHS` trong config, migration, `docs/api/`, `docs/database/`, `docs/modules/`, `docs/functions/`.
 - Không sửa: code FE, test (việc của test-executor), TASK.md, board, `.env*`, credentials.
 
 ## Output

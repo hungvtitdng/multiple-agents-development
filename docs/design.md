@@ -101,7 +101,7 @@ Thêm:
 - Không tự đổi API contract nếu ảnh hưởng FE/hệ thống khác khi chưa phối hợp với Lead và SA.
 - **[+D]** Migration chỉ qua `agent-db-clone.sh` (DB clone, không đụng DB thật). **[+F]** File migration chỉ sinh bằng `agent-db-clone.sh generate` (generator chạy trong container), guard chặn tự tạo/đổi tên để tránh trùng version.
 - **[+E]** Code theo `docs/engineering/` (clean code, mục 9.7); chạy lint/format trước khi commit.
-- **[+A]** Thiếu thông tin hoặc solution không khả thi → **không tự đoán**, dừng phần đó, báo Lead **GAP**; Lead mở debate nhỏ (tối đa 2 lượt), ghi nguyên nhân S1-S2 bỏ sót vào bài học (`run.md` mục 7b).
+- **[+A]** Thiếu thông tin hoặc solution không khả thi → **không tự đoán**, dừng phần đó, báo Lead **GAP**; Lead mở debate nhỏ (tối đa 2 lượt), ghi nguyên nhân S1-S2 bỏ sót vào bài học (`task.md` mục 7b).
 
 ### 3.6 Frontend Developer
 - Đọc requirement/thiết kế, kiểm cấu trúc FE, triển khai giao diện + luồng, tích hợp API, loading/empty/error state, validation, test FE, cập nhật tài liệu màn hình/hành động, commit vào branch task.
@@ -577,10 +577,10 @@ Trạng thái phản ánh công việc thực tế, không chỉ báo cáo của
 
 ```
 plugin agent-team/
-├── commands/   init.md, run.md, resume.md (mới)
+├── commands/   init.md, task.md, resume.md (mới)
 ├── agents/     scout, business-analyst, solution-architect (Architect; TA tách cho LỚN),
 │               test-designer, test-executor, backend-developer, frontend-developer,
-│               code-reviewer, security-reviewer      (Lead do command run.md đảm nhiệm)
+│               code-reviewer, security-reviewer      (Lead do command task.md đảm nhiệm)
 ├── hooks/      guard.py, show_post.py
 ├── scripts/    agent-db-clone.sh, kb-check.py, board.py [+F]   (code graph: Graphify cài riêng)
 ├── skills/     [+F] debate-board, acceptance-criteria, test-case-design, security-review,
@@ -674,7 +674,7 @@ Thiếu điều kiện bắt buộc → ghi rõ phần thiếu, không đánh d�
 | Migration và test DB chỉ qua `agent-db-clone.sh` | Hook, đã có |
 | Gate chuyển stage (AC xong, test pass, lint/format pass, KB cập nhật) | Thêm mới |
 | Code theo quy chuẩn `engineering/` | Hướng dẫn cho dev + Code Reviewer chặn ở S5 (lint do Lead gate) |
-| Tự chốt khi thiếu rule + Assumption, giới hạn vòng, gộp phương án, nhãn thông tin | Hướng dẫn trong `run.md` (không enforce) |
+| Tự chốt khi thiếu rule + Assumption, giới hạn vòng, gộp phương án, nhãn thông tin | Hướng dẫn trong `task.md` (không enforce) |
 | **[+G]** Không code trước khi tài liệu app đủ + owner duyệt; SPEC.md khớp tài liệu | Hook chạy `gap-check.py --gate --spec-check` ở S3 (task APP) và S6 (mọi task khi có `docs/product/APP.md`); module chặn S3 khi chưa `Owner duyệt: APPROVED` |
 | **[+G]** Chủ ghi `docs/product/` | Hook (`KB_OWNERS`) |
 | **[+G]** `Cập nhật KB: YES` phải có file KB đổi thật | Hook ở S6: `git diff` + file mới so với `BASE_BRANCH` (không tính `agent-tasks/`, `testing/`, `LESSONS.md`, `SPEC.md`); không xác định được nhánh gốc thì bỏ qua |
@@ -714,7 +714,7 @@ PHASE A (S1-S2, chỉ tài liệu)
  A0 Intake → A1 Vấn đề + 12 góc nhìn → A2 Giải pháp (debate) → A3 Nghiệp vụ
  → A3b Wireframe → A4 Săn gap → ⛔ Owner duyệt → A5 Chia module
 PHASE B
- M-0 khung project (S3-S6 của task APP) → M-1..n: mỗi module 1 /agent-team:run, lần lượt
+ M-0 khung project (S3-S6 của task APP) → M-1..n: mỗi module 1 /agent-team:task, lần lượt
 ```
 
 ### 19.1 Khác với `run`

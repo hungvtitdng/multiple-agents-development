@@ -4,6 +4,7 @@
 Dùng (Lead chạy, trong project):
   owner-form.py build  [thư mục project]          → docs/product/owner-form-<n>.xlsx
   owner-form.py import <file .xlsx|.csv> [project] → ghi câu trả lời vào questions.md, defaults.md
+  --dir=<thư mục>: module mới trong app đang chạy (vd --dir=docs/product/modules/thanh-toan), cổng đọc ở MODULE.md
 
 Form: tên app + 2 mục, mỗi mục 1 bảng: # · Câu hỏi · Màn / mockup · Đề xuất của team · <người> duyệt / góp ý (ô trống).
   A. Owner: nghiệp vụ (câu OWNER + mặc định)   B. Dev: kỹ thuật (câu DEV)
@@ -73,7 +74,7 @@ def patch(path, id_prefix, need, updates):
 
 
 def app_name(root):
-    t = gc.read_raw(os.path.join(root, P, "APP.md")) or ""
+    t = gc.read_raw(os.path.join(root, P, gc.status_name(root))) or ""
     name = next((ln[2:].strip() for ln in t.splitlines() if ln.startswith("# ")), "")
     return "App" if not name or name.startswith("<") else name
 
@@ -98,8 +99,8 @@ def screen_map(root):
 
 
 def gates(root, qrows, screens):
-    app = gc.fields(gc.read_raw(os.path.join(root, P, "APP.md")) or "")
-    errs = [f"APP.md {k} chưa DONE ({why})" for k, why in
+    app = gc.fields(gc.read_raw(os.path.join(root, P, gc.status_name(root))) or "")
+    errs = [f"{gc.status_name(root)} {k} chưa DONE ({why})" for k, why in
             (("Debate", "team chưa debate xong"), ("Challenger", "chưa săn gap trên nháp + mockup"))
             if gc.first_word(app.get(k, "")) != "DONE"]
     if not screens:
@@ -355,7 +356,10 @@ def cmd_import(root, path):
 
 
 def main():
+    global P
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    gc.set_dir(sys.argv[1:])
+    P = gc.P
     if not args or args[0] not in ("build", "import") or (args[0] == "import" and len(args) < 2):
         sys.stderr.write(__doc__)
         return 2

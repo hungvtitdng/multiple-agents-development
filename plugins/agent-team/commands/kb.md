@@ -28,6 +28,7 @@ Chia việc dựa trên bản đồ. Bạn ghi bảng **Danh sách module** (`Mo
 | Module nhóm 1..k (mỗi nhóm ≤ 5 module; tối đa 4 Scout song song, nhiều hơn thì làm lượt sau) | `modules/<tên>/README.md` của các module trong nhóm (chức năng, API, bảng DB, bảng quy tắc `BR-<tên>-<n>`, quyền, test liên quan) |
 | Kiến trúc + API + DB | `project-overview.md`, `architecture.md`, `tech-stack.md`, `api/endpoints.md`, `database/schema.md`, `database/migration-rules.md`, `integrations/` |
 | Frontend (nếu có repo FE) | `modules/<tên>/screens/*.md`, `actions/*.md` (theo mẫu trong `modules/README.md`) + bảng **Tra page** trong `modules/README.md` |
+| Chỉ mục hàm (khi config có `FUNCTION_INDEX_PATHS`; mỗi Scout ≤ 5 model, chạy sau khi có graph: `graphify update .`) | `functions/<model>.md` của các model được giao (bạn ghi mục lục `functions/README.md` từ bản đồ trước). Scout lấy danh sách hàm bằng `kb-check.py --functions` |
 | Quy chuẩn + test | `engineering/coding-standards.md`, `engineering/review-checklist.md` (mục "Mẫu tìm lỗi theo stack"), `testing/test-strategy.md`, `testing/automation-guide.md`, `security/review-patterns.md` (+ báo lệnh lint/format cho Lead) |
 
 Argument là một module/mảng → chỉ gọi đúng Scout cho phần đó.
@@ -37,7 +38,7 @@ Gọi `agent-team:scout` mảng **Tổng hợp nghiệp vụ**: sở hữu `doma
 
 ## 4. Kiểm và lặp (bắt buộc, không bỏ qua)
 1. Chạy `.claude/agent-team/kb-check.py`.
-2. File nào còn `THIEU`: gọi lại **đúng Scout phụ trách file đó** với lý do thiếu (chưa có `verified-at`, nguồn `file:dòng` sai, `CŨ`, mã `BR-`/`P-`/`F-` trỏ tới không có, ô ma trận trống...). Tối đa 2 vòng.
+2. File nào còn `THIEU`: gọi lại **đúng Scout phụ trách file đó** với lý do thiếu (chưa có `verified-at`, nguồn `file:dòng` sai, `CŨ`, mã `BR-`/`P-`/`F-` trỏ tới không có, ô ma trận trống, chỉ mục hàm thiếu / thừa so với graph...). Tối đa 2 vòng.
 3. Hết 2 vòng vẫn `THIEU`: **không giấu**. Liệt kê file, lý do (vd "module X quá lớn, mới đọc 3/12 service"), và việc cần làm tiếp (chạy lại `/agent-team:kb <module>`).
 4. Lệnh lint/format Scout báo → điền `LINT_CMD`, `FORMAT_CMD` trong config nếu đang trống.
 

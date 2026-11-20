@@ -12,6 +12,7 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
    - Stack BE/FE/test: Gemfile, package.json, thư mục spec/test
    - Lệnh lint/format đang có (rubocop, eslint, prettier, ruff...) → `LINT_CMD`, `FORMAT_CMD`
    - Thư mục migration → `MIGRATION_PATHS`; lệnh generator migration của framework (chạy trong container app) → `MIGRATION_GEN_CMD`. Không chắc → `TODO`.
+   - Thư mục chứa hàm public dùng lại nhiều (service, repository, model, use-case; FE: api client, hooks, store) → `FUNCTION_INDEX_PATHS` (chỉ mục hàm `docs/functions/`, so với graph). Repo trống → để trống, Architect điền ở task dựng khung.
    - **E2E / responsive:** có `@playwright/test` trong package.json → `E2E_CMD="npx playwright test"`; lệnh chạy server app trong container → `APP_START_CMD`, cổng → `APP_PORT`; FE tách repo (SPA) → `E2E_FE_START_CMD`, `E2E_FE_URL`. Có CSS media query / framework responsive → `VIEWPORTS="375 768 1280"`, chỉ máy tính → `"1280"`. Không chắc → `TODO`. Chưa cài Playwright → báo user lệnh cài (không tự cài): `npm i -D @playwright/test && npx playwright install chromium`.
    - docker-compose: file nằm trong repo hay repo khác, tên service DB và app, loại DB (postgres/mysql)
    - Branch gốc (develop/main/master) của **từng repo** (`git symbolic-ref --short refs/remotes/origin/HEAD`). Giống nhau → `BASE_BRANCH`. Repo nào khác → `BASE_BRANCHES="<repo>=<nhánh>"`.
@@ -34,6 +35,7 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
    - `scripts/board.py` → `.claude/agent-team/board.py` (chmod +x). Board chat SQLite, dữ liệu ở `.agent-team/board.db` (đã gitignore).
    - `scripts/gap-check.py` → `.claude/agent-team/gap-check.py` (chmod +x). Kiểm tài liệu sản phẩm `docs/product/` của App Mode.
    - `scripts/owner-form.py` → `.claude/agent-team/owner-form.py` (chmod +x, cần `gap-check.py` cùng thư mục). Sinh form `.xlsx` gửi owner và nhập câu trả lời.
+   - `scripts/progress.py` → `.claude/agent-team/progress.py` (chmod +x). Thêm vào `.claude/settings.json` của repo chính (merge, không ghi đè key khác; đã có `statusLine` thì hỏi user): `"statusLine": {"type": "command", "command": "python3 .claude/agent-team/progress.py"}`. Status line hiện `[task] S3 CODE ▓▓▓▓░░ 52% · chờ: role · WHY mở · thiếu: ...`.
 5. **CLAUDE.md**: chưa có mục "## Agent Team" thì thêm nội dung `templates/claude-md-section.md` vào cuối. Không sửa phần khác.
 5a. **Vẽ sơ đồ trong báo cáo**: kiểm `mmdc --version` (Mermaid CLI). Chưa có → báo user lệnh cài `npm i -g @mermaid-js/mermaid-cli` (không tự cài). Không có thì REPORT.html vẫn tạo được, sơ đồ hiện dạng văn bản.
 5b. **Code graph = Graphify (tùy chọn)**: hỏi user có muốn dùng không. Không → `USE_CODE_GRAPH=0`, bỏ qua.
@@ -62,5 +64,5 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
    4. Lệnh lint/format Scout báo → điền `LINT_CMD`, `FORMAT_CMD` nếu bước 2 chưa nhận diện được.
    5. **Không có lối thoát "quá dài thì bỏ qua".** Chưa đọc hết thì ghi rõ trong `docs/README.md` mục "Tình trạng KB" (đã quét / chưa quét / vì sao) và báo user chạy `/agent-team:kb <module>` để làm tiếp.
    6. Dự án mới (chưa có code): bỏ qua bước này, chỉ giữ khung. Architect đặt quy chuẩn ở task đầu tiên. Làm app từ ý tưởng: `/agent-team:app <ý tưởng>` (tự copy `templates/product/` → `docs/product/`).
-8. **Ghi `release-notes.md`** (tạo nếu chưa có), mục `Release notes - DD/MM/YYYY`: đã cài agent team, file nào được thêm, key mới (`LINT_CMD`, `FORMAT_CMD`, `COST_TIER`, `LESSONS_PATH`).
-9. Báo user: danh sách file đã tạo/sửa, các `TODO` cần điền, kết quả `kb-check.py` (đạt/tổng), phần KB chưa quét và còn `Unverified`. **Không commit**, để user xem trước. Cuối cùng: đúng 1 việc làm tiếp (≤ 2 phút), vd chạy `/agent-team:run <task đầu tiên>` (dự án mới: `/agent-team:app <ý tưởng>`).
+8. **Ghi `release-notes.md`** (tạo nếu chưa có), mục `Release notes - DD/MM/YYYY`: đã cài agent team, file nào được thêm, key mới (`LINT_CMD`, `FORMAT_CMD`, `COST_TIER`, `LESSONS_PATH`, `FUNCTION_INDEX_PATHS`).
+9. Báo user: danh sách file đã tạo/sửa, các `TODO` cần điền, kết quả `kb-check.py` (đạt/tổng), phần KB chưa quét và còn `Unverified`. **Không commit**, để user xem trước. Cuối cùng: đúng 1 việc làm tiếp (≤ 2 phút), vd chạy `/agent-team:task <task đầu tiên>` (dự án mới: `/agent-team:app <ý tưởng>`).

@@ -46,6 +46,11 @@ LESSONS_PATH=docs/LESSONS.md
 # 1 = dùng code graph Graphify (cài riêng: xem release-notes của plugin; Lead chạy graphify update)
 USE_CODE_GRAPH=1
 
+# Chỉ mục hàm docs/functions/<model>.md: thư mục có hàm public cần ghi nghĩa (service, repository, model...).
+# kb-check.py so với graph: hàm public ở đây chưa có dòng → thiếu. Để trống = không dùng chỉ mục hàm.
+# Ví dụ: FUNCTION_INDEX_PATHS="app/services app/models app/repositories"  (nhiều repo: "../FrontEnd/src/services")
+FUNCTION_INDEX_PATHS=
+
 # ---- Docker / DB clone ----
 # Thư mục chứa docker-compose (tính từ thư mục có .claude/, vd "be"). Để trống = thư mục đó.
 COMPOSE_DIR=

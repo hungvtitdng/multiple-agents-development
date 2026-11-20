@@ -10,7 +10,7 @@
 - Owner duyệt: TODO (APPROVED khi owner trả lời hết form cuối)
 
 ## Module (thứ tự build)
-> Mỗi module là 1 task `/agent-team:run`. Không có remote (`PUSH=0`): branch module sau tạo từ branch module trước, user merge theo thứ tự.
+> Mỗi module là 1 task `/agent-team:task`. Không có remote (`PUSH=0`): branch module sau tạo từ branch module trước, user merge theo thứ tự.
 
 | M | Module | Gồm R | Phụ thuộc | Loại | Branch gốc | Task-id | Trạng thái |
 |---|---|---|---|---|---|---|---|

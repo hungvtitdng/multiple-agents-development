@@ -33,6 +33,7 @@ KB_OWNERS = [
     ("docs/integrations/", _ARCH),
     ("docs/api/", _ARCH | {"backend-dev"}), ("docs/database/", _ARCH | {"backend-dev"}),
     ("docs/modules/", _BA | _ARCH | {"backend-dev", "frontend-dev"}),
+    ("docs/functions/", _ARCH | {"backend-dev", "frontend-dev"}),  # chỉ mục hàm: dev sửa trong cùng commit
     ("docs/testing/", {"test-designer", "test-executor"}),
     ("docs/security/", {"security"}),
     # App Mode: tài liệu sản phẩm (APP, brief, intake, questions còn lại = chỉ Lead)
@@ -47,7 +48,8 @@ TRAILER_RE = re.compile(r"(?i)signed-off-by|co-authored-by|reviewed-by|generated
 STAGE_WRITE_RE = re.compile(r">+\s*['\"]?\S*\.agent-team/stage")
 STAGE_VALUE_RE = re.compile(r"(?:echo|printf)\s+(?:-\w+\s+)*['\"]?(S[1-6])\b")
 # Điều kiện (đọc từ TASK.md) trước khi Lead sang giai đoạn mới
-GATE_CLASS = {"NHỎ", "VỪA", "LỚN", "APP"}
+GATE_CLASS = {"NHỎ", "VỪA", "LỚN", "APP", "MODULE"}
+MODULE_DOC_RE = re.compile(r"^docs/product/modules/[\w.-]+/")  # module mới: cùng chủ sở hữu file như docs/product/
 TEST_FILE_RE = re.compile(r"(^|/)(__tests__|__mocks__)/|(_spec|_test)\.\w+$|\.(spec|test)\.\w+$|(^|/)test_[^/]+\.py$")
 STAGE_ZONES = {"S1": set(), "S2": set(), "S3": {"be", "fe"}, "S4": {"test"}}
 GRAPHIFY = {"graphify", "graphifyy", "graphify-mcp"}
@@ -472,6 +474,7 @@ def docs_rel(path, cwd):
 
 
 def kb_owners(rel):
+    rel = MODULE_DOC_RE.sub("docs/product/", rel)
     for pre, roles in KB_OWNERS:
         if rel == pre or (pre.endswith("/") and rel.startswith(pre)):
             return roles
@@ -663,7 +666,9 @@ def gate_missing(stage, text):
     miss = []
     if stage == "S3":
         if first("Loại") not in GATE_CLASS:
-            miss.append("Loại (NHỎ/VỪA/LỚN/APP)")
+            miss.append("Loại (NHỎ/VỪA/LỚN/APP/MODULE)")
+        elif first("Loại") == "MODULE":
+            miss.append("task MODULE chỉ làm tài liệu, không có code: code ở các task con (/agent-team:task <thư mục module> T-<n>)")
         elif first("Loại") == "NHỎ":
             if not f("Tiêu chí nghiệm thu"):
                 miss.append("Tiêu chí nghiệm thu")
@@ -755,12 +760,13 @@ def e2e_evidence_missing(root, task):
     return [f"E2E: PASS nhưng thiếu ảnh chiều rộng {', '.join(lack)} trong {rel}/ (<TC>-<trạng thái>-<rộng>.png)"] if lack else []
 
 
-def run_gap_check(root):
+def run_gap_check(root, doc_dir=None):
     """gap-check --gate --spec-check: [] nếu sạch, ngược lại 1 dòng lý do."""
     if not os.path.isfile(GAP_CHECK):
         return ["không tìm thấy scripts/gap-check.py của plugin"]
     try:
-        r = subprocess.run([sys.executable, GAP_CHECK, "--gate", "--spec-check", root], capture_output=True, text=True, timeout=30)
+        extra = [f"--dir={doc_dir}"] if doc_dir else []
+        r = subprocess.run([sys.executable, GAP_CHECK, "--gate", "--spec-check", *extra, root], capture_output=True, text=True, timeout=30)
     except Exception as e:
         return [f"gap-check lỗi: {e}"]
     if r.returncode == 0:
@@ -781,6 +787,24 @@ def product_gate(root, stage, is_app):
             return [f"{PRODUCT_APP}: Owner duyệt: APPROVED (App Mode chưa qua cổng owner)"]
     if stage == "S6" and has_app:
         return run_gap_check(root)
+    return []
+
+
+def module_gate(root, stage, text):
+    """Task con của module mới (TASK.md `- Module: docs/product/modules/<tên>`):
+    S3 chờ owner duyệt ở MODULE.md; S6 tài liệu module phải đúng + SPEC.md mới."""
+    d = task_field(text, "Module").split(" ")[0].strip("`/")
+    if not d or d.upper().startswith("N/A"):
+        return []
+    status = os.path.join(root, d, "MODULE.md")
+    if not os.path.isfile(status):
+        return [f"Module: {d} không có MODULE.md (chạy /agent-team:module trước)"]
+    if stage == "S3":
+        v = task_field(open(status, encoding="utf-8", errors="ignore").read(), "Owner duyệt")
+        if (v.split() or [""])[0].upper() != "APPROVED":
+            return [f"{d}/MODULE.md: Owner duyệt: APPROVED (module chưa qua cổng owner)"]
+    if stage == "S6":
+        return run_gap_check(root, d)
     return []
 
 
@@ -808,6 +832,7 @@ def check_stage_change(new_stage, cwd):
         if yes("UI mockup") and not has(r"^mockup-.+\.html$"):
             miss.append("UI mockup: YES nhưng chưa có design/mockup-<màn>.html")
         miss += product_gate(root, "S3", (task_field(text, "Loại").split() or [""])[0].upper() == "APP")
+        miss += module_gate(root, "S3", text)
     if new_stage == "S5":
         text = open(latest, encoding="utf-8", errors="ignore").read()
         if (task_field(text, "E2E").split() or [""])[0].upper() == "PASS":
@@ -819,6 +844,7 @@ def check_stage_change(new_stage, cwd):
             miss.append("Cập nhật KB: YES nhưng không có file KB nào trong docs/ đổi so với nhánh gốc "
                         "(không tính agent-tasks/, testing/, LESSONS.md, SPEC.md). Cập nhật KB hoặc ghi KHÔNG CẦN + lý do")
         miss += product_gate(root, "S6", False)
+        miss += module_gate(root, "S6", text)
     if miss:
         block(f"chưa đủ điều kiện sang {new_stage}. Thiếu trong {os.path.relpath(latest, root)}: {'; '.join(miss)}")
 

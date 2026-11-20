@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """kb-check - KB còn khung rỗng, sai nguồn, cũ so với code, hay trỏ mã không có thật. Chỉ đọc.
 
-Dùng: kb-check.py [--json] [--index] [thư mục project]
+Dùng: kb-check.py [--json] [--index] [--functions] [thư mục project]
 Exit 0 = đủ, 1 = còn thiếu. Kiểm:
   - file bắt buộc có `verified-at: <commit>` và đủ số nguồn `file.ext:dòng`
   - nguồn `file:dòng` có thật (file tồn tại trong REPOS, đủ dòng); code đổi sau verified-at → CŨ
   - mỗi dòng BR- có nhãn + nguồn; ma trận quyền không ô trống, vai trò / C- có thật
   - mã BR- / P- / C- / F- mà page, luồng, ma trận trỏ tới phải có trong KB tổng
   - module trong danh sách có README; route trong bảng tra có file KB
+  - chỉ mục hàm docs/functions/*.md (khi có FUNCTION_INDEX_PATHS): so với graph Graphify,
+    hàm public trong phạm vi mà chưa có dòng → thiếu; dòng trỏ hàm không còn trong code → thừa
 --index: in bảng tra ngược mã → page / luồng dùng nó.
+--functions: in đầy đủ hàm thiếu / thừa trong chỉ mục (kèm file:dòng) để điền.
 """
 import glob
 import json
@@ -133,6 +136,7 @@ def kb_files(root):
     rels = [r for r in REQUIRED if os.path.isfile(os.path.join(root, r))]
     extra = glob.glob(os.path.join(root, "docs", "modules", "**", "*.md"), recursive=True)
     extra += glob.glob(os.path.join(root, "docs", "flows", "*.md"))
+    extra += func_files(root)
     rels += [os.path.relpath(p, root) for p in extra if os.path.relpath(p, root) not in rels]
     return [r for r in rels if r != "docs/modules/README.md"]
 
@@ -212,6 +216,169 @@ def check_modules(root):
     return why
 
 
+# ---------- chỉ mục hàm docs/functions/ so với graph (Graphify) ----------
+
+FUNC_DIR = "docs/functions"
+PRIVATE_KW = re.compile(r"\b(private|protected|internal|fileprivate)\b")
+
+
+def cfg(root, key):
+    m = re.search(rf"(?m)^\s*{key}=(.*)$", read(root, ".claude/agent-team.config") or "")
+    return m.group(1).split("#")[0].strip().strip("\"'") if m else ""
+
+
+def func_files(root):
+    return sorted(p for p in glob.glob(os.path.join(root, FUNC_DIR, "*.md")) if os.path.basename(p) != "README.md")
+
+
+def norm_fn(s):
+    """`OrderService#cancel()` / `Order::cancel` → OrderService.cancel"""
+    s = s.strip().strip("`").split("(")[0].strip()
+    return re.sub(r"#|::|->", ".", s)
+
+
+def indexed(root):
+    """{tên hàm: file index} từ cột đầu bảng có cột 'Hàm' trong docs/functions/*.md (bỏ dòng tham chiếu →)."""
+    out = {}
+    for p in func_files(root):
+        text = open(p, encoding="utf-8", errors="ignore").read()
+        head, rows, block = None, [], []
+        for ln in text.splitlines() + [""]:
+            if ln.strip().startswith("|"):
+                block.append([c.strip() for c in ln.strip().strip("|").split("|")])
+                continue
+            if len(block) >= 2 and block[0] and block[0][0].lower().startswith("hàm"):
+                for r in block[2:]:
+                    if r and r[0] and not r[0].startswith("<") and not any(c.startswith("→") for c in r[1:2]):
+                        out[norm_fn(r[0])] = os.path.relpath(p, root)
+            block = []
+    return out
+
+
+def in_scope(sf, scopes):
+    sf = sf.replace("\\", "/").lstrip("./")
+    for p in scopes:
+        p = os.path.normpath(p).replace("\\", "/")
+        cands = {p.lstrip("./")}
+        if p.startswith("../"):  # repo khác: graph có thể ghi đường dẫn từ gốc repo đó
+            tail = re.sub(r"^(\.\./)+", "", p)
+            cands |= {tail, tail.split("/", 1)[1] if "/" in tail else ""}
+        if any(c and (sf == c or sf.startswith(c.rstrip("/") + "/")) for c in cands):
+            return True
+    return False
+
+
+def ruby_private(lines, i, name, indent):
+    if re.match(r"\s*(private|protected)\s+def\b", lines[i]):
+        return True
+    if any(re.match(rf"\s*(private|protected)\s+.*:{re.escape(name)}\b", l) for l in lines):
+        return True
+    for l in reversed(lines[:i]):
+        ind = len(l) - len(l.lstrip())
+        if re.match(r"\s*(class|module)\s", l) and ind < indent:
+            return False
+        if re.match(r"\s*(private|protected)\s*$", l) and ind <= indent:
+            return True
+        if re.match(r"\s*public\s*$", l) and ind <= indent:
+            return False
+    return False
+
+
+def is_public(path, line_no, name, top_level):
+    """Đoán hàm public theo cú pháp ngôn ngữ (graph không ghi visibility)."""
+    try:
+        lines = open(path, encoding="utf-8", errors="ignore").read().splitlines()
+    except OSError:
+        return True
+    i = min(max(line_no - 1, 0), len(lines) - 1) if lines else 0
+    line = lines[i] if lines else ""
+    ext = os.path.splitext(path)[1].lower()
+    if name.startswith("_") or name.startswith("#"):
+        return False
+    if ext == ".go":
+        return name[:1].isupper()
+    if ext == ".rb":
+        return not ruby_private(lines, i, name, len(line) - len(line.lstrip()))
+    if ext in (".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".vue"):
+        if PRIVATE_KW.search(line):
+            return False
+        if top_level:
+            whole = "\n".join(lines)
+            return "export" in line or re.search(rf"export\s*\{{[^}}]*\b{re.escape(name)}\b", whole) is not None \
+                or re.search(rf"module\.exports[^\n]*\b{re.escape(name)}\b", whole) is not None
+        return True
+    return not PRIVATE_KW.search(line)
+
+
+def graph_functions(root):
+    """(graph path, built_at_commit, {tên: (file, dòng)} mọi hàm, set tên trong phạm vi + public). None nếu chưa có graph."""
+    gp = next((os.path.join(root, "graphify-out", f) for f in ("merged-graph.json", "graph.json")
+               if os.path.isfile(os.path.join(root, "graphify-out", f))), None)
+    if not gp:
+        return None
+    g = json.load(open(gp, encoding="utf-8"))
+    nodes = g.get("nodes", [])
+    classes = {n["id"]: n["label"] for n in nodes if n.get("_callable_class")}
+    scopes = cfg(root, "FUNCTION_INDEX_PATHS").split()
+    every, public = {}, set()
+    repo_dirs = repos(root)
+    for n in nodes:
+        if not n.get("_callable") or n.get("_callable_class"):
+            continue
+        label = n.get("label", "").lstrip(".").split("(")[0]
+        owner = max((cid for cid in classes if n["id"].startswith(cid + "_")), key=len, default=None)
+        full = f"{classes[owner]}.{label}" if owner else label
+        sf = n.get("source_file", "")
+        line = int((re.findall(r"\d+", n.get("source_location", "")) or ["0"])[0])
+        every[full] = (sf, line)
+        if scopes and in_scope(sf, scopes):
+            path = next((os.path.join(r, sf) for r in [root] + repo_dirs if os.path.isfile(os.path.join(r, sf))), sf)
+            if is_public(path, line, label, owner is None):
+                public.add(full)
+    return gp, g.get("built_at_commit"), every, public
+
+
+def check_functions(root):
+    """Hàng kết quả so chỉ mục hàm với graph. [] khi không bật FUNCTION_INDEX_PATHS."""
+    if not cfg(root, "FUNCTION_INDEX_PATHS"):
+        return []
+    rel = f"{FUNC_DIR}/ (so với graph)"
+    idx = indexed(root)
+    if not func_files(root):
+        return [{"file": rel, "ok": False, "why": "chưa có file chỉ mục nào (docs/functions/<model>.md)"}]
+    gf = graph_functions(root)
+    if gf is None:
+        off = cfg(root, "USE_CODE_GRAPH") == "0"
+        return [{"file": rel, "ok": off, "why": "USE_CODE_GRAPH=0: không so với graph" if off else
+                 "chưa có graphify-out/graph.json, chạy `graphify update .` để so chỉ mục với code"}]
+    _, built, every, public = gf
+    missing = sorted(public - set(idx))
+    extra = sorted(k for k in idx if k not in every)
+    why = []
+    if missing:
+        why.append(f"thiếu {len(missing)} hàm public chưa có trong chỉ mục: {', '.join(missing[:8])}{'...' if len(missing) > 8 else ''}")
+    if extra:
+        why.append(f"{len(extra)} hàm trong chỉ mục không còn trong code: {', '.join(extra[:8])}")
+    head = (git(root, "rev-parse", "HEAD") or "").strip()
+    if built and head and not head.startswith(built) and not built.startswith(head[:7]):
+        why.append(f"graph build ở commit {built[:7]}, HEAD là {head[:7]}: chạy `graphify update .` rồi kiểm lại")
+    return [{"file": rel, "ok": not (missing or extra), "why": "; ".join(why), "indexed": len(idx), "public": len(public)}]
+
+
+def functions_report(root):
+    """--functions: danh sách đầy đủ để Scout / dev điền chỉ mục."""
+    gf = graph_functions(root)
+    if gf is None:
+        return "chưa có graphify-out/graph.json"
+    _, _, every, public = gf
+    idx = indexed(root)
+    out = [f"Hàm public trong FUNCTION_INDEX_PATHS: {len(public)} · đã có trong chỉ mục: {len(public & set(idx))}", "", "## Thiếu (file:dòng  tên)"]
+    out += [f"{every[k][0]}:{every[k][1]}\t{k}" for k in sorted(public - set(idx), key=lambda k: every[k])] or ["(không)"]
+    out += ["", "## Thừa (có trong chỉ mục, không còn trong code)"]
+    out += [f"{idx[k]}\t{k}" for k in sorted(idx) if k not in every] or ["(không)"]
+    return "\n".join(out)
+
+
 def check(root):
     rows, repo_dirs, ids = [], repos(root), defined(root)
     for rel, min_cite in REQUIRED.items():
@@ -244,7 +411,7 @@ def check(root):
     why = check_modules(root)
     if why:
         rows.append({"file": "docs/modules/README.md", "ok": False, "why": "; ".join(why[:8])})
-    return rows
+    return rows + check_functions(root)
 
 
 def index(root):
@@ -265,6 +432,9 @@ def main():
     if not root:
         sys.stderr.write("kb-check: không thấy .claude/agent-team.config (chạy /agent-team:init trước)\n")
         sys.exit(2)
+    if "--functions" in sys.argv:
+        print(functions_report(root))
+        sys.exit(0)
     if "--index" in sys.argv:
         for k, v in index(root).items():
             print(f"{k}\t{', '.join(v)}")

@@ -135,5 +135,28 @@ run(root2, "--spec")
 check("SPEC đánh dấu ý owner chưa có yêu cầu", "| B-3: báo cáo doanh thu | **CHƯA CÓ** |" in open(
     os.path.join(root2, "docs", "product", "SPEC.md"), encoding="utf-8").read(), True)
 
+# ---- module mới: --dir=docs/product/modules/<tên>, cổng ở MODULE.md ----
+OWNER = os.path.join(HERE, "..", "plugins", "agent-team", "scripts", "owner-form.py")
+mroot = tempfile.mkdtemp()
+os.makedirs(os.path.join(mroot, ".claude"))
+open(os.path.join(mroot, ".claude", "agent-team.config"), "w").write('BE_PATHS="app"\n')
+MD = os.path.join(mroot, "docs", "product", "modules", "thanh-toan")
+for rel, text in GOOD.items():
+    name = "MODULE.md" if rel == "APP.md" else rel
+    os.makedirs(os.path.dirname(os.path.join(MD, name)), exist_ok=True)
+    open(os.path.join(MD, name), "w", encoding="utf-8").write(text)
+DIR = "--dir=docs/product/modules/thanh-toan"
+code, rows = run(mroot, "--gate", DIR)
+check("module: --dir đọc đúng thư mục module, cổng MODULE.md đạt", (code, [k for k, r in rows.items() if not r["ok"]]), (0, []))
+check("module: dòng cổng ghi MODULE.md", any(k.startswith("MODULE.md") for k in rows), True)
+check("module: không --dir thì đọc docs/product (trống) -> thiếu", run(mroot)[0], 1)
+open(os.path.join(MD, "MODULE.md"), "w", encoding="utf-8").write(GOOD["APP.md"].replace("APPROVED", "TODO"))
+code, rows = run(mroot, "--gate", DIR)
+check("module: owner chưa duyệt -> cổng MODULE.md thiếu", bad(rows, "MODULE.md") and "Owner duyệt" in rows["MODULE.md: cổng"]["why"], True)
+code, _ = run(mroot, "--spec", DIR)
+check("module: --spec sinh SPEC.md trong thư mục module", os.path.isfile(os.path.join(MD, "SPEC.md")), True)
+r = subprocess.run([sys.executable, OWNER, "build", DIR, mroot], capture_output=True, text=True)
+check("owner-form --dir: chặn build khi MODULE.md chưa Debate DONE", (r.returncode != 0, "MODULE.md" in r.stdout + r.stderr), (True, True))
+
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

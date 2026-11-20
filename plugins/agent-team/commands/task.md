@@ -1,6 +1,6 @@
 ---
 description: Lead nhận task, điều phối debate 4 người (BA, Architect, Test Design + Lead) để chốt best solution, rồi code, test, review, push branch.
-argument-hint: <mô tả task hoặc link ticket>
+argument-hint: <mô tả task hoặc link ticket> | <thư mục module> T-<n>
 model: opus
 ---
 
@@ -18,6 +18,7 @@ Làm đúng playbook dưới đây. **Không hỏi lại user**, team tự bàn 
 3. Tạo `docs/agent-tasks/<task-id>/TASK.md` (từ `.claude/agent-team/templates/TASK.md`) và `board/SUMMARY.md` (từ `SUMMARY.md`). `echo S1 > .agent-team/stage`.
 4. `USE_CODE_GRAPH=1`: chạy `graphify update .` (nhiều repo: `graphify update <repo>` từng repo trong `REPOS`, rồi `graphify merge-graphs <repo>/graphify-out/graph.json ... --out graphify-out/merged-graph.json` ở repo chính). Chưa cài `graphify` → bỏ qua, báo ở cuối.
 5. Task dở dang từ phiên trước → dừng, dùng `/agent-team:resume <task-id>`.
+6. **Task con của module mới** (`$ARGUMENTS` = `docs/product/modules/<tên> T-<n>`, do `/agent-team:module` chia): TASK.md ghi `- Module: docs/product/modules/<tên>`; mục 0 = dòng T-n trong `MODULE.md` + các R-n của nó (chép nguyên văn). AC = AC của các R-n (owner đã duyệt, BA chi tiết hoá, không viết lại); workflow / mockup lấy từ `<thư mục module>/design/` sang `design/` của task. Đổi hành vi đã duyệt → câu OWNER qua form (`owner-form.py --dir=<thư mục module>`), không tự đổi. Task sửa phần cũ: chạy cả test hồi quy ghi ở bảng "Ảnh hưởng ngược". Xong: cập nhật cột Trạng thái của T-n.
 
 ## 1. Phân loại task (ghi `- Loại:` + lý do vào TASK.md)
 | Loại | Ví dụ | Workflow | Thành viên |
@@ -108,7 +109,7 @@ $B export  <task-id>                         # → docs/agent-tasks/<task-id>/bo
 - Nhãn: `Verified` · `Assumption` · `Proposed` · `Confirmed`.
 
 ## 6. S3-S6: Code, test, review, đóng
-Hook chặn theo giai đoạn: S1-S2 chỉ tài liệu, S3 chỉ code, S4 chỉ test, S5-S6 theo quyền role. Sang giai đoạn mới: `echo S<n> > .agent-team/stage` (hook kiểm TASK.md).
+Hook chặn theo giai đoạn: S1-S2 chỉ tài liệu, S3 chỉ code, S4 chỉ test, S5-S6 theo quyền role. Sang giai đoạn mới: `echo S<n> > .agent-team/stage` (hook kiểm TASK.md). Sau mỗi lần đổi giai đoạn và mỗi lượt board xong: chạy `python3 .claude/agent-team/progress.py`, in dòng tiến độ đó vào chat cho user.
 
 | Giai đoạn | Việc |
 |---|---|

@@ -11,6 +11,7 @@ Mọi agent **đọc** trước khi làm. Mỗi thư mục có chủ sở hữu 
 | `flows/` | BA | Luồng qua nhiều page `F-n` |
 | `engineering/` | Architect | Quy chuẩn code, checklist clean code |
 | `modules/<tên>/` | BA, Architect, dev | Chức năng, màn hình, hành động, API, test liên quan. `modules/README.md`: danh sách module + bảng tra Route → file KB |
+| `functions/` | Architect, backend-dev, frontend-dev (Scout dựng lần đầu) | Chỉ mục hàm: mỗi model 1 file, mỗi hàm public 1 dòng ý nghĩa. Dev đọc trước khi viết hàm mới; `kb-check.py` so với graph |
 | `testing/` | Test Design, Test Execution | Chiến lược, test case, ma trận, kết quả |
 | `security/` | Security | Phát hiện, quyết định phân quyền |
 | `agent-tasks/<task-id>/` | Lead | TASK.md, CONTEXT.md (Scout), board |

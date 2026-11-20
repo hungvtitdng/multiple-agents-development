@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """gap-check - tài liệu sản phẩm (docs/product/) còn thiếu ý nào. Chỉ đọc (trừ --spec).
 
-Dùng: gap-check.py [--json] [--gate] [--spec | --spec-check] [thư mục project]
+Dùng: gap-check.py [--json] [--gate] [--spec | --spec-check] [--dir=<thư mục tài liệu>] [thư mục project]
+  --dir         thư mục tài liệu, mặc định docs/product (module mới: --dir=docs/product/modules/<tên>, cổng ở MODULE.md).
   --gate        kiểm thêm cổng trong APP.md (Intake, Challenger, Owner duyệt). Guard dùng trước S3 / S6.
   --spec        sinh lại docs/product/SPEC.md (gộp toàn bộ tài liệu app thành 1 file) rồi kiểm như thường.
   --spec-check  SPEC.md phải khớp tài liệu hiện tại (quên chạy --spec sau khi sửa tài liệu = thiếu).
@@ -13,7 +14,7 @@ import re
 import sys
 import unicodedata
 
-P = "docs/product"
+P = "docs/product"  # --dir= đổi được (module mới: docs/product/modules/<tên>)
 ID_RE = re.compile(r"\b([BGDRSFQ])-(\d+)\b")
 EMPTY = {"", "-", "—", "..."}
 COVERAGE_OK = {"RÕ", "LOẠI", "CHƯA BIẾT"}
@@ -105,6 +106,18 @@ def responsive(root):
         return False
     m = re.search(r"(?m)^\s*VIEWPORTS=['\"]?([\d ]+)", cfg)
     return bool(m) and any(int(w) < 768 for w in m.group(1).split())
+
+
+def status_name(root):
+    """File cổng: MODULE.md (module mới) hoặc APP.md (cả app)."""
+    return "MODULE.md" if os.path.isfile(os.path.join(root, P, "MODULE.md")) else "APP.md"
+
+
+def set_dir(argv):
+    global P
+    d = next((a.split("=", 1)[1] for a in argv if a.startswith("--dir=")), None)
+    if d:
+        P = d.strip().strip("/")
 
 
 def check(root, gate=False):
@@ -326,12 +339,12 @@ def check(root, gate=False):
 
     # cổng owner
     if gate:
-        f = fields(read(root, "APP.md") or "")
+        f = fields(read(root, status_name(root)) or "")
         why = []
         for k, ok in (("Intake", "YES"), ("Challenger", "DONE"), ("Owner duyệt", "APPROVED")):
             if first_word(f.get(k, "")) != ok:
                 why.append(f"{k}: {ok}")
-        add("APP.md: cổng", why)
+        add(f"{status_name(root)}: cổng", why)
     return rows
 
 
@@ -362,7 +375,7 @@ def body(text):
 
 def build_spec(root):
     pdir = os.path.join(root, P)
-    app = read_raw(os.path.join(pdir, "APP.md")) or ""
+    app = read_raw(os.path.join(pdir, status_name(root))) or ""
     name = next((ln[2:].strip() for ln in app.splitlines() if ln.startswith("# ")), "App")
     parts = [(rel, title) for rel, title in SPEC_PARTS if read_raw(os.path.join(pdir, rel))]
     out = [f"# SPEC: {name}", "",
@@ -397,12 +410,13 @@ def build_spec(root):
         if f.endswith(".md") and f != "README.md":
             title = next((ln[2:].strip() for ln in (read_raw(os.path.join(ddir, f)) or "").splitlines() if ln.startswith("# ")), f)
             out.append(f"- Quyết định: [{title}](../decisions/{f})")
-    out += ["", f"## {n + 3}. Module & trạng thái", "", body(app.split("## Module", 1)[1]) if "## Module" in app else "Chưa chia module.", ""]
+    out += ["", f"## {n + 3}. Module & trạng thái", "", body(app.split(sec, 1)[1]) if (sec := next((h for h in ("## Module", "## Task") if h in app), None)) else "Chưa chia module.", ""]
     return "\n".join(out).rstrip() + "\n"
 
 
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    set_dir(sys.argv[1:])
     root = find_root(args[0] if args else os.getcwd())
     if not root or not os.path.isdir(os.path.join(root, P)):
         sys.stderr.write(f"gap-check: không thấy .claude/agent-team.config hoặc {P}/ (chạy /agent-team:app trước)\n")

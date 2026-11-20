@@ -43,4 +43,4 @@ $ARGUMENTS
 5. Hai role trả lời khác nhau: nêu cả hai, ai dựa vào nguồn nào, không tự chọn một bên khi không có căn cứ.
 
 ## 5. Kết thúc
-Ngắn, theo thứ tự: câu trả lời, nguồn, `KB nên cập nhật` (nếu có, liệt kê file + nội dung thiếu hoặc lệch, **không tự sửa**; muốn sửa thì chạy `/agent-team:run` để BA/Architect cập nhật), và đúng 1 việc user làm tiếp (≤ 2 phút) nếu còn việc mở.
+Ngắn, theo thứ tự: câu trả lời, nguồn, `KB nên cập nhật` (nếu có, liệt kê file + nội dung thiếu hoặc lệch, **không tự sửa**; muốn sửa thì chạy `/agent-team:task` để BA/Architect cập nhật), và đúng 1 việc user làm tiếp (≤ 2 phút) nếu còn việc mở.

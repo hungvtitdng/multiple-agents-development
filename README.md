@@ -8,16 +8,17 @@ Plugin cho Claude Code. Đưa 1 task → Lead + BA + Architect + Test Design deb
 ├── .claude-plugin/marketplace.json
 ├── plugins/agent-team/
 │   ├── .claude-plugin/plugin.json
-│   ├── agents/          ← 11 role (Lead = session chính, nằm trong commands/run.md)
+│   ├── agents/          ← 11 role (Lead = session chính, nằm trong commands/task.md)
 │   ├── commands/
-│   │   ├── run.md       ← /agent-team:run    - playbook của Lead
+│   │   ├── task.md      ← /agent-team:task   - 1 task: playbook của Lead (tên cũ: run)
+│   │   ├── module.md    ← /agent-team:module - module mới trong app đang chạy (như app, phạm vi 1 module)
 │   │   ├── app.md       ← /agent-team:app    - làm cả app từ ý tưởng (hỏi owner → tài liệu → owner duyệt → build từng module)
 │   │   ├── resume.md    ← /agent-team:resume - làm tiếp task dang dở (hết quota, lỗi)
 │   │   ├── ask.md       ← /agent-team:ask    - hỏi về logic dự án, có dẫn nguồn
 │   │   ├── kb.md        ← /agent-team:kb     - dựng/làm đầy KB từ code (nhiều Scout, kiểm bằng kb-check)
 │   │   └── init.md      ← /agent-team:init   - cài cho 1 project, dựng KB
 │   ├── hooks/           ← hooks.json, guard.py (chặn thật), show_post.py
-│   ├── scripts/         ← agent-db-clone.sh, kb-check.py, board.py (board chat SQLite), gap-check.py (App Mode)
+│   ├── scripts/         ← agent-db-clone.sh, kb-check.py, board.py (board chat SQLite), gap-check.py (App Mode), progress.py (status line % tiến độ)
 │   ├── skills/          ← 10 skill chung, agent tự nạp khi cần
 │   ├── catalog/         ← mặc định theo loại app (chung, quản lý nội bộ, đặt lịch) để bù ý owner không nghĩ tới
 │   └── templates/       ← TASK, SUMMARY, POST, CONTEXT, config, mục CLAUDE.md, kb/ (khung docs/), product/ (App Mode)
@@ -42,7 +43,7 @@ Plugin cho Claude Code. Đưa 1 task → Lead + BA + Architect + Test Design deb
 ## Luồng 1 task
 
 ```
-/agent-team:run <task>
+/agent-team:task <task>
    │
  Lead phân loại NHỎ / VỪA / LỚN, tạo branch agent/<task-id>
    │
@@ -134,7 +135,7 @@ PHASE A: chỉ tài liệu (stage S1-S2)
  Debate chốt      gộp câu vụn, bỏ câu team tự chốt được, 1 đề xuất/câu → FORM CUỐI theo hành trình
  ⛔ Owner chốt    trả lời form (kèm mockup) → sửa mockup + gap-check --spec
  A5 Chia module   APP.md: M-0 khung project, M-1..n theo phụ thuộc, M-E2E
-PHASE B: M-0 trong task app (S3-S6), M-1..n mỗi module 1 /agent-team:run, lần lượt
+PHASE B: M-0 trong task app (S3-S6), M-1..n mỗi module 1 /agent-team:task, lần lượt
 ```
 
 **Form hỏi owner + dev** (`owner-form.py build` → `docs/product/owner-form-<n>.xlsx`, mở bằng Excel hoặc Google Sheet). 1 file, 2 mục; mục A cho owner:
@@ -164,6 +165,28 @@ Gửi lại file → `owner-form.py import <file .xlsx|.csv>`: `OK` = duyệt đ
 **Tài liệu ghi lại toàn bộ:** `gap-check.py --spec` sinh `docs/product/SPEC.md` = mọi tài liệu app trong 1 file (ý tưởng, mục tiêu, stack, yêu cầu, flow, màn + link wireframe, dữ liệu, mặc định, câu hỏi, truy vết B → R → S, quyết định, module). Module đổi yêu cầu thì BA sửa `docs/product/`, Lead sinh lại SPEC; hook chặn S6 khi SPEC cũ hơn tài liệu. Mỗi task vẫn có `docs/agent-tasks/<task-id>/` (TASK.md, design/, board, REPORT) như `run`.
 
 `gap-check.py` (chạy được bất cứ lúc nào): báo B-n chưa có yêu cầu, R-n không có nguồn (tự bịa), câu hỏi CAO còn mở, mặc định owner chưa chọn, flow thiếu nhánh lỗi, màn mồ côi / chưa có wireframe, vai trò không có trên màn, dữ liệu thiếu đường tạo/xoá, trạng thái không vào/ra được.
+
+## Module mới trong app đang chạy (`/agent-team:module <ý tưởng>`)
+
+```
+sửa / thêm nhỏ, 1 task ───────────────────────────────────────► /agent-team:task
+tính năng cỡ module (nhiều màn, luồng / quyền mới, nhiều task) ─► /agent-team:module
+app mới, chưa có code ────────────────────────────────────────► /agent-team:app
+```
+
+Như App Mode Phase A nhưng phạm vi 1 module, tài liệu ở `docs/product/modules/<tên>/`, cổng ở `MODULE.md`:
+
+```
+M0 Nền từ KB     Scout: vai trò, P-, BR-, F-, màn, chỉ mục hàm, graphify affected → KHÔNG hỏi lại cái đã có
+A0-A3b           intake module · vấn đề + ngoài phạm vi · debate (trong kiến trúc hiện tại) · nháp · mockup màn mới + màn cũ bị sửa
+A4 Săn gap       như app + ẢNH HƯỞNG NGƯỢC: quyền cũ, dữ liệu cũ, hàm / API cũ, báo cáo → test hồi quy
+⛔ Owner duyệt   form (owner-form.py --dir=docs/product/modules/<tên>) → gap-check --dir= sạch
+Ghép KB          BR-, P-, vai trò, F-, modules/<tên>/ (Confirmed)
+Task con         T-1..n: /agent-team:task docs/product/modules/<tên> T-<n>, lần lượt
+```
+
+- Hook: task `Loại: MODULE` chỉ làm tài liệu (chặn S3). Task con (`- Module: <thư mục>` trong TASK.md) chỉ sang S3 khi `MODULE.md` có `Owner duyệt: APPROVED`; sang S6 chạy `gap-check --dir=<thư mục>`.
+- File trong thư mục module cùng chủ sở hữu như `docs/product/` (BA, ui-designer, còn lại Lead).
 
 ## Hỏi về logic dự án (`/agent-team:ask <câu hỏi>`)
 
@@ -233,7 +256,7 @@ Gate chủ yếu đọc các dòng Lead tự điền: chặn quên bước, khô
 
 ## Mức model (`COST_TIER`) và bài học (`LESSONS_PATH`)
 
-- `COST_TIER=economy | standard | max` (mặc định standard): Lead truyền `model` cho từng agent theo bảng trong `run.md`. Economy hạ BA, Test Design, TA, Scout; max nâng Code Reviewer, Challenger. Security và Architect luôn opus.
+- `COST_TIER=economy | standard | max` (mặc định standard): Lead truyền `model` cho từng agent theo bảng trong `task.md`. Economy hạ BA, Test Design, TA, Scout; max nâng Code Reviewer, Challenger. Security và Architect luôn opus.
 - `LESSONS_PATH` (mặc định `docs/LESSONS.md`): Lead ghi ≤ 3 dòng bài học cuối mỗi task; Scout đưa bài học liên quan vào CONTEXT.md ở task sau.
 
 ## Chặn ghi sai vùng: 3 lớp
@@ -265,6 +288,20 @@ Chọn **1 repo chính** (thường API/BE) chứa `.claude/`, `docs/`, `CLAUDE.
 - Guard chặn với mọi người: `graphify extract` (gọi LLM), `install`, `hook install`, `claude install`, `watch`, `graphify-mcp`.
 - Chưa cài thì agent tìm bằng grep. Thay đổi chưa commit không có trong graph.
 
+### Chỉ mục hàm (`docs/functions/`): graph cho biết hàm nối với hàm nào, chỉ mục cho biết hàm làm gì
+
+```
+Graphify (máy tự tạo)                 docs/functions/<model>.md (Scout dựng, dev cập nhật)
+OrderService.list_active  ───────►    list_active: đơn chưa huỷ của 1 user, phân trang   ✔
+OrderService.refund (mới) ───────►    (không có dòng)                                    ✘ thiếu
+                          ◄───────    old_method (đã xoá khỏi code)                       ✘ thừa
+                    kb-check.py so khớp, báo thiếu / thừa
+```
+
+- Mỗi model / bảng 1 file (`order.md`, `payment.md`, `_shared.md`), mục lục ở `docs/functions/README.md`. Mỗi hàm public trong `FUNCTION_INDEX_PATHS` 1 dòng: `Hàm | Ý nghĩa | Tham số chính | Trả về | file:dòng`.
+- Dev trước khi viết hàm mới: mở file model → có hàm cùng nghĩa thì dùng lại → không có thì viết mới **và thêm dòng trong cùng commit**. Scout chép sẵn "Hàm có sẵn liên quan" vào CONTEXT.md.
+- Code Reviewer: hàm trùng nghĩa hoặc thiếu / sai dòng chỉ mục → **High**. `kb-check.py --functions` in danh sách hàm thiếu / thừa kèm `file:dòng`.
+
 ## Nguồn bên thứ ba
 
 Checklist bảo mật, quy tắc trả lời ngắn và nguyên tắc code ít nhất được rút gọn từ 3 dự án MIT, xem `plugins/agent-team/THIRD-PARTY.md`.
@@ -276,13 +313,13 @@ Checklist bảo mật, quy tắc trả lời ngắn và nguyên tắc code ít n
    /plugin marketplace add hungvtitdng/multiple-agents-development
    /plugin install agent-team@kevin-agent-team
 2. Mở project → /agent-team:init → kiểm tra .claude/agent-team.config
-3. /agent-team:run <task>      (dang dở: /agent-team:resume <task-id>)
+3. /agent-team:task <task>      (dang dở: /agent-team:resume <task-id>)
 ```
 Cập nhật: `/plugin marketplace update kevin-agent-team`, khởi động lại Claude Code. Không còn cần `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`.
 
 ## Kiểm tra sau khi cài
 
-1. `python3 tests/test_guard.py`, `python3 tests/test_board.py`, `python3 tests/test_gap_check.py` → toàn bộ pass
+1. `python3 tests/test_guard.py`, `python3 tests/test_board.py`, `python3 tests/test_gap_check.py`, `python3 tests/test_progress.py` → toàn bộ pass
 2. Trong project, nhờ Claude gọi subagent `agent-team:business-analyst` ghi 1 file ngoài KB của BA → phải bị guard chặn.
 3. `.claude/agent-team/agent-db-clone.sh up test1` → `verify test1` → `down test1`
 4. Nhờ Claude gọi `agent-team:business-analyst` dùng skill `agent-team:acceptance-criteria`. Agent báo không có tool `Skill` → bản Claude Code chưa cho subagent dùng skill: agent vẫn chạy, chỉ thiếu checklist trong skill.

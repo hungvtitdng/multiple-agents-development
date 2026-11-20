@@ -18,6 +18,10 @@
 ## KB nghi lỗi thời
 - (module | file KB | verified-at vs commit hiện tại)
 
+## Hàm có sẵn liên quan (từ docs/functions/, dùng lại trước khi viết mới)
+| Hàm | Ý nghĩa | file:dòng |
+|---|---|---|
+
 ## Bài học liên quan (từ LESSONS_PATH, ≤ 5 bài Active: Sai gì → Cách tránh, task nguồn)
 -
 

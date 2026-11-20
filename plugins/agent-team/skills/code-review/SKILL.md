@@ -15,9 +15,9 @@ description: Quy trình review diff chung cho mọi stack - thứ tự đọc, n
 3. **Sai logic / mất dữ liệu**: rẽ nhánh, giá trị rỗng, transaction, lỗi bị nuốt.
 4. **Quyền**: hành động mới kiểm quyền và giới hạn theo chủ sở hữu/tenant như hành động cũ.
 5. **Hiệu năng**: truy vấn trong vòng lặp (N+1), list không phân trang, cột lọc/sắp xếp mới thiếu index, tải dữ liệu thừa.
-6. **Bảo trì**: lặp code, abstraction/option thừa, sửa code cũ không cần, đúng `coding-standards.md`.
+6. **Bảo trì**: lặp code, abstraction/option thừa, sửa code cũ không cần, đúng `coding-standards.md`. **Hàm mới trùng nghĩa** hàm đã có: đọc `docs/functions/<model>.md` của model bị chạm, so cột Ý nghĩa.
 7. **Test**: logic mới có test, test fail được nếu bỏ code.
-8. **KB khớp code**, commit message một dòng `[role] task-id: mô tả`.
+8. **KB khớp code** (kể cả chỉ mục hàm `docs/functions/`: hàm public thêm / đổi / xoá phải sửa dòng trong cùng commit), commit message một dòng `[role] task-id: mô tả`.
 
 ## 2. Nhóm lỗi hay sót (tìm bằng mẫu trong review-checklist.md của dự án)
 | Nhóm | Dấu hiệu |
@@ -35,7 +35,7 @@ description: Quy trình review diff chung cho mọi stack - thứ tự đọc, n
 ## 4. Viết issue
 `[Mức] file:dòng | vấn đề | tác động | đề xuất sửa cụ thể`
 - **Critical**: sai dữ liệu/tiền, mất dữ liệu, N+1 trên list chính, lỗ hổng quyền.
-- **High**: thiếu phân trang list, thiếu test cho logic chính, KB không khớp, lặp lỗi cũ, thay đổi ngoài phạm vi đáng kể.
+- **High**: thiếu phân trang list, thiếu test cho logic chính, KB không khớp, **hàm mới trùng nghĩa hàm có sẵn**, **thiếu / sai dòng chỉ mục hàm**, lặp lỗi cũ, thay đổi ngoài phạm vi đáng kể.
 - **Medium**: vi phạm quy chuẩn ảnh hưởng bảo trì, xử lý lỗi chưa đủ.
 - **Low**: đặt tên, comment, style nhỏ.
 Gộp issue giống nhau thành 1 dòng nhiều vị trí. Không viết lời khen dài.

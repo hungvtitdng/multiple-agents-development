@@ -1,3 +1,46 @@
+# Release notes - 20/11/2026 (v0.18.0)
+
+## Thay đổi
+- **Đổi tên `/agent-team:run` → `/agent-team:task`** (`commands/run.md` → `commands/task.md`), không giữ tên cũ. Ba lệnh theo phạm vi: `task` (1 task) · `module` (1 module mới) · `app` (cả app). Mọi chỗ nhắc `run` đã đổi theo (app, resume, init, ask, mục CLAUDE.md, README, THIRD-PARTY, template APP.md).
+- **Lệnh mới `/agent-team:module <ý tưởng>`**: module mới trong app đang chạy, làm như App Mode Phase A nhưng phạm vi 1 module, tài liệu ở `docs/product/modules/<tên>/`, cổng ở `MODULE.md`:
+  - **M0 nền từ KB** (Scout): vai trò, P-, BR-, F-, màn, chỉ mục hàm, `graphify affected` → không hỏi lại stack / auth / vai trò đã có; chỉ điều mới mới thành câu hỏi.
+  - Mockup màn mới + **màn cũ bị sửa**; săn gap thêm **ảnh hưởng ngược** (quyền cũ, dữ liệu cũ, hàm / API cũ, báo cáo) → bảng "Ảnh hưởng ngược" + test hồi quy; đổi hành vi phần cũ phải hỏi owner qua form.
+  - **Owner duyệt qua form** như App Mode. Sau duyệt: **ghép vào KB** (BR-, P-, vai trò, F-, `modules/<tên>/`, nhãn `Confirmed`), chia **task con** T-1..n → `/agent-team:task docs/product/modules/<tên> T-<n>`.
+- `gap-check.py`, `owner-form.py`: thêm `--dir=<thư mục>`; file cổng đọc `MODULE.md` nếu có, không thì `APP.md`; SPEC.md của module sinh trong thư mục module.
+- Guard: file trong `docs/product/modules/<tên>/` cùng chủ sở hữu như `docs/product/`; `Loại: MODULE` không được sang S3 (chỉ tài liệu); task con có `- Module: <thư mục>` chỉ sang S3 khi `MODULE.md` có `Owner duyệt: APPROVED`, sang S6 chạy `gap-check --dir=`.
+- Template mới `templates/product/module/MODULE.md` (cổng + Ảnh hưởng ngược + Task), `intake.md` (nền từ KB). `TASK.md` thêm dòng `- Module:`. `resume` xử lý `Loại: MODULE`.
+- Test: `test_gap_check.py` 49 case (+6), `test_guard.py` 316 case (+11).
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update kevin-agent-team`, khởi động lại Claude Code.
+- **Gõ `/agent-team:task` thay cho `/agent-team:run`** (tên cũ không còn).
+- Project đã init: thay mục "Agent Team" trong `CLAUDE.md` bằng `templates/claude-md-section.md` (đang ghi `/agent-team:run`); copy lại `templates/TASK.md` → `.claude/agent-team/templates/` (thêm dòng `- Module: N/A`); copy lại `scripts/gap-check.py`, `owner-form.py` → `.claude/agent-team/` (chmod +x).
+- Task đang làm dở bằng `run`: làm tiếp bằng `/agent-team:resume <task-id>` như cũ.
+- Không có ENV / key mới.
+
+# Release notes - 20/11/2026 (v0.17.0)
+
+## Thay đổi
+- **Chỉ mục hàm `docs/functions/`**: graph (Graphify) cho biết hàm nào nối với hàm nào, chỉ mục cho biết **mỗi hàm làm gì**, để dev tìm theo nghĩa và dùng lại thay vì viết trùng. Mỗi model / bảng 1 file (`order.md`...), hàm dùng chung ở `_shared.md`, mục lục `README.md`. Mỗi hàm public 1 dòng `Hàm | Ý nghĩa | Tham số chính | Trả về | file:dòng`. Hàm chạm nhiều model ghi ở model chính, file kia 1 dòng `→ xem`.
+- `kb-check.py`: so chỉ mục với `graphify-out/graph.json` (hoặc `merged-graph.json`): hàm public trong `FUNCTION_INDEX_PATHS` chưa có dòng → thiếu; dòng trỏ hàm không còn trong code → thừa; graph build ở commit khác HEAD → nhắc `graphify update`. Hàm private / không export bị bỏ qua (đoán theo cú pháp Ruby, PHP, JS/TS, Python, Go, Java...). File chỉ mục cũng được kiểm `verified-at`, nguồn `file:dòng`, CŨ như KB khác. `--functions` in đủ danh sách thiếu / thừa kèm `file:dòng`.
+- Scout: dựng chỉ mục khi init / kb (mảng mới "Chỉ mục hàm", đọc thân hàm để viết nghĩa); CONTEXT.md thêm mục "Hàm có sẵn liên quan". backend-dev / frontend-dev: 3 bước trước khi viết hàm mới (tìm → dùng lại → viết mới + thêm dòng cùng commit). Code Reviewer + skill `code-review`: hàm trùng nghĩa hoặc thiếu / sai dòng chỉ mục = High.
+- Guard: `docs/functions/` do Architect, backend-dev, frontend-dev ghi (Scout khi init / kb).
+- Template mới `templates/kb/functions/README.md`. Test: `test_kb_check.py` 39 case (+10), `test_guard.py` 305 case (+5).
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update kevin-agent-team`, khởi động lại Claude Code.
+- **Key mới trong `.claude/agent-team.config`**: `FUNCTION_INDEX_PATHS` (vd `"app/services app/models app/repositories"`; để trống = không dùng chỉ mục hàm). Không phải secret.
+- Project đã init: copy lại `scripts/kb-check.py` → `.claude/agent-team/` (chmod +x), `templates/CONTEXT.md` → `.claude/agent-team/templates/`, `templates/kb/functions/README.md` → `docs/functions/README.md`. Chạy `graphify update .` rồi `/agent-team:kb` để Scout dựng chỉ mục.
+
+# Release notes - 20/11/2026 (v0.16.1)
+
+## Thay đổi
+- **Tiến độ task (%):** thêm `scripts/progress.py`, hiện trên status line: `[task] S3 CODE ▓▓▓▓▓░░░░░ 52% · chờ: <role chưa post> · WHY mở: n · thiếu: <mục TASK.md còn TODO>`. Lead in dòng này vào chat sau mỗi lần đổi giai đoạn. Test: `python3 tests/test_progress.py`.
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update kevin-agent-team`, khởi động lại Claude Code.
+- Project đã init: copy `scripts/progress.py` → `.claude/agent-team/progress.py` (chmod +x), thêm vào `.claude/settings.json`: `"statusLine": {"type": "command", "command": "python3 .claude/agent-team/progress.py"}`.
+
 # Release notes - 20/11/2026 (v0.16.0)
 
 ## Thay đổi

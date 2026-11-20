@@ -1,5 +1,5 @@
 ---
-description: Lead dựng cả app từ 1 ý tưởng - gom mọi câu hỏi vào 1 form (mục A owner, mục B dev; mỗi câu 1 đề xuất của team), chốt logic, rồi wireframe, chia module và build từng module bằng /agent-team:run.
+description: Lead dựng cả app từ 1 ý tưởng - gom mọi câu hỏi vào 1 form (mục A owner, mục B dev; mỗi câu 1 đề xuất của team), chốt logic, rồi wireframe, chia module và build từng module bằng /agent-team:task.
 argument-hint: <ý tưởng app>
 model: opus
 ---
@@ -10,14 +10,14 @@ $ARGUMENTS
 
 Mục tiêu: **app đủ thành phần, không sót ý của owner**. Logic chưa được owner chốt (mục 7) thì không ai viết code (hook chặn).
 
-## 0. Khác `/agent-team:run` ở đâu
+## 0. Khác `/agent-team:task` ở đâu
 ```
 PHASE A (chỉ tài liệu, stage S1-S2)
 A0 Intake → A1 Vấn đề + 12 góc nhìn → A2 Debate (team tự làm rõ) → A3 Nháp trọn app → A3b Mockup mọi màn
 → A4 Săn gap trên nháp + mockup → Debate chốt đề xuất → FORM CUỐI theo hành trình (A. Owner · B. Dev)
 → ⛔ Owner chốt logic → cập nhật mockup + SPEC → A5 Chia module
 PHASE B (code)
-M-0 khung project (task này, S3-S6) → M-1..n: mỗi module 1 /agent-team:run → M-E2E
+M-0 khung project (task này, S3-S6) → M-1..n: mỗi module 1 /agent-team:task → M-E2E
 ```
 - **Người chạy lệnh thường là dev, không phải owner.** Không hỏi dev câu nghiệp vụ. Mỗi câu trong `docs/product/questions.md` có cột `Ai trả lời`:
   | Ai trả lời | Gồm | Cách hỏi |
@@ -28,7 +28,7 @@ M-0 khung project (task này, S3-S6) → M-1..n: mỗi module 1 /agent-team:run 
 - Câu kỹ thuật làm đổi logic (vd "server có SMTP không?" quyết định cách quên mật khẩu) → **tách 2 câu**: câu logic cho owner ("Quên mật khẩu thì sao?" đề xuất: gửi link email, mail lỗi thì quản lý cấp mật khẩu tạm) + câu hạ tầng cho dev. Logic không phụ thuộc vào câu trả lời của dev.
 - Agent vẫn **không** hỏi ai: trả câu hỏi về bạn, bạn ghi sổ `questions.md`.
 - Mức `CAO` (sai thì làm lại nhiều: luồng tiền, quyền, dữ liệu, quy tắc cốt lõi) **phải** được owner trả lời, không được giả định. Mức `THẤP` được `GIẢ ĐỊNH` (ghi lý do, liệt kê ở báo cáo).
-- Debate, board, model, Security, bài học: như `run.md` (mục 2-4, 11). Đọc `run.md` của plugin trước khi bắt đầu.
+- Debate, board, model, Security, bài học: như `task.md` (mục 2-4, 11). Đọc `task.md` của plugin trước khi bắt đầu.
 
 ## 0b. Form hỏi owner + dev (1 file, 2 mục)
 - **Mỗi câu 1 đề xuất best solution** của team (câu OWNER: BA đề xuất; câu DEV: Architect đề xuất; kèm 1 câu "vì sao"), **không** đưa danh sách phương án khác. Hỏi bằng tình huống cụ thể ("Khách đặt xong muốn huỷ thì sao?"), không hỏi trừu tượng.
@@ -62,9 +62,9 @@ M-0 khung project (task này, S3-S6) → M-1..n: mỗi module 1 /agent-team:run 
 ## 1. Chuẩn bị
 1. Thư mục plugin: `find ~/.claude/plugins -type d -path "*agent-team" -exec test -f {}/scripts/gap-check.py \; -print | head -1` (dùng cho `catalog/`, `templates/product/`).
 2. Chưa có `.claude/agent-team.config` → làm `/agent-team:init` trước (dự án mới: init tự xử lý chưa có git/remote, mục 2a của init).
-3. Task-id `YYYYMMDD-app-<slug>`. Branch `agent/<task-id>`: có remote (`PUSH=1`) như `run.md` mục 0; `PUSH=0` thì không `fetch`, tạo branch từ HEAD hiện tại (repo chưa có commit: `git switch -c agent/<task-id>`).
+3. Task-id `YYYYMMDD-app-<slug>`. Branch `agent/<task-id>`: có remote (`PUSH=1`) như `task.md` mục 0; `PUSH=0` thì không `fetch`, tạo branch từ HEAD hiện tại (repo chưa có commit: `git switch -c agent/<task-id>`).
 4. Copy `<plugin>/templates/product/` → `docs/product/` (không ghi đè file đã có). Copy `<plugin>/scripts/gap-check.py` và `owner-form.py` → `.claude/agent-team/` (chmod +x) nếu chưa có (hai file đi cùng nhau).
-5. Tạo TASK.md như `run.md`, ghi `- Loại: APP`. Mục 0: ý tưởng nguyên văn. `echo S1 > .agent-team/stage`.
+5. Tạo TASK.md như `task.md`, ghi `- Loại: APP`. Mục 0: ý tưởng nguyên văn. `echo S1 > .agent-team/stage`.
 
 ## 2. A0 Intake (bạn làm)
 1. `docs/product/brief.md`: ý tưởng nguyên văn + tách thành ý nhỏ `B-1, B-2, ...` (mỗi câu/ý owner 1 dòng, không thêm ý của bạn). APP.md: dòng đầu `# <tên app>` (tên này là tiêu đề form).
@@ -76,7 +76,7 @@ M-0 khung project (task này, S3-S6) → M-1..n: mỗi module 1 /agent-team:run 
 `business-analyst` (chế độ App Mode trong file agent): `problem.md` (G-n, thước đo, ngoài phạm vi) + `coverage.md` (12 góc nhìn). Góc nào `CHƯA BIẾT` → BA trả câu hỏi kèm **đề xuất + vì sao + mức + ai trả lời**. Bạn ghi `questions.md`.
 
 ## 4. A2 Giải pháp (debate)
-Debate theo `run.md` mục 4 (board, WHY, chấm điểm, Security duyệt), đối tượng là **cả app**:
+Debate theo `task.md` mục 4 (board, WHY, chấm điểm, Security duyệt), đối tượng là **cả app**:
 - `solution-architect` (+ `technical-architect`): 2-3 hướng kiến trúc + stack, ghi `docs/tech-stack.md`, `docs/architecture.md`, `docs/decisions/` (skill `decision-record`). Stack là việc kỹ thuật: ghi Q-n `DEV` với stack đề xuất, dev chốt ở mục B form lượt 1, không hỏi owner.
 - BA, Test Design, Security hỏi WHY như thường.
 - **Team tự làm rõ trước:** mọi điểm mơ hồ từ A1 đem ra debate. Team tự chốt được (kỹ thuật, UX, mức THẤP) → ghi quyết định, không hỏi client. Chỉ điều client phải quyết (tiền, quyền, quy tắc cốt lõi) mới thành Q-n `OWNER`, với đề xuất đã qua debate.
@@ -120,20 +120,20 @@ Xong: chạy `.claude/agent-team/gap-check.py --spec`, sửa hết `THIEU` → `
 `solution-architect` đề xuất module (mỗi module gom R-n liền mạch, ≤ 1 task LỚN), thứ tự theo phụ thuộc; bạn ghi bảng Module trong `APP.md`. M-0 luôn là khung project: scaffold theo stack, CI, Docker, `.env.example`, lint/format, test chạy được, đăng nhập nếu R có. Cập nhật config: `BE_PATHS`, `FE_PATHS`, `TEST_PATHS`, `LINT_CMD`, `TEST_CMD`... theo stack đã chốt; `VIEWPORTS` theo `intake.md` (Responsive CÓ → `"375 768 1280"`, KHÔNG → `"1280"`); `E2E_CMD`, `APP_START_CMD`, `APP_PORT` (M-0 dựng Playwright + khung `e2e/` theo skill `test-automation` mục 1b). Module cuối luôn là **M-E2E**: chạy lại toàn bộ E2E theo mọi luồng "1 ngày của <vai trò>" ở mọi `VIEWPORTS` (regression cả app). Chạy lại `gap-check.py --spec`.
 
 ## 10. Phase B: build
-1. **M-0 trong chính task này:** `echo S3 > .agent-team/stage` (hook chạy `gap-check.py --gate --spec-check`: thiếu gì báo đó). S3-S6 như `run.md` mục 6 (dev scaffold, test-executor chạy test khung, review, đóng).
-2. **M-1..n:** mỗi module 1 lệnh `/agent-team:run M-<n>: <tên module> (docs/product/APP.md)`, **lần lượt**, đúng thứ tự bảng Module (hook đọc TASK.md mới nhất nên không chạy song song).
+1. **M-0 trong chính task này:** `echo S3 > .agent-team/stage` (hook chạy `gap-check.py --gate --spec-check`: thiếu gì báo đó). S3-S6 như `task.md` mục 6 (dev scaffold, test-executor chạy test khung, review, đóng).
+2. **M-1..n:** mỗi module 1 lệnh `/agent-team:task M-<n>: <tên module> (docs/product/APP.md)`, **lần lượt**, đúng thứ tự bảng Module (hook đọc TASK.md mới nhất nên không chạy song song).
    - AC của task = AC của các R-n trong module (BA chi tiết hoá). Workflow / wireframe của task: BA, ui-designer lấy phần liên quan từ `docs/product/` sang `design/` của task, không vẽ lại từ đầu.
    - Module đi ngược `docs/decisions/` → sửa quyết định trước (Architect; đổi hành vi nghiệp vụ → hỏi owner qua form), không lặng lẽ làm khác.
    - Câu nghiệp vụ phát sinh khi code (GAP) mà cần owner → ghi Q-n `OWNER` có đề xuất → form → `import`, không hỏi dev.
    - Hook chặn mọi task sang S3 khi `APP.md` chưa `Owner duyệt: APPROVED`.
 3. `PUSH=0`: module sau tạo branch từ branch module trước (ghi cột "Branch gốc"), báo user merge theo thứ tự.
-4. **Tài liệu app luôn đúng với code:** module đổi yêu cầu / phát sinh GAP → sửa `docs/product/` (run.md mục 7b). Mỗi module xong: cập nhật cột Trạng thái trong `APP.md`, chạy `gap-check.py --spec`. Hook chặn S6 của mọi task khi tài liệu app thiếu hoặc SPEC.md cũ.
+4. **Tài liệu app luôn đúng với code:** module đổi yêu cầu / phát sinh GAP → sửa `docs/product/` (task.md mục 7b). Mỗi module xong: cập nhật cột Trạng thái trong `APP.md`, chạy `gap-check.py --spec`. Hook chặn S6 của mọi task khi tài liệu app thiếu hoặc SPEC.md cũ.
 
 ## 11. Thiếu sót phát hiện về sau
-- GAP khi code (run.md mục 7b) mà nguyên nhân là "Phase A bỏ sót" → ghi bài học **và** nêu ở báo cáo: "nên thêm vào `catalog/<loại>.md` của plugin: <mục, câu hỏi tình huống, đề xuất>". Lần sau app cùng loại sẽ được hỏi sớm.
+- GAP khi code (task.md mục 7b) mà nguyên nhân là "Phase A bỏ sót" → ghi bài học **và** nêu ở báo cáo: "nên thêm vào `catalog/<loại>.md` của plugin: <mục, câu hỏi tình huống, đề xuất>". Lần sau app cùng loại sẽ được hỏi sớm.
 
 ## 12. Báo cáo
 - **Mỗi lượt form:** dòng đầu "Gửi file `docs/product/owner-form-<n>.xlsx`: owner điền mục A, dev điền mục B" + số câu mỗi mục (số câu CAO). Việc tiếp theo: nhận file trả lời rồi `/agent-team:resume <task-id> <file>`.
 - **Cuối Phase A:** dòng đầu "Owner đã chốt logic" (hoặc còn chờ gì). Kèm: đường dẫn `docs/product/SPEC.md`, số yêu cầu, số luồng, số màn, danh sách module + thứ tự, các `GIẢ ĐỊNH` mức THẤP.
-- **Sau mỗi module:** như `run.md` mục 10, thêm "Module tiếp theo: M-<n>".
+- **Sau mỗi module:** như `task.md` mục 10, thêm "Module tiếp theo: M-<n>".
 - Cuối cùng: đúng 1 việc user làm tiếp (≤ 2 phút).
