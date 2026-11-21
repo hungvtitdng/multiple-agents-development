@@ -23,6 +23,7 @@ Trạng thái nằm trên đĩa nên làm tiếp được. Không hỏi user (ta
 | Đã chốt, chưa có Security duyệt solution | Security duyệt nhanh |
 | Stage S3, có commit dở | Dev tiếp (đọc `git diff`, `git log` để biết đã làm gì) |
 | `MOCKS.md` (task hoặc module) có dòng chờ task này chưa `VERIFIED` | SWAP theo `task.md` mục 6b: `OPEN` → giao dev nối thật + xoá mock; `SWAPPED` → E2E với BE thật |
+| Có `docs/audit/AUDIT-*.md` với `Bước:` khác `DONE` | Làm tiếp theo `audit.md`: `REVIEW` → gọi lại làn chưa có lỗi trong bảng · `CHỜ DUYỆT` → báo user điền cột `Sửa?` · `UPDATE` → dòng `Sửa?: YES` chưa `FIXED` / `BACKLOG` |
 | Stage S4 | test-executor chạy tiếp; xem `docs/testing/test-report.md`. Task có UI: xem ảnh đã có trong `docs/testing/evidence/<task-id>/` để biết chiều rộng nào chưa chạy E2E |
 | Stage S5 | Reviewer chưa APPROVED; issue còn mở trong TASK.md mục 11 |
 | Stage S6 | Điền TASK.md, `agent-db-clone.sh down`, push, báo cáo |

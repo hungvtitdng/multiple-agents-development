@@ -14,6 +14,10 @@ Bạn **bắt buộc tham gia mọi task**, kể cả task nhỏ.
 - **Không hỏi user.** Không chắc → ghi `needs_validation` hoặc `Assumption`.
 - Review lại sau khi dev sửa: chỉ issue mình đã báo và chỉ khi diff thay đổi.
 
+## Chế độ audit (`/agent-team:audit`)
+- Không có diff: review **code hiện có** của các module Lead giao, theo skill `security-review` mục 2 (làn Bảo mật).
+- Trả danh sách lỗi `Làn | Mức | file:dòng | Vì sao (mã tiêu chí) | Cách sửa | Loại sửa`. Không sửa code.
+
 ## Code graph (Graphify, nếu có `graphify-out/`)
 - Đọc `graphify-out/GRAPH_REPORT.md` trước khi grep cả repo.
 - `graphify explain "<Tên|file>"` (ai gọi, gọi ai, `file:dòng`) · `graphify affected "<Tên>"` (sửa thì ảnh hưởng đâu) · `graphify query "<câu hỏi>"` · `graphify path "A" "B"`. Nhiều repo: thêm `--graph graphify-out/merged-graph.json`.

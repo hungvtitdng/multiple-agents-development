@@ -16,6 +16,7 @@ Plugin cho Claude Code. Đưa 1 task → Lead + BA + Architect + Test Design deb
 │   │   ├── resume.md    ← /agent-team:resume - làm tiếp task dang dở (hết quota, lỗi)
 │   │   ├── ask.md       ← /agent-team:ask    - hỏi về logic dự án, có dẫn nguồn
 │   │   ├── kb.md        ← /agent-team:kb     - dựng/làm đầy KB từ code (nhiều Scout, kiểm bằng kb-check)
+│   │   ├── audit.md     ← /agent-team:audit  - audit dự án cũ: cấu trúc, code, bảo mật, KB, skill → duyệt → sửa, lỗi code vào Backlog
 │   │   └── init.md      ← /agent-team:init   - cài cho 1 project, dựng KB
 │   ├── hooks/           ← hooks.json, guard.py (chặn thật), show_post.py
 │   ├── scripts/         ← agent-db-clone.sh, kb-check.py, board.py (board chat SQLite), gap-check.py (App Mode), progress.py (status line % tiến độ)
@@ -223,6 +224,7 @@ docs/
 - **Logic ở 1 chỗ:** quy tắc chung `BR-`, quyền `P-` / `C-`, luồng `F-` nằm ở KB tổng; page (`modules/<tên>/screens/<màn>.md`) chỉ ghi mã.
 - `kb-check.py`: file còn là khung (thiếu `verified-at`), nguồn `file:dòng` không có thật / vượt cuối file, **CŨ** (code trích dẫn đổi sau `verified-at`), dòng `BR-` thiếu nhãn / nguồn, ma trận quyền ô trống / vai trò lạ / `C-` không có, page trỏ mã không có, module chưa có README, route chưa có file KB. `kb-check.py --index`: tra ngược mã → page / luồng (sửa `BR-5` đụng page nào). Phần chưa quét được ghi trong `docs/README.md` mục "Tình trạng KB", không giấu.
 - `/agent-team:kb [--check | <module>]`: dựng/làm đầy/làm mới KB bất cứ lúc nào, tiếp tục được theo module. Không chạy khi đang có task (hook chặn Scout ghi KB).
+- `/agent-team:audit [--check | <module>]`: 5 làn review song song (cấu trúc, code, bảo mật, KB, skill/AI setup) theo quy chuẩn dự án → `docs/audit/AUDIT-<ngày>.md` → owner điền `Sửa?` → sửa KB / quy chuẩn / skill; lỗi code thành Backlog `/agent-team:task`. Không chạy khi đang có task.
 - Task đổi API/DB/rule/màn hình mà chưa cập nhật KB → không sang S6.
 - Quy chuẩn code lấy từ pattern đang dùng nhiều nhất; Code Reviewer review theo `docs/engineering/`. Dev chạy `LINT_CMD`/`FORMAT_CMD` trước khi commit.
 

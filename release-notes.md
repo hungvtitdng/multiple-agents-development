@@ -1,3 +1,12 @@
+# Release notes - 21/11/2026 (lệnh /agent-team:audit)
+
+## Thay đổi
+- Lệnh mới `/agent-team:audit [--check | <module>]`: review cấu trúc, code, bảo mật, KB, skill/AI setup → `docs/audit/AUDIT-<ngày>.md` → owner duyệt → sửa KB / quy chuẩn / skill; lỗi code vào Backlog chạy bằng `/agent-team:task`. Template `templates/AUDIT.md`. code-reviewer, security, solution-architect thêm chế độ audit; resume làm tiếp audit dở.
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update multiple-agent`, khởi động lại Claude Code.
+- Không có ENV / key mới.
+
 # Release notes - 21/11/2026 (quy chuẩn code trước kiến trúc)
 
 ## Thay đổi
