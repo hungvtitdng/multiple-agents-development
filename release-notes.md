@@ -1,3 +1,11 @@
+# Release notes - 21/11/2026 (quy chuẩn code trước kiến trúc)
+
+## Thay đổi
+- `project-setup.md` thêm mục 6 "Quy chuẩn code"; `/agent-team:app` A0 ghi quy chuẩn vào `docs/engineering/` trước A2, A2 viết kiến trúc theo quy chuẩn.
+
+## Cần làm thủ công
+- Dự án đã copy `docs/product/project-setup.md`: chép thêm mục 6 từ `templates/product/project-setup.md` và điền trước khi chạy `/agent-team:app`.
+
 # Release notes - 21/11/2026 (mock FE trước, BE nối sau)
 
 ## Thay đổi

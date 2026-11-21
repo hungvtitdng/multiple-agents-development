@@ -39,3 +39,11 @@
 - Hosting: TODO (vd AWS ECS, VPS + Docker, Vercel)
 - CI/CD: TODO (GitHub Actions / GitLab CI / chưa có)
 - Đăng nhập: TODO (session / JWT / SSO Google / không có)
+
+## 6. Quy chuẩn code (chốt trước khi Architect viết architecture / schema)
+- Theo dự án mẫu: TODO (đường dẫn `docs/engineering/backend.md`, `frontend.md` của dự án có sẵn → chép nguyên / không có)
+- BE nơi đặt logic nghiệp vụ: TODO (vd Service class `<Tên>Service`, controller mỏng)
+- BE kiểm quyền: TODO (vd hàm trong `PermissionService` / Laravel Policy / Pundit)
+- BE truy cập DB: TODO (vd gọi Model trực tiếp / Repository)
+- BE đặt tên lớp: TODO (vd `<Domain>Service`, không tạo lớp lẻ kiểu `Approver`, `WorkingDays`)
+- FE state / gọi API: TODO (vd Pinia + composable `useXxxApi` / React Query)

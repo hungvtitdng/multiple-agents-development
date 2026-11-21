@@ -70,6 +70,7 @@ M-0 khung project (task này, S3-S6) → M-1..n: mỗi module 1 /agent-team:task
 1. `docs/product/brief.md`: ý tưởng nguyên văn + tách thành ý nhỏ `B-1, B-2, ...` (mỗi câu/ý owner 1 dòng, không thêm ý của bạn). APP.md: dòng đầu `# <tên app>` (tên này là tiêu đề form).
 2. Nhận diện loại app → file trong `<plugin>/catalog/` (luôn kèm `chung.md`). Không có loại phù hợp → chỉ dùng `chung.md`, ghi `Loại app: khác: <mô tả>` và nêu ở báo cáo "nên thêm catalog".
 3. Điền `docs/product/intake.md`. Có `docs/product/project-setup.md` dev đã điền → đọc trước, ô đã điền thì chép sang intake + config, không tạo Q-n `DEV`. Ô nghiệp vụ (người dùng, quy mô, thanh toán, ngôn ngữ, responsive) → Q-n `OWNER` có đề xuất. Ô kỹ thuật (hosting, git remote, hạ tầng) → Q-n `DEV` có đề xuất; stack → "Để team đề xuất" (A2 ghi Q-n `DEV`). Tất cả đi form lượt 1, không hỏi ngay. Git remote chưa có → `PUSH=0` trong config.
+3b. **Quy chuẩn code trước kiến trúc:** `project-setup.md` mục 6 đã điền (hoặc có dự án mẫu) → giao `solution-architect` ghi vào `docs/engineering/backend.md` / `frontend.md` (nhãn `Confirmed`, nguồn = project-setup) **trước A2**. Chưa điền → A2 Architect đề xuất quy chuẩn cùng stack, ghi Q-n `DEV`, chốt ở mục B form lượt 1.
 4. `docs/product/APP.md`: `- Intake: YES` khi intake không còn TODO (ô chờ owner ghi "chờ form, Q-n"). `echo S2 > .agent-team/stage`.
 
 ## 3. A1 Vấn đề + 12 góc nhìn
@@ -78,6 +79,7 @@ M-0 khung project (task này, S3-S6) → M-1..n: mỗi module 1 /agent-team:task
 ## 4. A2 Giải pháp (debate)
 Debate theo `task.md` mục 4 (board, WHY, chấm điểm, Security duyệt), đối tượng là **cả app**:
 - `solution-architect` (+ `technical-architect`): 2-3 hướng kiến trúc + stack, ghi `docs/tech-stack.md`, `docs/architecture.md`, `docs/decisions/` (skill `decision-record`). Stack là việc kỹ thuật: ghi Q-n `DEV` với stack đề xuất, dev chốt ở mục B form lượt 1, không hỏi owner.
+- **Đọc `docs/engineering/` trước khi viết `architecture.md` / `database/schema.md`:** tên lớp, nơi đặt logic, cách kiểm quyền phải theo quy chuẩn đã chốt. Quy chuẩn chưa có → đề xuất quy chuẩn trước, kiến trúc viết theo đề xuất đó (cùng Q-n `DEV`), không viết kiến trúc rồi mới đặt quy chuẩn.
 - BA, Test Design, Security hỏi WHY như thường.
 - **Team tự làm rõ trước:** mọi điểm mơ hồ từ A1 đem ra debate. Team tự chốt được (kỹ thuật, UX, mức THẤP) → ghi quyết định, không hỏi client. Chỉ điều client phải quyết (tiền, quyền, quy tắc cốt lõi) mới thành Q-n `OWNER`, với đề xuất đã qua debate.
 - TASK.md: `- Phương án chốt:`, `- Security duyệt solution: APPROVED`.

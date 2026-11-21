@@ -63,6 +63,6 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
    3. Mọi mục gắn nhãn (`Observed`/`Unverified`/`Assumption`), có `file:dòng` và `verified-at: <commit>`. Business rule suy từ code không bao giờ là Confirmed.
    4. Lệnh lint/format Scout báo → điền `LINT_CMD`, `FORMAT_CMD` nếu bước 2 chưa nhận diện được.
    5. **Không có lối thoát "quá dài thì bỏ qua".** Chưa đọc hết thì ghi rõ trong `docs/README.md` mục "Tình trạng KB" (đã quét / chưa quét / vì sao) và báo user chạy `/agent-team:kb <module>` để làm tiếp.
-   6. Dự án mới (chưa có code): bỏ qua bước này, chỉ giữ khung. Architect đặt quy chuẩn ở task đầu tiên. Làm app từ ý tưởng: `/agent-team:app <ý tưởng>` (tự copy `templates/product/` → `docs/product/`).
+   6. Dự án mới (chưa có code): bỏ qua bước này, chỉ giữ khung. Quy chuẩn code đặt ở A0-A2 của `/agent-team:app` (từ `project-setup.md` mục 6), trước khi viết kiến trúc. Làm app từ ý tưởng: `/agent-team:app <ý tưởng>` (tự copy `templates/product/` → `docs/product/`).
 8. **Ghi `release-notes.md`** (tạo nếu chưa có), mục `Release notes - DD/MM/YYYY`: đã cài agent team, file nào được thêm, key mới (`LINT_CMD`, `FORMAT_CMD`, `COST_TIER`, `LESSONS_PATH`, `FUNCTION_INDEX_PATHS`).
 9. Báo user: danh sách file đã tạo/sửa, các `TODO` cần điền, kết quả `kb-check.py` (đạt/tổng), phần KB chưa quét và còn `Unverified`. **Không commit**, để user xem trước. Cuối cùng: đúng 1 việc làm tiếp (≤ 2 phút), vd chạy `/agent-team:task <task đầu tiên>` (dự án mới: `/agent-team:app <ý tưởng>`).
