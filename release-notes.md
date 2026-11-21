@@ -1,9 +1,20 @@
+# Release notes - 21/11/2026 (mock FE trước, BE nối sau)
+
+## Thay đổi
+- FE / view dựng trước bằng mock khi BE chưa xong; sổ `MOCKS.md` (Lead ghi), bước SWAP trong task BE; hook chặn S6 khi mock chưa `VERIFIED` hoặc file mock còn. Test: `test_guard.py` 321 case (+5).
+
+## Cần làm thủ công
+- Config mới: `MOCK_PATHS` (1 thư mục mock, trong `FE_PATHS` hoặc `BE_PATHS`). Thêm vào `.claude/agent-team.config` của project.
+- Project đã init: copy `templates/MOCKS.md` → `.claude/agent-team/templates/`.
+- Cập nhật plugin: `/plugin marketplace update multiple-agent`, khởi động lại Claude Code.
+
 # Release notes - 20/11/2026 (v0.18.1)
 
 ## Thay đổi
 - **Quy chuẩn code tách BE / FE** trong KB dự án `docs/engineering/`: `coding-standards.md` (chung: đặt tên, xử lý lỗi chung, logging, config, comment, git) · `backend.md` (phân tầng, controller, service, model, validation, kiểm quyền, style API, query, job, gọi dịch vụ ngoài, test BE) · `frontend.md` (cấu trúc, component, state, gọi API, form, trạng thái màn, theme, responsive, a11y, ẩn/hiện theo quyền, test FE). Mỗi quy tắc: 1 câu + ví dụ đúng / sai + `file:dòng` + nhãn.
 - backend-dev đọc chung + `backend.md`; frontend-dev đọc chung + `frontend.md`; Code Reviewer đọc theo phần diff; Scout ghi đúng file khi init / kb; test-executor đọc mục Test.
-- `kb-check.py`: bắt buộc `backend.md` khi config có `BE_PATHS`, `frontend.md` khi có `FE_PATHS`. Test: `test_kb_check.py` 42 case.
+- `backend.md` / `frontend.md` là **1 bảng** `Mã | Nhóm | Quy tắc | Đúng | Sai | Nguồn | Nhãn`, mã `BE-n` / `FE-n` (không đổi, không dùng lại), đầu file có hướng dẫn điền + danh sách Nhóm + 2 dòng mẫu `Example`. Code Reviewer dẫn mã khi báo lỗi ("vi phạm BE-3").
+- `kb-check.py`: bắt buộc `backend.md` khi config có `BE_PATHS`, `frontend.md` khi có `FE_PATHS`; mỗi dòng `BE-` / `FE-` phải có nhãn + nguồn (`Planned` được bỏ nguồn file:dòng), không trùng mã, không còn dòng `Example`. Test: `test_kb_check.py` 48 case.
 
 ## Cần làm thủ công
 - Cập nhật plugin: `/plugin marketplace update multiple-agent`, khởi động lại Claude Code.

@@ -17,6 +17,8 @@ REPOS=
 BE_PATHS="app lib config db/migrate"
 FE_PATHS="frontend"
 TEST_PATHS="spec test e2e"
+# Thư mục mock duy nhất (FE dựng trước khi BE xong). Nằm trong FE_PATHS (FE tách) hoặc BE_PATHS (BE render view). Sổ: MOCKS.md
+MOCK_PATHS="frontend/src/mocks"
 
 # Lệnh lint/format (init tự nhận diện). Dev chạy trước khi commit; Lead chỉ sang S5 khi pass. Để trống = bỏ qua.
 LINT_CMD=

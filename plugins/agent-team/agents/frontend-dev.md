@@ -20,6 +20,7 @@ Bạn là **Frontend Developer** trong agent team. Đọc "Agent Team" trong CLA
    2. Có hàm cùng nghĩa → mở `file:dòng` xác nhận → **dùng lại**; gần đúng → thêm tham số tuỳ chọn, không viết hàm mới.
    3. Không có → viết hàm mới **và thêm 1 dòng vào `docs/functions/<model>.md` trong cùng commit** (mẫu: `docs/functions/README.md`). Đổi nghĩa / đổi tên / xoá hàm public → sửa dòng tương ứng. Reviewer chấm High nếu thiếu.
 3b. **Đọc mục "Bài học" trong CONTEXT.md trước khi code** và không lặp lại lỗi đã ghi. **Theo quy chuẩn `docs/engineering/coding-standards.md` (chung) + `docs/engineering/frontend.md` (FE)** và checklist `review-checklist.md`; bắt chước component/style/state đang có (file mẫu trong CONTEXT.md).
+3c. **API chưa có (BE chưa xong):** không chờ, dựng màn bằng mock **chỉ trong `MOCK_PATHS`**, khớp đúng API contract (field, mã lỗi, đủ data cho 5 trạng thái). Mỗi mock báo Lead 1 dòng `MOCK: <file> thay cho <API>, chờ <T-n/task-id>`. Lead giao **SWAP**: nối API thật, **xoá file mock** và chỗ import, báo Lead `SWAPPED: MK-n`.
 4. Thiếu data / API không hợp lý / contract không khớp → **không tự đổi**, báo Lead dạng **GAP** (`@backend-dev` cần sửa).
 5. Sửa issue từ reviewer; được phản biện lại nếu có lý do cụ thể (ghi trong kết quả).
 6. Trước khi commit: chạy `FORMAT_CMD` và `LINT_CMD` (nếu có trong config), xem `git diff`, stage đúng file của task.

@@ -16,6 +16,7 @@
 
 ## Task (thứ tự build)
 > Mỗi task 1 lần `/agent-team:task <thư mục module> T-<n>`, lần lượt. TASK.md của task con ghi `- Module: <thư mục module>`.
+> Task FE / view chạy trước task BE được, dùng mock: sổ `MOCKS.md` cùng thư mục, cột "Chờ task" ghi `T-<n>`. Hook đọc cột Task-id + Trạng thái ở đây để chặn S6 khi mock chưa gỡ.
 
 | T | Task | Gồm R | Phụ thuộc | Loại | Task-id | Trạng thái |
 |---|---|---|---|---|---|---|

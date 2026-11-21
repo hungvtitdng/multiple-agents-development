@@ -113,12 +113,27 @@ Hook chặn theo giai đoạn: S1-S2 chỉ tài liệu, S3 chỉ code, S4 chỉ 
 
 | Giai đoạn | Việc |
 |---|---|
-| **S3 CODE** | `backend-dev` ∥ `frontend-dev` song song theo API contract. FE làm **đủ chức năng và trạng thái của wireframe**, nhưng dùng màu, font, component **có sẵn của dự án** (không copy style đen trắng). Đổi contract giữa chừng → báo bạn, không tự thống nhất. Migration: sinh file **chỉ** bằng `agent-db-clone.sh generate` (generator trong container, hook chặn tự tạo file), kiểm bằng `agent-db-clone.sh verify`. Dev chạy lint/format. Cập nhật `- Lint/format:`. |
+| **S3 CODE** | `backend-dev` ∥ `frontend-dev` song song theo API contract. FE làm **đủ chức năng và trạng thái của wireframe**, nhưng dùng màu, font, component **có sẵn của dự án** (không copy style đen trắng). Đổi contract giữa chừng → báo bạn, không tự thống nhất. Migration: sinh file **chỉ** bằng `agent-db-clone.sh generate` (generator trong container, hook chặn tự tạo file), kiểm bằng `agent-db-clone.sh verify`. Dev chạy lint/format. Cập nhật `- Lint/format:`. **Mock (mục 6b):** FE / view không chờ BE, dựng trước bằng mock. |
 | **S4 TEST** | `test-designer` đã có test case → `test-executor` viết và chạy test trên DB clone, ghi từng test vào `docs/testing/test-report.md` (`| task-id | AC-n | test | PASS/FAIL/BLOCKED/NOT RUN | bằng chứng |`), rồi ghi `- Kết quả test: PASS` trong TASK.md khi mọi AC đều PASS. **Task có UI:** E2E bằng `agent-db-clone.sh e2e <task-id>` ở mọi chiều rộng trong `VIEWPORTS` (responsive), ảnh ở `docs/testing/evidence/<task-id>/`; ghi `- E2E: PASS` (task không có UI: `N/A`). Hook chặn S5 khi `E2E` chưa điền, task có wireframe mà ghi `N/A`, hoặc ghi PASS mà thiếu ảnh ở một chiều rộng. Fail → giao dev sửa (S3 lại), tối đa 3 vòng/issue. Sau S3 và S4: build lại graph như mục 0.4. Lint/format pass → ghi `- Lint/format: PASS`. |
 | **S5 REVIEW** | Song song: `code-reviewer`, `security` (review đầy đủ) và (VỪA/LỚN) `challenger`. Mở `$B open <task-id> S5 <n> --roles code-reviewer,security,backend-dev,frontend-dev`: reviewer post issue, dev trả lời/phản biện bằng `--reply`. Challenger không dùng board, trả thẳng cho bạn. **Challenger chỉ nhận yêu cầu gốc nguyên văn (TASK.md mục 0) + tên nhánh gốc, KHÔNG đưa TASK.md/AC/thiết kế/board/CONTEXT**; hook chặn nó đọc `docs/`. Lệch giữa challenger và AC của BA (challenger `not met`/`can't tell`) là issue thật: dev/BA xử lý. Có issue → dev sửa, **chỉ reviewer đã báo lỗi review lại**, chỉ khi diff đổi. Tối đa 3 vòng/issue, rồi phán quyết (Security Critical/High không override). Khi cả ba APPROVED: gọi `business-analyst`, `solution-architect`, `security`, dev (theo phần mình sở hữu) cập nhật KB phần bị ảnh hưởng; `code-reviewer` xác nhận KB khớp code. Ghi `- Code review: APPROVED`, `- Security review: APPROVED`, `- Cập nhật KB: YES` (hoặc `KHÔNG CẦN` nếu task không đổi API/DB/rule/màn hình). |
 | **S6 ĐÓNG** | **Bài học (mục 11; lỗi đã ghi ngay lúc xảy ra):** hỏi lần cuối "còn lỗi nào chưa ghi không?". Có lỗi nào trong task → `- Bài học: YES` (đã ghi vào `LESSONS_PATH`); không có → `- Bài học: KHÔNG CÓ`. Bài học bị lặp lại ≥ 1 lần → chuyển thành quy tắc trong `docs/engineering/review-checklist.md`. Điền TASK.md (mục 9-12), `$B export <task-id>`, `$B report <task-id>` (tạo lại REPORT.html + REPORT.md đầy đủ). **Có App Mode:** cập nhật cột Trạng thái module trong `docs/product/APP.md`, chạy `.claude/agent-team/gap-check.py --spec` (sinh lại `docs/product/SPEC.md`, sửa hết `THIEU`) **trước** khi `echo S6`. Rồi `agent-db-clone.sh down`, commit + push, `rm .agent-team/stage`, báo cáo. |
 
 Sang S5 hook kiểm `Kết quả test`, `Lint/format`, `Gap còn mở: 0` và `E2E` (PASS có ảnh đủ mọi `VIEWPORTS`, hoặc N/A khi không có UI). Sang S6 hook kiểm `Code review`, `Security review`, `Cập nhật KB`, `Bài học` (đều đọc từ TASK.md); `Cập nhật KB: YES` thì hook **kiểm thật** có file KB trong `docs/` đổi so với nhánh gốc (không tính `agent-tasks/`, `testing/`, `LESSONS.md`, `SPEC.md`), không có thì chặn; có App Mode thì hook chạy thêm `gap-check.py --gate --spec-check` (tài liệu app đủ và SPEC.md khớp). Chỉ ghi `APPROVED`/`PASS` khi thật sự đạt; challenger, reviewer, security chưa APPROVED thì làm tiếp vòng sửa.
+
+## 6b. Mock: FE / view dựng trước, BE nối sau
+Chỉ BE phải chờ migration. FE / view bắt đầu ngay khi có **API contract** (FE tách) hoặc **data shape** (BE render view).
+
+```
+FE tách:  migration ──► BE API ──────────────┐
+          FE + mock API (song song) ─────────┴─► SWAP (nối API thật, xoá mock) ─► E2E BE thật
+BE view:  migration ──► controller/service ──┐
+          view + mock data (song song) ──────┴─► SWAP (truyền data thật, xoá mock) ─► E2E BE thật
+```
+
+1. Mock chỉ nằm trong `MOCK_PATHS`, khớp đúng contract / data shape (field, mã lỗi, đủ data cho 5 trạng thái wireframe). Không rải mock trong code khác.
+2. Dev tạo mock → báo bạn trong kết quả (`MOCK: <file> thay cho <API/data>, chờ <T-n hoặc task-id>`). Bạn ghi 1 dòng `MK-n` vào `MOCKS.md` (copy `.claude/agent-team/templates/MOCKS.md`): thư mục module nếu task thuộc module, không thì `docs/agent-tasks/<task-id>/`.
+3. **SWAP** trong task BE đang được chờ (S3, sau khi BE xong): giao `frontend-dev` (FE tách) hoặc `backend-dev` (BE view) nối thật + **xoá file mock** → `SWAPPED`. S4 E2E với BE thật PASS → `VERIFIED`.
+4. Hook chặn S6 khi dòng chờ task này (hoặc chờ task đã DONE) chưa `VERIFIED` hoặc file mock còn trên đĩa.
 
 DONE chỉ khi: code đúng yêu cầu và quy chuẩn, test pass có bằng chứng, review xong, Security xong, KB cập nhật (hoặc không cần), đúng branch, không thay đổi ngoài phạm vi. Không tự đánh dấu DONE chỉ vì dev báo xong.
 

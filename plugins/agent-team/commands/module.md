@@ -66,6 +66,7 @@ Form, câu hỏi OWNER / DEV, mức CAO / THẤP, không hỏi bằng `AskUserQu
 1. `solution-architect` chia R-n thành task T-1..n (mỗi task ≤ 1 task LỚN, theo phụ thuộc), task sửa phần cũ đi kèm test hồi quy; bạn ghi bảng Task trong `MODULE.md`.
 2. Đóng task MODULE (chỉ tài liệu, hook chặn S3): commit + push, `rm .agent-team/stage`, Trạng thái `DONE`.
 3. Mỗi task con: `/agent-team:task $M T-<n>`, **lần lượt**. TASK.md ghi `- Module: $M`; AC = AC của các R-n trong task; workflow / mockup lấy từ `$M/design/`, không vẽ lại. Hook: S3 chờ `MODULE.md` `Owner duyệt: APPROVED`; S6 chạy `gap-check --dir=$M` (tài liệu module phải khớp code).
+3b. **Mock (`task.md` mục 6b):** task FE / view được chạy trước task BE nó phụ thuộc, dùng mock. Sổ chung `$M/MOCKS.md`, cột "Chờ task" ghi `T-<n>` của task BE. Task BE đó làm luôn SWAP. Đóng module: `MOCKS.md` mọi dòng `VERIFIED`, `MOCK_PATHS` không còn file của module.
 4. GAP khi code cần owner → Q-n OWNER → form lượt mới (`--dir=$M`).
 
 ## 6. Báo cáo

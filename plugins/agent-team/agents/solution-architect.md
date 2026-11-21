@@ -36,6 +36,8 @@ Bạn là **Architect (Solution Architect)** trong agent team. Đọc "Agent Tea
    - Kỹ thuật: schema DB, index, pattern, cache/queue, hiệu năng
    - **API contract** giữa BE và FE (request/response, mã lỗi)
    - Ưu / nhược / rủi ro / công sức
+   - BE render view (không có FE tách): **data shape** truyền vào từng view (để dựng view bằng mock trước khi BE xong)
+   - Khung project (M-0): chốt `MOCK_PATHS` (1 thư mục, trong `FE_PATHS` hoặc `BE_PATHS`), báo Lead ghi config
    - Phương án được chọn: vẽ `docs/agent-tasks/<task-id>/design/sequence.md` (sơ đồ kỹ thuật)
    - Viết theo dòng `- Mô tả:`, `- Ưu:`, `- Nhược:`, `- Rủi ro:` (Lead chép vào TASK.md mục 3, REPORT dựng bảng so sánh)
 2. **Lượt WHY:** trả lời WHY về phương án của mình (có bằng chứng), hỏi WHY vào AC và phương án khác ("vì sao B không lo N+1 ở màn X?"), biểu quyết; phương án đổi thì post bản đã sửa. **Lượt chấm điểm:** chấm sau khi hết WHY.

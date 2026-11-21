@@ -808,6 +808,40 @@ def module_gate(root, stage, text):
     return []
 
 
+def table_rows(path, first_re):
+    """Các dòng bảng markdown có ô đầu khớp first_re, trả về list ô đã bỏ dấu `."""
+    if not os.path.isfile(path):
+        return []
+    rows = []
+    for line in open(path, encoding="utf-8", errors="ignore"):
+        cells = [c.strip().strip("`").strip() for c in line.strip().strip("|").split("|")]
+        if line.lstrip().startswith("|") and re.match(first_re, cells[0]):
+            rows.append(cells)
+    return rows
+
+
+def mocks_missing(root, task_dir, text):
+    """Sổ MOCKS.md: dòng chờ task này (module: cả task đã DONE) phải VERIFIED và file mock đã xoá."""
+    d = task_field(text, "Module").split(" ")[0].strip("`/")
+    module = bool(d) and not d.upper().startswith("N/A")
+    book = os.path.join(root, d, "MOCKS.md") if module else os.path.join(task_dir, "MOCKS.md")
+    task = os.path.basename(task_dir)
+    waits = {task}
+    for r in table_rows(os.path.join(root, d, "MODULE.md"), r"T-\d+$") if module else []:
+        if len(r) >= 7 and (r[5] == task or r[6].upper().startswith("DONE")):
+            waits |= {r[0], r[5]} - {""}
+    miss = []
+    for r in table_rows(book, r"MK-\d+$"):
+        if len(r) < 6 or (module and r[4] not in waits):
+            continue
+        if r[5].upper() != "VERIFIED":
+            miss.append(f"{r[0]} chưa VERIFIED ({r[5] or 'trống'})")
+        if r[1] and os.path.exists(os.path.join(root, r[1])):
+            miss.append(f"{r[0]} file mock {r[1]} chưa xoá")
+    rel = os.path.relpath(book, root)
+    return [f"{rel}: {m} (SWAP: nối BE thật, xoá mock, E2E PASS)" for m in miss]
+
+
 def check_stage_change(new_stage, cwd):
     """Lead đổi giai đoạn: TASK.md (task mới nhất) phải đủ điều kiện."""
     root = find_root(cwd)
@@ -845,6 +879,7 @@ def check_stage_change(new_stage, cwd):
                         "(không tính agent-tasks/, testing/, LESSONS.md, SPEC.md). Cập nhật KB hoặc ghi KHÔNG CẦN + lý do")
         miss += product_gate(root, "S6", False)
         miss += module_gate(root, "S6", text)
+        miss += mocks_missing(root, os.path.dirname(latest), text)
     if miss:
         block(f"chưa đủ điều kiện sang {new_stage}. Thiếu trong {os.path.relpath(latest, root)}: {'; '.join(miss)}")
 

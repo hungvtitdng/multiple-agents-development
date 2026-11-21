@@ -494,6 +494,16 @@ gate("S6 thiếu KB", DONE.replace("YES\n- Bài học", "TODO\n- Bài học"), "
 gate("S6 thiếu bài học", DONE.replace("- Bài học: YES", "- Bài học: TODO"), "Bash", S6, None, B)
 gate("S6 đủ", DONE, "Bash", S6, None, OK)
 gate("S6 KB không cần + không có bài học", "- Code review: APPROVED\n- Security review: APPROVED\n- Cập nhật KB: KHÔNG CẦN\n- Bài học: KHÔNG CÓ\n", "Bash", S6, None, OK)
+MOCKS = os.path.join(gp, "docs/agent-tasks/T1/MOCKS.md")
+MOCK_HEAD = "| Mã | File mock | Thay cho | Contract | Chờ task | Trạng thái |\n|---|---|---|---|---|---|\n"
+open(MOCKS, "w").write(MOCK_HEAD + "| MK-1 | `src/mocks/a.ts` | GET /a | c | T1 | OPEN |\n")
+gate("S6 còn mock OPEN bị chặn", DONE, "Bash", S6, None, B)
+open(MOCKS, "w").write(MOCK_HEAD + "| MK-1 | src/mocks/a.ts | GET /a | c | T1 | VERIFIED |\n")
+gate("S6 mock VERIFIED, file đã xoá", DONE, "Bash", S6, None, OK)
+os.makedirs(os.path.join(gp, "src/mocks"), exist_ok=True)
+open(os.path.join(gp, "src/mocks/a.ts"), "w").write("x")
+gate("S6 mock VERIFIED nhưng file còn bị chặn", DONE, "Bash", S6, None, B)
+os.remove(MOCKS)
 gate("S2 không có điều kiện", "- Loại: TODO\n", "Bash", {"command": "echo S2 > .agent-team/stage"}, None, OK)
 gate("xoá stage khi đóng", "- Loại: TODO\n", "Bash", {"command": "rm .agent-team/stage"}, None, OK)
 gate("ghi stage không đúng dạng", "- Loại: TODO\n", "Bash", {"command": "echo done > .agent-team/stage"}, None, B)
@@ -753,6 +763,16 @@ mod_gate("task con trỏ module chưa có MODULE.md bị chặn", CHILD, B, docs
 mod_gate("task Module: N/A -> như task thường", CHILD.replace("docs/product/modules/thanh-toan", "N/A"), OK, docs=False)
 mod_gate("S6 task con: tài liệu module khớp", DONE + "- Module: docs/product/modules/thanh-toan\n", OK, stage=S6)
 mod_gate("S6 task con: tài liệu module thiếu (ý owner chưa có yêu cầu)", DONE + "- Module: docs/product/modules/thanh-toan\n", B, stage=S6, broken=True)
+
+TASKS = "\n| T | Task | Gồm R | Phụ thuộc | Loại | Task-id | Trạng thái |\n|---|---|---|---|---|---|---|\n| T-1 | FE | R-1 | | VỪA | M1 | DOING |\n| T-2 | BE | R-1 | | VỪA | M2 | TODO |\n"
+MOD_MOCKS = MOCK_HEAD + "| MK-1 | src/mocks/b.ts | GET /b | c | {} | OPEN |\n"
+CHILD6 = DONE + "- Module: docs/product/modules/thanh-toan\n"
+GOOD_BASE = GOOD
+for desc, wait, exp in (("S6 task con: mock chờ task BE sau (T-2) -> qua", "T-2", OK),
+                        ("S6 task con: mock chờ chính task này (T-1) còn OPEN bị chặn", "T-1", B)):
+    GOOD = dict(GOOD_BASE, **{"APP.md": GOOD_BASE["APP.md"] + TASKS, "MOCKS.md": MOD_MOCKS.format(wait)})
+    mod_gate(desc, CHILD6, exp, stage=S6)
+GOOD = GOOD_BASE
 
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

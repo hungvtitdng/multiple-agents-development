@@ -30,7 +30,7 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
 3. **Tạo `.claude/agent-team.config`** từ `templates/agent-team.config.example`, điền giá trị đã nhận diện (kể cả `LINT_CMD`, `FORMAT_CMD`). Giữ mặc định `COST_TIER=standard` (economy | standard | max) và `LESSONS_PATH=docs/LESSONS.md`. Giá trị không chắc → `TODO` và báo user. Tuyệt đối không ghi password/KEY.
 4. **Copy vào project**:
    - `scripts/agent-db-clone.sh` → `.claude/agent-team/agent-db-clone.sh` (chmod +x)
-   - `templates/TASK.md`, `POST.md`, `SUMMARY.md`, `CONTEXT.md` → `.claude/agent-team/templates/`
+   - `templates/TASK.md`, `POST.md`, `SUMMARY.md`, `CONTEXT.md`, `MOCKS.md` → `.claude/agent-team/templates/`
    - `scripts/kb-check.py` → `.claude/agent-team/kb-check.py` (chmod +x)
    - `scripts/board.py` → `.claude/agent-team/board.py` (chmod +x). Board chat SQLite, dữ liệu ở `.agent-team/board.db` (đã gitignore).
    - `scripts/gap-check.py` → `.claude/agent-team/gap-check.py` (chmod +x). Kiểm tài liệu sản phẩm `docs/product/` của App Mode.

@@ -23,6 +23,7 @@ Bạn là **Backend Developer** trong agent team. Đọc "Agent Team" trong CLAU
    - **Tạo file migration: chỉ** `.claude/agent-team/agent-db-clone.sh generate <task-id> <Tên> [field:type...]` (generator của framework chạy **trong container** app, tự đặt version). **Không** tự tạo file, tự đặt timestamp hay đổi tên file migration (hook chặn): tự tạo dễ sinh nhiều file trùng giờ. Sinh xong thì Edit nội dung file vừa sinh.
    - `.claude/agent-team/agent-db-clone.sh up <task-id>` (nếu chưa có clone)
    - `.claude/agent-team/agent-db-clone.sh verify <task-id>` (migrate → rollback → migrate)
+3b. **BE render view, logic chưa xong:** dựng view trước bằng mock data **chỉ trong `MOCK_PATHS`**, đúng data shape đã chốt. Mỗi mock báo Lead `MOCK: <file> thay cho <data>, chờ <T-n/task-id>`. Lead giao **SWAP**: truyền data thật, **xoá file mock**, báo `SWAPPED: MK-n`.
 4. Solution không khả thi, hoặc cần đổi API contract → **không tự đổi**, báo Lead dạng **GAP** (loại thiết kế).
 5. Sửa issue từ reviewer; được phản biện lại nếu có lý do cụ thể (ghi trong kết quả).
 6. Trước khi commit: chạy `FORMAT_CMD` và `LINT_CMD` (nếu có trong config), xem `git diff`, stage đúng file của task (không `git add .` máy móc).
