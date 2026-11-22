@@ -175,5 +175,12 @@ check("mockup hiện mã R-60 cho client -> thiếu", bad(rows, "mockup cho clie
 code, rows = run(fresh())
 check("mã để trong data-r (ẩn) -> đạt", bad(rows, "mockup cho client"), False)
 
+# ---- mockup link _wf.css / _wf.js phải có file ----
+code, rows = run(fresh({"design/mockup-dat-lich.html": '<link rel="stylesheet" href="_wf.css"><main class="page">x</main><aside class="guide"></aside><script src="_wf.js"></script>'}))
+check("mockup link _wf.css / _wf.js chưa có file -> thiếu", bad(rows, "prototype") and "_wf.css" in rows["prototype: index.html + link giữa các màn"]["why"], True)
+code, rows = run(fresh({"design/mockup-dat-lich.html": '<link rel="stylesheet" href="_wf.css"><main class="page">x</main><aside class="guide"></aside><script src="_wf.js"></script>',
+                        "design/_wf.css": "body{}", "design/_wf.js": "1"}))
+check("có _wf.css / _wf.js -> đạt", bad(rows, "prototype"), False)
+
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

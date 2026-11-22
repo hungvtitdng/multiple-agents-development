@@ -21,7 +21,7 @@ EOF
 ## 1. Đọc trước khi viết
 1. `board.py read <task-id>`: tóm tắt các lượt trước (Lead viết) + **toàn bộ** bài của lượt đang mở.
 2. `board.py read <task-id> --mention <role>`: mọi tin gọi tên mình.
-3. Chỉ mở lượt cũ (`--stage --round`) khi cần trích chi tiết. Không đọc lại cả board.
+3. Chỉ mở lượt cũ (`--stage --round`) hoặc 1 câu WHY (`--why <n>`) khi cần trích chi tiết. Không đọc lại cả board, không `--all`.
 
 ## 2. Viết bài (theo `.claude/agent-team/templates/POST.md`)
 - Lượt hỏi chỉ đặt WHY (mục 3), chưa kết luận. Lượt sau mới trả lời / biểu quyết.
@@ -56,5 +56,10 @@ DISAGREE WHY-3: Vì sao không dùng cột JSON, số lần huỷ tối đa là 
 - Secret, giá trị `.env`, dữ liệu thật của khách.
 - Suy nghĩ dài dòng, lặp lại ý đã có (dẫn số tin thay vì chép lại).
 
-## 5. Kết thúc lượt
-Post xong thì trả về Lead tối đa 5 dòng: số tin đã post, điểm chấm (nếu lượt có chấm), `Assumption` cần Lead quyết.
+## 4b. Lead tóm tắt mỗi lượt
+Lượt chỉ đóng được khi Lead đã `summary` (board từ chối `close`). Lượt sau mọi người đọc tóm tắt thay cho bài cũ, nên bài post phải tự đủ ý, không dựa vào việc người khác nhớ lượt trước.
+
+## 5. Kết thúc lượt (bắt buộc `done`, không chờ Lead)
+1. Việc dài (vẽ nhiều màn, viết nhiều test): sau mỗi phần báo tiến độ `board.py progress <task-id> --role <role> --step "4/11 màn" --eta 20`.
+2. Xong: `board.py done <task-id> --role <role> --body "<≤ 5 dòng: số tin đã post, điểm chấm (nếu lượt có chấm), Assumption / GAP / HỎI LEAD>"`. Lead đọc kết quả từ đây (SQLite), kể cả khi tin nhắn trả về bị lạc.
+3. **Kết thúc ngay**, trả đúng 5 dòng đó về Lead. Không post lại, không chờ Lead xác nhận, không hỏi "Lead đã nhận chưa": board từ chối post / done thêm ở lượt này.

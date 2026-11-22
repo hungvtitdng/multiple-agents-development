@@ -1,6 +1,22 @@
 # Board summary - <task-id>
 
-> Chỉ Lead ghi, khi đóng task. Toàn bộ cuộc debate nằm trong board SQLite, xuất ra `board/DEBATE.md` bằng `board.py export`. File này là bản tóm tắt cuối để người dùng đọc nhanh.
+> Chỉ Lead ghi. **Mỗi giai đoạn 1 mục `## S<n>`, ghi trước khi đổi giai đoạn** (hook chặn nếu thiếu). Giai đoạn sau chỉ đọc file này + TASK.md; cần chi tiết thì query board (`board.py read --why <n>`, `read --stage S2 --round 3`). Toàn bộ debate nằm trong board SQLite, cuối task `board.py export` ra `board/DEBATE.md`.
+
+## S2 Debate
+- Phương án chốt + lý do (1-2 dòng), ý thiểu số bị bác:
+- AC chính / giả định 🔴:
+- WHY: đã đóng x/y, phán quyết của Lead:
+- Việc còn mở cho S3:
+
+## S3 Code
+- File đã đổi (BE / FE), migration, API đổi:
+- GAP đã xử lý / còn mở:
+
+## S4 Test
+- Kết quả theo AC, test fail đã sửa, E2E:
+
+## S5 Review
+- Issue theo mức, đã sửa / còn lại, KB đã cập nhật:
 
 ## Lượt đang mở
 S? - R? : <mục tiêu lượt>, role tham gia: ...

@@ -1,3 +1,35 @@
+# Release notes - 22/11/2026 (v0.19.1 - phát hiện và xử lý agent treo)
+
+## Thay đổi
+- **Nhịp tim agent trong SQLite** (`board.db`, bảng `agent_runs`): hook mới `hooks/heartbeat.py` ghi mỗi lần subagent dùng tool (lần cuối, tool / lệnh đang chạy tối đa 80 ký tự) và hook `SubagentStop` tự ghi DONE khi agent kết thúc. Không bao giờ chặn tool.
+- **Lead không kẹt vì 1 agent treo:** gọi agent `run_in_background: true` (bị từ chối thì foreground như cũ), rồi `board.py wait <task-id>`: đọc SQLite mỗi 30 giây, trả về ngay khi mọi agent DONE (exit 0), có agent im quá `HANG_MINUTES` (exit 3 → `TaskStop` + gọi lại đúng agent đó kèm lý do), hoặc sau ~9 phút chưa xong (exit 4 → wait tiếp). Treo = im lặng, không phải chạy lâu; lệnh có `timeout N` thì ngưỡng theo N.
+- **Agent kết thúc bằng `board.py done --body "<≤ 5 dòng>"`**, Lead lấy kết quả từ SQLite (không phụ thuộc tin nhắn trả về). Sau `done`, board từ chối post / done thêm ở lượt đó và bảo agent kết thúc ngay (sửa lỗi agent báo xong rồi cứ gửi lại mãi). Việc dài báo `board.py progress --step "4/11 màn" --eta 20`.
+- `board.py status` thêm mục Agent (DONE / đang làm / ⚠ im N phút + lệnh đang kẹt / chưa bắt đầu, tiến độ, thời gian thường mất của role). `board.py stuck`: agent treo + gợi ý `pgrep` để tắt lệnh kẹt từ terminal khác. Status line hiện ⚠ agent im lâu.
+- **Guard chặn lệnh không tự dừng** (mọi người, kể cả Lead): `docker compose up` không `-d`, `tail -f`, `watch`, `npm|pnpm|yarn run dev|start|serve`, `rails s`, `php artisan serve`, `nodemon`, test `--watch` / `vitest` không `run`. Bọc `timeout <giây>` hoặc chạy nền `&` thì được. Role được `board.py done` / `progress` bằng tên mình.
+- `resume`: agent DONE thì không gọi lại, chỉ gọi lại agent còn dở. Test: board 74, guard 357 case.
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update multiple-agent`, khởi động lại Claude Code (hook mới `heartbeat.py`, `SubagentStop` chỉ nạp khi khởi động).
+- **Key mới trong `.claude/agent-team.config`**: `HANG_MINUTES=10` (phút im lặng coi là treo). Không phải secret.
+- Project đã init: copy lại `scripts/board.py`, `scripts/progress.py` → `.claude/agent-team/` (chmod +x); copy lại `templates/POST.md`.
+- Cần Claude Code hỗ trợ agent chạy nền + `TaskStop` (đã kiểm có trong bản 2.1.330). Bản cũ hơn: Lead gọi foreground như trước, agent treo thì Esc + `/agent-team:resume`.
+
+# Release notes - 22/11/2026 (v0.19.0 - giảm token)
+
+## Thay đổi
+- **Lead giữ ngữ cảnh gọn** (`task.md` mục 2b): không tự đọc bài post; biết debate qua kết quả agent trả về (≤ 5 dòng), `status`, `whys --open`; cần phán quyết 1 điểm thì `board.py read <task-id> --why <n>` (lệnh mới: câu hỏi, các lần trả lời, phiếu, dòng nhắc tới). Sửa TASK.md bằng Edit từng đoạn, không đọc lại cả file.
+- **Tóm tắt bắt buộc:** `board.py close` từ chối khi lượt có bài mà chưa `summary`. Đổi giai đoạn (rời S2 / S3 / S4 / S5) bị hook chặn khi `board/SUMMARY.md` chưa có mục `## S<n>`; giai đoạn sau chỉ đọc SUMMARY.md + TASK.md, thiếu thì query board. `templates/SUMMARY.md` có sẵn mục S2-S5. `resume` đọc tóm tắt + `whys --open`, không đọc lại cả board.
+- **Tìm code có mục tiêu, không quét mù cả repo:** hook chặn với mọi role (trừ Lead, Scout khi init / kb): Grep / Glob không đường dẫn ở gốc repo, `grep -r .`, `rg` không đường dẫn (trừ khi nhận từ pipe), `git grep` không pathspec, `find .` không `-maxdepth ≤ 2`, `ls -R .`, `tree`. Đọc file cụ thể / tìm trong thư mục cụ thể **không giới hạn**. Thứ tự: CONTEXT → KB + chỉ mục hàm → graphify → đúng file. Thiếu thông tin → trả **`HỎI LEAD`** (mẫu mới cuối `POST.md`); Lead tra KB hoặc gọi Scout đọc đúng phần, bổ sung CONTEXT rồi gọi lại. Dev trả thêm dòng "File đã đọc ngoài CONTEXT".
+- **Mockup dùng chung `_wf.css` + `_wf.js`** (skill `wireframe` mục "File dùng chung"): ui-designer chép 1 lần, mọi màn chỉ link tới (giảm token viết mỗi màn). `board.py report` tự chèn 2 file khi nhúng mockup vào REPORT.html. Guard cho ui-designer ghi `_wf.css`, `_wf.js`, `index.html` trong `design/` của task. `gap-check` kiểm link `.css` / `.js` có file thật.
+- Test: board 62, guard 346, gap-check 58 case.
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update multiple-agent`, khởi động lại Claude Code.
+- Project đã init: copy lại `scripts/board.py`, `scripts/gap-check.py` → `.claude/agent-team/` (chmod +x); copy lại `templates/SUMMARY.md`, `templates/POST.md` → `.claude/agent-team/templates/`.
+- **Task đang làm dở:** trước khi đổi giai đoạn, thêm mục `## S<giai đoạn hiện tại>` vào `docs/agent-tasks/<task-id>/board/SUMMARY.md`, nếu không hook sẽ chặn.
+- Mockup cũ (tự chứa CSS / JS) vẫn chạy và vẫn qua gap-check; muốn giảm token thì giao ui-designer tách ra `_wf.css` / `_wf.js`.
+- Không có ENV / key mới.
+
 # Release notes - 22/11/2026 (v0.18.7 - tên file form QnA-v<n>.xlsx)
 
 ## Thay đổi

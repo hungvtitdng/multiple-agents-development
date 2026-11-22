@@ -1,5 +1,5 @@
 {
-  "description": "agent-team guard: chặn secret, push sai branch, migrate DB thật, role ghi ngoài vùng (chặn trước + hoàn tác theo diff sau)",
+  "description": "agent-team guard: chặn secret, push sai branch, migrate DB thật, role ghi ngoài vùng (chặn trước + hoàn tác theo diff sau); ghi nhịp tim subagent vào board.db (board.py wait / status)",
   "hooks": {
     "PreToolUse": [
       {
@@ -9,6 +9,16 @@
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/guard.py\"",
             "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/heartbeat.py\" pre",
+            "timeout": 10
           }
         ]
       }
@@ -30,6 +40,27 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/show_post.py\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/heartbeat.py\" post",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/heartbeat.py\" stop",
             "timeout": 10
           }
         ]

@@ -35,6 +35,20 @@ Làm đúng playbook dưới đây. **Không hỏi lại user**, team tự bàn 
 - Gọi subagent `agent-team:<role>`. Mỗi agent chạy xong là kết thúc. Agent **tự đọc và post lên board** (mục 3), trả về bạn ≤ 5 dòng: số tin đã post, **điểm chấm** (kín, không post), `Assumption`. Không ghi TASK.md (hook chặn). **Gọi các agent cùng lượt trong cùng một message để chạy song song.**
 - Mỗi lần gọi nêu: task-id, mục tiêu, đầu vào (đường dẫn TASK.md, CONTEXT.md). **Không dán lại kết quả lượt trước**: agent tự `board.py read <task-id>`. Đầu ra: bài post ≤ 15 dòng theo `templates/POST.md` + điểm chấm trả riêng cho bạn.
 - Skill trong plugin (`agent-team:<tên>`) agent tự nạp khi cần, không cần dán vào prompt.
+- **Gọi agent chạy nền, chờ bằng `board.py wait`** (để 1 agent treo không làm bạn kẹt theo):
+  ```
+  1. Gọi các agent của lượt trong cùng 1 message, mỗi agent `run_in_background: true`.
+     Bị từ chối chạy nền → gọi bình thường (foreground) như cũ.
+  2. $B wait <task-id>            (đọc SQLite mỗi 30 giây, tối đa ~9 phút / lần)
+     exit 0 XONG     → mọi agent DONE: lấy kết quả trong output (từ SQLite, không cần chờ tin nhắn của agent)
+     exit 4 CHƯA XONG → đang chạy bình thường (tiến độ, eta trong output): gọi wait lần nữa
+     exit 3 CÓ TREO   → agent im quá HANG_MINUTES (lệnh có `timeout N` thì theo N):
+                        TaskStop agent đó → gọi lại đúng agent đó, kèm lý do trong output
+                        ("lần trước kẹt ở docker compose up: dùng up -d") → wait tiếp
+  3. Agent DONE rồi mà thông báo chạy nền tới sau: bỏ qua, kết quả đã lấy ở bước 2.
+  ```
+  Treo = **im lặng** (không dùng tool nào), không phải chạy lâu: agent vẽ 11 màn vẫn ghi file liên tục nên không bị báo. `$B stuck <task-id>` in agent treo + lệnh đang kẹt (`pgrep` để tắt từ terminal khác).
+- **Agent kết thúc bằng `board.py done <task-id> --role <role> --body "<≤ 5 dòng>"`** (skill `debate-board` mục 5). Sau `done`, board từ chối post thêm ở lượt đó. Quên `done` → hook `SubagentStop` tự ghi DONE khi agent kết thúc.
 - Chỉ truyền ngữ cảnh cần thiết. Không nhờ nhiều agent làm cùng một phân tích trừ khi cần đối chiếu độc lập.
 
 **Model theo `COST_TIER`** trong config (mặc định `standard`). Khi gọi agent, truyền tham số `model` theo bảng (ghi đè model mặc định trong định nghĩa agent). Security và Architect không bao giờ hạ dưới opus; reviewer/challenger không bao giờ hạ xuống haiku.
@@ -54,18 +68,28 @@ Làm đúng playbook dưới đây. **Không hỏi lại user**, team tự bàn 
 
 `economy` tiết kiệm bằng cách hạ role debate phụ và Scout, không bằng cách bỏ bước. Task chạm auth/phân quyền/secrets: dùng ít nhất `standard` cho cả debate.
 
+## 2b. Giữ ngữ cảnh của bạn (Lead) gọn
+Mọi lần bạn làm 1 bước, **toàn bộ lịch sử phiên** được gửi lại cho model, nên phiên dài thì mỗi bước đều tốn. Nguyên tắc: **mọi thứ nằm trên đĩa, bạn chỉ giữ tóm tắt, thiếu thì query**.
+- **Không tự đọc bài post trên board.** Biết debate qua: (1) kết quả agent trả về (≤ 5 dòng), (2) `$B status` / `$B whys <task-id> --open`, (3) cần phán quyết 1 điểm thì `$B read <task-id> --why <n>` (đúng câu WHY đó), cần 1 lượt cũ thì `$B read --stage S2 --round 3`. Không `read --all`.
+- **Tóm tắt lượt** viết từ kết quả agent trả về + `status`, không chép bài. `close` bị từ chối khi lượt có bài mà chưa `summary`.
+- **Tóm tắt giai đoạn:** trước khi đổi giai đoạn (S2→S3, S3→S4, S4→S5, S5→S6) ghi mục `## S<n>` trong `board/SUMMARY.md` (quyết định, kết quả, file đã đổi, việc còn mở). Hook chặn đổi giai đoạn khi chưa có. Từ giai đoạn sau **chỉ dựa vào SUMMARY.md + TASK.md**, cần chi tiết cũ thì query board / file, không dựa vào trí nhớ.
+- **Sửa TASK.md bằng Edit từng đoạn nhỏ**, không Write lại cả file, không đọc lại cả file khi chỉ cần 1 dòng (`grep -n "Phương án chốt" TASK.md`).
+- Không đọc file code / KB dài để "nắm tình hình": giao Scout hoặc agent đúng vai, nhận lại tóm tắt.
+- Trả lời user ngắn; chi tiết nằm ở `REPORT.html`.
+
 ## 3. Board: phòng chat chung (SQLite)
 Board lưu ở `.agent-team/board.db` (gitignore). Agent đọc được mọi bài, chỉ post bằng tên mình (hook chặn mạo danh). Challenger không dùng board.
 ```
 B=.claude/agent-team/board.py
 $B open    <task-id> S2 1 --roles solution-architect,business-analyst --goal "đề xuất"   # bạn mở lượt
 $B status  <task-id>                         # ai chưa post, @ chưa trả lời
-$B read    <task-id>                         # tóm tắt lượt trước + toàn bộ lượt đang mở
+$B read    <task-id>                         # (agent) tóm tắt lượt trước + toàn bộ lượt đang mở
+$B read    <task-id> --why <n>               # (bạn) đúng 1 câu WHY: câu hỏi, các lần trả lời, phiếu, lý do không đồng ý
 $B summary <task-id> <<'EOF' ... EOF         # bạn tóm tắt lượt (ý mới, ai nói, chấp nhận/bác, @ cần trả lời)
-$B close   <task-id>                         # đóng lượt
+$B close   <task-id>                         # đóng lượt (từ chối nếu lượt có bài mà chưa summary)
 $B export  <task-id>                         # → docs/agent-tasks/<task-id>/board/DEBATE.md (S6, để user đọc + commit)
 ```
-- Mỗi lượt: `open` → gọi agent song song → `status` (đủ bài chưa, ai còn nợ @) → `read` → `summary` → `close`.
+- Mỗi lượt: `open` → gọi agent song song → `status` (đủ bài chưa, ai còn nợ @) → `summary` (từ kết quả agent trả về, mục 2b) → `close`.
 - Lượt sau agent đọc tóm tắt + toàn bộ lượt đang mở, nên bạn **không chép lại** ý kiến giữa các lượt.
 - Agent nào không post được (lỗi script/hook): chép kết quả nó trả về bằng `$B post <task-id> --role <role>` và ghi chú "(Lead chép)".
 - Thư mục `docs/agent-tasks/<task-id>/` gồm `TASK.md` (bạn), `CONTEXT.md` (Scout), `board/SUMMARY.md` (bạn, tóm tắt cuối) và `board/DEBATE.md` (export).
@@ -105,6 +129,7 @@ $B export  <task-id>                         # → docs/agent-tasks/<task-id>/bo
 - Business rule thiếu → bạn chọn **best solution** (theo bảng điểm, sau khi các role góp ý), ghi vào TASK.md mục 2 "Giả định" với nhãn `Assumption`. Không chặn tiến độ.
 - Kỹ thuật thiếu → team tự quyết qua debate.
 - Dev/test-executor **không** tự đoán hay ghi `Assumption`: thiếu thông tin khi đang làm → trả **GAP**, bạn xử lý theo mục 7b.
+- **`HỎI LEAD`** (mọi role, thiếu thông tin để làm tiếp, hook chặn quét cả repo): bạn tra KB / `graphify` / chỉ mục hàm; chưa có thì gọi `scout` đọc **đúng phần đó**. Ghi bổ sung vào `CONTEXT.md` (và báo chủ KB nếu KB thiếu), rồi gọi lại agent. Dòng "File đã đọc ngoài CONTEXT" dev trả về → thêm vào CONTEXT.md cho lượt sau.
 - `BLOCKED` chỉ khi không thể tiếp tục an toàn: thiếu quyền/dependency, không xác minh được repo/branch, vượt phạm vi, thiếu môi trường test, hoặc Security Critical/High chưa xử lý được. Ghi lý do + điều kiện tiếp tục vào TASK.md.
 - Nhãn: `Verified` · `Assumption` · `Proposed` · `Confirmed`.
 

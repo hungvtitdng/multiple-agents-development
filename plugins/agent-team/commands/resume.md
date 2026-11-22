@@ -11,7 +11,7 @@ Trạng thái nằm trên đĩa nên làm tiếp được. Không hỏi user (ta
 ## 1. Khôi phục trạng thái
 1. Đọc `CLAUDE.md`, `.claude/agent-team.config`. Chưa có thì báo user chạy `/agent-team:init`.
 2. Xác định task: `$ARGUMENTS` hoặc thư mục mới nhất trong `docs/agent-tasks/`. Không có task nào → báo user dùng `/agent-team:task`.
-3. Đọc theo thứ tự: `TASK.md` (điều kiện chuyển giai đoạn, phương án chốt, trạng thái), `.agent-team/stage`, `board/SUMMARY.md`, `.claude/agent-team/board.py status <task-id>` và `board.py read <task-id>` (lượt gần nhất), `CONTEXT.md`. Task cũ chưa có board SQLite thì đọc các file `board/S*-R*`.
+3. Đọc theo thứ tự: `TASK.md` (điều kiện chuyển giai đoạn, phương án chốt, trạng thái), `.agent-team/stage`, `board/SUMMARY.md`, `.claude/agent-team/board.py status <task-id>` và `board.py whys <task-id> --open` (không đọc lại cả board; cần chi tiết 1 câu WHY: `board.py read <task-id> --why <n>`), `CONTEXT.md`. Task cũ chưa có board SQLite thì đọc các file `board/S*-R*`. Làm theo task.md mục 2b (giữ ngữ cảnh gọn).
 4. Mỗi repo trong `REPOS`: `git branch --show-current` phải là `agent/<task-id>`; `git status --short` xem thay đổi chưa commit; `git log --oneline <nhánh gốc>..HEAD` xem đã commit gì. Sai branch → `git checkout agent/<task-id>` (nếu có thay đổi chưa commit thuộc task khác thì dừng và báo user).
 5. File `.agent-team/stage` mất (đã bị xoá/đóng phiên) → suy ra giai đoạn từ TASK.md rồi ghi lại bằng `echo S<n> > .agent-team/stage` (hook kiểm điều kiện).
 
@@ -21,6 +21,7 @@ Trạng thái nằm trên đĩa nên làm tiếp được. Không hỏi user (ta
 | Chưa có `CONTEXT.md` (VỪA/LỚN) | Scout |
 | Có CONTEXT, chưa có "Phương án chốt" | Debate: `board.py status` → lượt đang mở còn ai chưa post thì gọi tiếp role đó; lượt đã đủ thì `summary` + `close` rồi mở lượt kế (agent tự đọc board; **điểm kín chưa nộp thì gọi lại** để chấm) |
 | Đã chốt, chưa có Security duyệt solution | Security duyệt nhanh |
+| Lượt / giai đoạn có agent dở (`board.py status` mục Agent) | Agent `DONE`: lấy kết quả từ đó, **không gọi lại**. Agent còn `RUNNING` / ⚠ im / chưa bắt đầu: gọi lại **chỉ agent đó** (chạy nền + `board.py wait`, task.md mục 2), kèm lý do treo trong status (lệnh đang kẹt) |
 | Stage S3, có commit dở | Dev tiếp (đọc `git diff`, `git log` để biết đã làm gì) |
 | `MOCKS.md` (task hoặc module) có dòng chờ task này chưa `VERIFIED` | SWAP theo `task.md` mục 6b: `OPEN` → giao dev nối thật + xoá mock; `SWAPPED` → E2E với BE thật |
 | Có `docs/audit/AUDIT-*.md` với `Bước:` khác `DONE` | Làm tiếp theo `audit.md`: `REVIEW` → gọi lại làn chưa có lỗi trong bảng · `CHỜ DUYỆT` → báo user điền cột `Sửa?` · `UPDATE` → dòng `Sửa?: YES` chưa `FIXED` / `BACKLOG` |

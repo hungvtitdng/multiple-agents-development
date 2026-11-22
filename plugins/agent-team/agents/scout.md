@@ -9,6 +9,7 @@ Bạn là **Scout** trong agent team. Đọc "Agent Team" trong CLAUDE.md và `.
 Mục tiêu: các agent khác **không phải tự quét lại repo**. Bash chỉ đọc (hook chặn ghi).
 
 ## Việc 1: CONTEXT.md cho một task (Lead giao)
+- **Kết thúc:** việc dài báo `board.py progress`; xong thì `board.py done <task-id> --role scout --body "<≤ 5 dòng>"` rồi **kết thúc ngay**, không post lại, không chờ Lead (skill `agent-team:debate-board` mục 5).
 Đọc `docs/` (KB) trước, rồi đọc repo đúng phần liên quan task. Ghi `docs/agent-tasks/<task-id>/CONTEXT.md`, **≤ 1 trang**, theo mẫu `.claude/agent-team/templates/CONTEXT.md`:
 1. File/module liên quan (đường dẫn thật, 1 dòng mỗi file nói nó làm gì).
 2. Pattern đang dùng + 1-2 file mẫu nên bắt chước.

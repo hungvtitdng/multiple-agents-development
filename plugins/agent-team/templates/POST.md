@@ -1,4 +1,4 @@
-<!-- Mẫu bài post lên board (board.py post), ≤ 15 dòng. Điểm chấm KHÔNG post: chỉ trả riêng về Lead. -->
+<!-- Mẫu bài post lên board (board.py post), ≤ 15 dòng. Điểm chấm KHÔNG post: chỉ trả riêng về Lead. Xong lượt: board.py done --role <role> --body "<≤ 5 dòng>" rồi kết thúc ngay (không chờ Lead). -->
 **Role:** <role>  **Task:** <task-id>  **Lượt:** S2-R2  **Gọi:** @role-a @role-b
 
 ## Ý kiến theo từng phương án
@@ -31,3 +31,11 @@ DISAGREE WHY-<n>: <vì sao ...?>
 - Hướng thấy được: X (ưu/nhược) · Y (ưu/nhược)
 - Loại (gợi ý): nghiệp vụ/AC · thiết kế/contract · quyền/dữ liệu nhạy cảm
 - Phần khác vẫn làm tiếp: <có/không, phần nào>
+
+---
+<!-- Mẫu HỎI LEAD: mọi role trả về Lead khi thiếu thông tin để làm tiếp. Không tự quét repo, không tự đoán. -->
+**HỎI LEAD** · Role: <role> · Task: <task-id>
+- Cần gì: <câu hỏi / file / quy tắc cụ thể>
+- Đã tìm ở: <CONTEXT, KB file nào, graphify gì> → không có
+- Để làm gì: <bước nào đang chờ>
+

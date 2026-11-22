@@ -72,6 +72,36 @@ def board_info(root, task):
         return [], 0
 
 
+def agent_info(root, task):
+    """Agent đang chạy (heartbeat trong board.db): ⚠ khi im quá HANG_MINUTES (lệnh có timeout thì theo timeout)."""
+    p = os.path.join(root, ".agent-team", "board.db")
+    hang = 10
+    try:
+        m = re.search(r"(?m)^\s*HANG_MINUTES=\s*['\"]?(\d+)", open(os.path.join(root, ".claude", "agent-team.config"), encoding="utf-8").read())
+        hang = int(m.group(1)) if m else 10
+    except OSError:
+        pass
+    if not os.path.isfile(p):
+        return []
+    import time
+    try:
+        db = sqlite3.connect(f"file:{p}?mode=ro", uri=True, timeout=2)
+        rows = db.execute("SELECT role, last_seen, last_tool, busy_since, tool_timeout, step FROM agent_runs "
+                          "WHERE task=? AND state='RUNNING'", (task,)).fetchall()
+        db.close()
+    except sqlite3.Error:
+        return []
+    out, now = [], int(time.time())
+    for role, seen, tool, busy, tmo, step in rows:
+        idle = now - seen
+        limit = max(hang * 60, (tmo or 0) + 60) if busy else hang * 60
+        if idle > limit:
+            out.append(f"⚠ {role} im {idle // 60}p" + (f": {tool[:40]}" if tool else ""))
+        elif step:
+            out.append(f"{role} {step}")
+    return out
+
+
 def progress_line(root):
     try:
         stage = open(os.path.join(root, ".agent-team", "stage"), encoding="utf-8").read().strip().upper()
@@ -96,6 +126,7 @@ def progress_line(root):
         parts.append("chờ: " + ", ".join(waiting))
     if whys:
         parts.append(f"WHY mở: {whys}")
+    parts += agent_info(root, task)
     if missing:
         parts.append("thiếu: " + ", ".join(missing[:3]) + (" …" if len(missing) > 3 else ""))
     return " · ".join(parts)

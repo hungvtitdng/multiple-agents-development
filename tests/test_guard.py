@@ -47,7 +47,8 @@ cases = [
     ("migrate DB thật", "Bash", {"command": "docker compose exec app bin/rails db:migrate"}, "backend-dev", None, B),
     ("migrate DB thật trong sh -c", "Bash", {"command": "docker compose exec app sh -c \"bin/rails db:migrate\""}, "backend-dev", None, B),
     ("migrate qua clone", "Bash", {"command": ".claude/agent-team/agent-db-clone.sh migrate T1"}, "backend-dev", None, OK),
-    ("grep db:migrate", "Bash", {"command": "grep -rn \"db:migrate\" ."}, "code-reviewer", None, OK),
+    ("grep -r cả repo bị chặn (quét mù)", "Bash", {"command": "grep -rn \"db:migrate\" ."}, "code-reviewer", None, B),
+    ("grep -r trong thư mục cụ thể", "Bash", {"command": "grep -rn \"db:migrate\" db/"}, "code-reviewer", None, OK),
     ("force push", "Bash", {"command": "git push -f origin agent/x"}, None, repo, B),
     ("push develop", "Bash", {"command": "git push origin develop"}, None, repo, B),
     ("push khi đang ở develop", "Bash", {"command": "git push"}, None, repo, B),
@@ -773,6 +774,83 @@ for desc, wait, exp in (("S6 task con: mock chờ task BE sau (T-2) -> qua", "T-
     GOOD = dict(GOOD_BASE, **{"APP.md": GOOD_BASE["APP.md"] + TASKS, "MOCKS.md": MOD_MOCKS.format(wait)})
     mod_gate(desc, CHILD6, exp, stage=S6)
 GOOD = GOOD_BASE
+
+# ---- tìm code có mục tiêu: chặn quét mù cả repo ----
+sr = make_repo()
+os.makedirs(os.path.join(sr, ".claude"), exist_ok=True)
+os.makedirs(os.path.join(sr, "app", "services"), exist_ok=True)
+open(os.path.join(sr, ".claude/agent-team.config"), "w").write('BE_PATHS="app"\n')
+sc = [
+    ("dev Grep không có path (cả repo) bị chặn", "Grep", {"pattern": "cancel"}, "backend-dev", sr, B),
+    ("dev Grep trong app/services", "Grep", {"pattern": "cancel", "path": "app/services"}, "backend-dev", sr, OK),
+    ("dev Glob **/*.rb ở gốc bị chặn", "Glob", {"pattern": "**/*.rb"}, "backend-dev", sr, B),
+    ("dev Glob app/**/*.rb", "Glob", {"pattern": "app/**/*.rb"}, "backend-dev", sr, OK),
+    ("BA rg không path bị chặn", "Bash", {"command": "rg cancel"}, "business-analyst", sr, B),
+    ("BA rg trong docs/", "Bash", {"command": "rg cancel docs/"}, "business-analyst", sr, OK),
+    ("git diff | rg (dữ liệu từ pipe)", "Bash", {"command": "git diff | rg cancel"}, "code-reviewer", sr, OK),
+    ("find . không giới hạn độ sâu bị chặn", "Bash", {"command": "find . -name '*.rb'"}, "backend-dev", sr, B),
+    ("find . -maxdepth 2", "Bash", {"command": "find . -maxdepth 2 -name '*.rb'"}, "backend-dev", sr, OK),
+    ("git grep không pathspec bị chặn", "Bash", {"command": "git grep cancel"}, "security", sr, B),
+    ("git grep -- app/", "Bash", {"command": "git grep cancel -- app/"}, "security", sr, OK),
+    ("ls -R . bị chặn", "Bash", {"command": "ls -R ."}, "frontend-dev", sr, B),
+    ("Lead grep -r cả repo được", "Bash", {"command": "grep -rn cancel ."}, None, sr, OK),
+    ("graphify explain được", "Bash", {"command": "graphify explain OrderService"}, "backend-dev", sr, OK),
+    ("đọc đúng 1 file", "Read", {"file_path": os.path.join(sr, "app/services/x.rb")}, "backend-dev", sr, OK),
+]
+for c in sc:
+    check(*c)
+total += len(sc)
+open(os.path.join(sr, ".agent-team"), "a").close() if False else os.makedirs(os.path.join(sr, ".agent-team"), exist_ok=True)
+open(os.path.join(sr, ".agent-team/stage"), "w").write("S3\n")
+check("Scout khi đang có task: grep -r cả repo bị chặn", "Bash", {"command": "grep -rn x ."}, "scout", sr, B)
+os.remove(os.path.join(sr, ".agent-team/stage"))
+check("Scout khi init / kb (chưa có stage): được quét", "Bash", {"command": "grep -rn x ."}, "scout", sr, OK)
+total += 2
+
+# ---- tóm tắt giai đoạn trước khi đổi giai đoạn ----
+ss = tempfile.mkdtemp()
+os.makedirs(os.path.join(ss, ".claude"))
+os.makedirs(os.path.join(ss, ".agent-team"))
+os.makedirs(os.path.join(ss, "docs/agent-tasks/T9/board"))
+open(os.path.join(ss, ".claude/agent-team.config"), "w").write('BE_PATHS="app"\n')
+open(os.path.join(ss, "docs/agent-tasks/T9/TASK.md"), "w").write(
+    "- Loại: VỪA\n- Phương án chốt: A\n- Security duyệt solution: APPROVED\n- Workflow: N/A\n- UI mockup: N/A\n")
+open(os.path.join(ss, ".agent-team/stage"), "w").write("S2\n")
+check("S2 → S3 khi chưa có ## S2 trong SUMMARY.md bị chặn", "Bash", {"command": "echo S3 > .agent-team/stage"}, None, ss, B)
+open(os.path.join(ss, "docs/agent-tasks/T9/board/SUMMARY.md"), "w").write("# T9\n## S2 Debate\n- Chốt A\n")
+check("S2 → S3 khi đã có ## S2", "Bash", {"command": "echo S3 > .agent-team/stage"}, None, ss, OK)
+total += 2
+
+# ---- mockup dùng chung _wf.css / _wf.js ----
+wz = "docs/agent-tasks/T1/design/"
+wf = [
+    ("ui-designer ghi _wf.css", "Write", {"file_path": wz + "_wf.css"}, "ui-designer", gp, OK),
+    ("ui-designer ghi _wf.js", "Write", {"file_path": wz + "_wf.js"}, "ui-designer", gp, OK),
+    ("ui-designer ghi index.html của task", "Write", {"file_path": wz + "index.html"}, "ui-designer", gp, OK),
+    ("BA ghi _wf.js bị chặn", "Write", {"file_path": wz + "_wf.js"}, "business-analyst", gp, B),
+    ("ui-designer ghi _wf.css sản phẩm", "Write", {"file_path": "docs/product/design/_wf.css"}, "ui-designer", gp, OK),
+]
+for c in wf:
+    check(*c)
+total += len(wf)
+
+# ---- board done/progress + lệnh không tự dừng ----
+fv = [
+    ("role done bằng tên mình", "Bash", {"command": ".claude/agent-team/board.py done T1 --role business-analyst --body x"}, "business-analyst", None, OK),
+    ("role done bằng tên người khác bị chặn", "Bash", {"command": ".claude/agent-team/board.py done T1 --role security --body x"}, "business-analyst", None, B),
+    ("role wait bị chặn (chỉ Lead)", "Bash", {"command": ".claude/agent-team/board.py wait T1"}, "business-analyst", None, B),
+    ("docker compose up không -d bị chặn", "Bash", {"command": "docker compose up app"}, "backend-dev", None, B),
+    ("docker compose up -d được", "Bash", {"command": "docker compose up -d app"}, "backend-dev", None, OK),
+    ("tail -f bị chặn", "Bash", {"command": "tail -f log/development.log"}, "backend-dev", None, B),
+    ("npm run dev bị chặn", "Bash", {"command": "npm run dev"}, "frontend-dev", None, B),
+    ("vitest watch bị chặn, vitest run được", "Bash", {"command": "npx vitest"}, "test-executor", None, B),
+    ("vitest run được", "Bash", {"command": "npx vitest run"}, "test-executor", None, OK),
+    ("bọc timeout thì được", "Bash", {"command": "timeout 60 npm run dev"}, "frontend-dev", None, OK),
+    ("Lead cũng bị chặn lệnh chạy mãi", "Bash", {"command": "docker compose up"}, None, None, B),
+]
+for c in fv:
+    check(*c)
+total += len(fv)
 
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

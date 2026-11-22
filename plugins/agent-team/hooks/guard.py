@@ -17,6 +17,7 @@ READONLY_ROLES = {
 # File thiết kế của task: docs/agent-tasks/<task-id>/design/<file> -> role được ghi
 DESIGN_OWNERS = [
     (re.compile(r"^mockup-[\w.-]+\.html$"), {"ui-designer"}),
+    (re.compile(r"^(_wf\.(css|js)|index\.html)$"), {"ui-designer"}),  # CSS / JS dùng chung + mục lục mockup
     (re.compile(r"^(workflow|state)\.md$"), {"business-analyst"}),
     (re.compile(r"^sequence\.md$"), {"solution-architect", "technical-architect"}),
 ]
@@ -61,7 +62,7 @@ WRITE_CMDS = {"tee", "mv", "cp", "rm", "touch", "truncate", "install", "dd", "ln
 HIDDEN_RE = re.compile(r"(^|[\s/'\"=])\.agent-team(/|\s|$|['\"])")
 CLONE_SCRIPT = "agent-db-clone"
 BOARD = "board.py"
-BOARD_ROLE_CMDS = {"post", "read", "status", "whys"}
+BOARD_ROLE_CMDS = {"post", "read", "status", "whys", "done", "progress"}
 HEREDOC_RE = re.compile(r"<<(-?)\s*['\"]?([A-Za-z_][A-Za-z0-9_]*)['\"]?")
 
 ENV_SAMPLES = {".env.example", ".env.sample", ".env.template", ".env.dist"}
@@ -334,8 +335,8 @@ def check_board(cmd, role):
         if role == "challenger":
             block("challenger không được đọc board (mù ticket)")
         if sub not in BOARD_ROLE_CMDS:
-            block(f"board.py {sub}: chỉ Lead được dùng (role chỉ post/read/status)")
-        if sub == "post":
+            block(f"board.py {sub}: chỉ Lead được dùng (role chỉ post/read/status/whys/done/progress)")
+        if sub in ("post", "done", "progress"):
             who = ""
             for j, t in enumerate(tk):
                 if t == "--role" and j + 1 < len(tk):
@@ -343,7 +344,7 @@ def check_board(cmd, role):
                 elif t.startswith("--role="):
                     who = t.split("=", 1)[1]
             if who.strip().lower().split(":")[-1] != role:
-                block(f"chỉ được post bằng tên mình: --role {role}")
+                block(f"chỉ được {sub} bằng tên mình: --role {role}")
 
 
 def check_graphify(cmd, role):
@@ -491,7 +492,7 @@ def docs_verdict(rel, role, cwd):
             for rx, roles in DESIGN_OWNERS:
                 if rx.match(parts[2]):
                     return None if role in roles else f"design/{parts[2]} do {', '.join(sorted(roles))} ghi"
-            return "design/ chỉ gồm mockup-<màn>.html (ui-designer), workflow.md / state.md (BA), sequence.md (Architect)"
+            return "design/ chỉ gồm mockup-<màn>.html, _wf.css, _wf.js, index.html (ui-designer), workflow.md / state.md (BA), sequence.md (Architect)"
         return "docs/agent-tasks (TASK, board) chỉ Lead ghi. Trả kết quả cho Lead, không tự ghi"
     if role == "scout" and stage_value(cwd) is None:
         return None  # init: Scout dựng nháp KB khi chưa có task
@@ -842,6 +843,133 @@ def mocks_missing(root, task_dir, text):
     return [f"{rel}: {m} (SWAP: nối BE thật, xoá mock, E2E PASS)" for m in miss]
 
 
+
+# ---------- tìm code có mục tiêu: chặn quét mù cả repo (trừ Lead, Scout khi init / kb) ----------
+
+SCAN_HINT = ("không quét cả repo. Tìm theo thứ tự: CONTEXT.md → KB docs/ + chỉ mục hàm docs/functions/ → "
+             "graphify explain|affected → mở đúng file hoặc tìm trong thư mục cụ thể (vd app/services/). Thiếu thông tin → trả `HỎI LEAD: <cần gì>`")
+VALUE_OPTS = {"-e", "-f", "-m", "-A", "-B", "-C", "--include", "--exclude", "--exclude-dir", "-g", "--glob", "-t", "--type",
+              "-T", "--type-not", "--max-count", "--context", "--maxdepth", "-maxdepth", "-name", "-iname", "-path", "-type"}
+
+
+def pipe_segments(cmd):
+    """[(token, có nhận dữ liệu từ pipe không)] theo từng segment."""
+    out = []
+    for line in cmd.splitlines():
+        try:
+            lx = shlex.shlex(line, posix=True, punctuation_chars=";&|")
+            lx.whitespace_split = True
+            toks = list(lx)
+        except ValueError:
+            toks = line.split()
+        cur, piped, prev = [], False, None
+        for t in toks + [";"]:
+            if t in OPERATORS or t in (";", "&&", "||", "|", "&"):
+                if cur:
+                    out.append((cur, piped))
+                piped, cur = t == "|", []
+            else:
+                cur.append(t)
+    return out
+
+
+def positional(args):
+    out, skip = [], False
+    for t in args:
+        if skip:
+            skip = False
+        elif t in VALUE_OPTS:
+            skip = True
+        elif not t.startswith("-"):
+            out.append(t)
+    return out
+
+
+def scan_free(role, cwd):
+    return not role or (role == "scout" and stage_value(cwd) is None)
+
+
+def is_whole_repo(p, cwd):
+    """p là gốc repo (hoặc thư mục cha của gốc) → tìm ở đây = quét cả repo."""
+    full = os.path.normpath(os.path.join(cwd, os.path.expanduser(p or ".")))
+    tops = {os.path.normpath(t) for t in repo_tops(cwd)}
+    root = find_root(cwd)
+    if root:
+        tops.add(os.path.normpath(root))
+    return full in tops or any(t.startswith(full.rstrip(os.sep) + os.sep) for t in tops)
+
+
+def blind_bash(cmd, cwd):
+    """Lý do nếu lệnh Bash là quét mù cả repo, ngược lại None."""
+    for tk, piped in pipe_segments(cmd):
+        while tk and re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", tk[0]):
+            tk = tk[1:]
+        if not tk:
+            continue
+        fc, args = os.path.basename(tk[0]), tk[1:]
+        if fc == "git" and args[:1] == ["grep"]:
+            fc, args = "git-grep", args[1:]
+        pos = positional(args)
+        if fc in ("grep", "egrep", "fgrep"):
+            rec = any(a in ("-r", "-R", "--recursive", "--dereference-recursive") or re.match(r"^-[a-zA-Z]*[rR][a-zA-Z]*$", a) for a in args)
+            paths = pos if "-e" in args or "-f" in args else pos[1:]
+            if rec and (not paths or any(is_whole_repo(p, cwd) for p in paths)):
+                return f"`{fc} -r` cả repo"
+        elif fc in ("rg", "ag", "ack"):
+            paths = pos if "-e" in args else pos[1:]
+            if not piped and (not paths or any(is_whole_repo(p, cwd) for p in paths)):
+                return f"`{fc}` cả repo"
+        elif fc == "git-grep":
+            if "--" not in args:
+                return "`git grep` không giới hạn đường dẫn"
+        elif fc == "find":
+            paths = [a for a in args if not a.startswith("-")][:1]
+            deep = next((int(args[i + 1]) for i, a in enumerate(args[:-1]) if a in ("-maxdepth", "--maxdepth") and args[i + 1].isdigit()), None)
+            if (not paths or is_whole_repo(paths[0], cwd)) and (deep is None or deep > 2):
+                return "`find` cả repo"
+        elif fc == "ls" and any(re.match(r"^-[a-zA-Z]*R", a) for a in args):
+            if not pos or any(is_whole_repo(p, cwd) for p in pos):
+                return "`ls -R` cả repo"
+        elif fc == "tree" and (not pos or any(is_whole_repo(p, cwd) for p in pos)) and "-L" not in args:
+            return "`tree` cả repo"
+    return None
+
+
+def check_blind_scan(tool, ti, role, cwd):
+    if scan_free(role, cwd):
+        return
+    why = None
+    if tool == "Grep" and is_whole_repo(ti.get("path") or "", cwd):
+        why = "Grep cả repo (thêm path thư mục cụ thể)"
+    elif tool == "Glob" and is_whole_repo(ti.get("path") or "", cwd) and (ti.get("pattern") or "").startswith("**"):
+        why = "Glob **/* cả repo"
+    elif tool == "Bash":
+        why = blind_bash(ti.get("command", ""), cwd)
+    if why:
+        block(f"{why}: {SCAN_HINT}")
+
+
+# ---------- lệnh không tự dừng: làm agent (và Lead đang chờ agent) treo mãi ----------
+
+FOREVER = [
+    (re.compile(r"\bdocker(-compose|\s+compose)\s+(\S+\s+)*up\b(?!.*(\s-d\b|--detach|--wait|--abort-on-container-exit|--exit-code-from))"), "docker compose up không -d", "docker compose up -d <service>"),
+    (re.compile(r"\btail\s+(-\w*f\w*|--follow)\b"), "tail -f", "tail -n 200 <file>"),
+    (re.compile(r"(^|[;&|]\s*)watch\s"), "watch", "chạy lệnh 1 lần"),
+    (re.compile(r"\b(npm|pnpm|yarn|bun)\s+(run\s+)?(dev|start|serve|watch)\b"), "dev server", "build / test 1 lần, hoặc chạy nền có timeout"),
+    (re.compile(r"\b(rails|bin/rails)\s+(s|server)\b|\bphp\s+artisan\s+serve\b|\bnodemon\b"), "server chạy mãi", "chạy test thay vì mở server"),
+    (re.compile(r"(--watch\b|\bvitest(?!\s+run)(\s|$))"), "test chế độ watch", "vitest run / jest (không --watch)"),
+]
+
+
+def check_forever(cmd):
+    """Chặn lệnh không tự kết thúc (mọi người, kể cả Lead): agent đứng chờ mãi, Lead chờ agent mãi."""
+    flat = " ".join(unquoted(cmd).split())
+    if re.search(r"\btimeout\s+\d+", flat) or flat.rstrip().endswith("&"):
+        return
+    for rx, what, alt in FOREVER:
+        if rx.search(flat):
+            block(f"{what}: lệnh không tự dừng sẽ làm treo. Dùng: {alt} (hoặc bọc `timeout <giây> ...`)")
+
 def check_stage_change(new_stage, cwd):
     """Lead đổi giai đoạn: TASK.md (task mới nhất) phải đủ điều kiện."""
     root = find_root(cwd)
@@ -853,6 +981,13 @@ def check_stage_change(new_stage, cwd):
         return
     latest = max(tasks, key=os.path.getmtime)
     miss = gate_missing(new_stage, open(latest, encoding="utf-8", errors="ignore").read())
+    cur = stage_value(cwd)
+    if cur in ("S2", "S3", "S4", "S5") and new_stage != cur:
+        sp = os.path.join(os.path.dirname(latest), "board", "SUMMARY.md")
+        text = open(sp, encoding="utf-8", errors="ignore").read() if os.path.isfile(sp) else ""
+        if not re.search(rf"(?m)^##\s+{cur}\b", text):
+            miss.append(f"tóm tắt giai đoạn {cur} (mục `## {cur}` trong board/SUMMARY.md: quyết định, kết quả, việc còn mở) "
+                        "- giai đoạn sau chỉ đọc tóm tắt, cần chi tiết thì query board")
     if new_stage == "S3":
         n = open_whys(root, os.path.basename(os.path.dirname(latest)))
         if n:
@@ -1062,6 +1197,9 @@ def main():
                                                    )) or (tool == "Bash" and "agent-tasks" in ti.get("command", "")):
             block("challenger không được đọc docs/ (TASK, board, CONTEXT). Chỉ dùng yêu cầu gốc Lead đưa và diff/code")
 
+    if tool in ("Grep", "Glob", "Bash"):
+        check_blind_scan(tool, ti, role, cwd)
+
     # state DB clone: agent không được đọc/ghi (Lead thì được)
     if role and tool in ("Read", "Grep", "Glob", "Write", "Edit", "MultiEdit", "NotebookEdit"):
         if touches_hidden(full_path(path, cwd) + "/") or touches_hidden(ti.get("glob", "")):
@@ -1072,6 +1210,7 @@ def main():
         if board_segments(cmd.split("\n", 1)[0]):
             cmd = strip_heredocs(cmd)
         check_board(cmd, role)
+        check_forever(cmd)
         if role and any(first_cmd(tk) in PERM_CMDS for tk in parse(cmd)):
             block("không được đổi quyền file (chmod/chown...), nhờ Lead")
         check_graphify(cmd, role)

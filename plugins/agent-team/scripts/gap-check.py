@@ -309,7 +309,7 @@ def check(root, gate=False):
             why.append(f"chưa có {P}/design/index.html (trang bắt đầu, link tới mọi luồng)")
         pages = sorted(f for f in os.listdir(ddir) if f.endswith(".html")) if os.path.isdir(ddir) else []
         for f in pages:
-            for target in sorted(set(re.findall(r'href="([^"#?:]+\.html)', read_raw(os.path.join(ddir, f)) or ""))):
+            for target in sorted(set(re.findall(r'(?:href|src)="([^"#?:]+\.(?:html|css|js))"', read_raw(os.path.join(ddir, f)) or ""))):
                 if not os.path.isfile(os.path.join(ddir, target)):
                     why.append(f"{f} link tới {target} không có")
         for s, r in screens.items():

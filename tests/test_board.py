@@ -169,5 +169,89 @@ if shutil.which("mmdc"):
     html = open(os.path.join(td, "REPORT.html"), encoding="utf-8").read()
     check("HTML có mmdc: sơ đồ vẽ sẵn thành SVG, id riêng", '<div class="diagram"><svg' in html and "my-svg" not in html)
 
+# ---- tóm tắt bắt buộc trước khi đóng lượt + đọc đúng 1 câu WHY ----
+X = "20261122-sum"
+run("open", X, "S2", "1", "--goal", "đề xuất")
+run("post", X, "--role", "business-analyst", "--body", "AC-1 ...")
+code, out = run("close", X)
+check("đóng lượt có bài mà chưa tóm tắt bị từ chối", code == 1 and "chưa tóm tắt" in out)
+run("summary", X, "--body", "BA đưa AC-1")
+check("tóm tắt xong thì đóng được", run("close", X)[0] == 0)
+run("open", X, "S2", "2")
+check("lượt không có bài nào đóng được không cần tóm tắt", run("close", X)[0] == 0)
+code, out = run("read", W, "--why", "1")
+check("read --why: câu hỏi + phiếu + dòng nhắc tới", code == 0 and "WHY-1 [agreed]" in out and "DISAGREE business-analyst" in out and "RE WHY-1" in out)
+check("read --why không tồn tại báo lỗi", run("read", W, "--why", "99")[0] == 1)
+
+# ---- report chèn _wf.css / _wf.js vào mockup nhúng ----
+open(os.path.join(dd, "_wf.css"), "w", encoding="utf-8").write(".guide{border:2px dashed #666}")
+open(os.path.join(dd, "_wf.js"), "w", encoding="utf-8").write("var WF=1;")
+open(os.path.join(dd, "mockup-huy-don.html"), "w", encoding="utf-8").write(
+    '<!doctype html><title>Huỷ đơn</title><link rel="stylesheet" href="_wf.css"><p>wire</p><script src="_wf.js"></script>')
+ENV["AGENT_TEAM_NO_MMDC"] = "1"
+run("report", W)
+html = open(os.path.join(td, "REPORT.html"), encoding="utf-8").read()
+check("report: mockup nhúng có sẵn CSS / JS dùng chung", "border:2px dashed #666" in html and "var WF=1;" in html and "_wf.css" not in html)
+del ENV["AGENT_TEAM_NO_MMDC"]
+
+# ---- trạng thái agent: heartbeat (hook), done, progress, wait, stuck ----
+import json as _json
+HB = os.path.join(os.path.dirname(BOARD), "..", "hooks", "heartbeat.py")
+hp = tempfile.mkdtemp()
+os.makedirs(os.path.join(hp, ".claude")); os.makedirs(os.path.join(hp, ".agent-team"))
+os.makedirs(os.path.join(hp, "docs", "agent-tasks", "H1"))
+open(os.path.join(hp, ".claude", "agent-team.config"), "w").write("HANG_MINUTES=1\n")
+open(os.path.join(hp, "docs", "agent-tasks", "H1", "TASK.md"), "w").write("x")
+HENV = {**os.environ, "AGENT_TEAM_BOARD_DB": ""}
+HENV.pop("AGENT_TEAM_BOARD_DB")
+
+
+def hrun(*args, stdin=None):
+    r = subprocess.run([sys.executable, BOARD, *args], input=stdin, capture_output=True, text=True, env=HENV, cwd=hp)
+    return r.returncode, r.stdout + r.stderr
+
+
+def hb(ev, role, tool="Bash", ti=None):
+    d = {"agent_type": f"agent-team:{role}", "tool_name": tool, "tool_input": ti or {"command": "graphify explain Order"}, "cwd": hp}
+    return subprocess.run([sys.executable, HB, ev], input=_json.dumps(d), capture_output=True, text=True).returncode
+
+
+hrun("open", "H1", "S2", "1", "--roles", "business-analyst,solution-architect")
+check("heartbeat không bao giờ chặn tool", hb("pre", "business-analyst") == 0)
+code, out = hrun("status", "H1")
+check("status: agent đang làm + tool đang chạy", "business-analyst: đang làm" in out and "graphify explain Order" in out)
+check("status: agent chưa bắt đầu", "solution-architect: chưa bắt đầu" in out)
+hb("post", "business-analyst")
+check("progress ghi bước + eta", hrun("progress", "H1", "--role", "business-analyst", "--step", "AC 3/5", "--eta", "4")[0] == 0
+      and "AC 3/5" in hrun("status", "H1")[1])
+check("done ghi kết quả", hrun("done", "H1", "--role", "business-analyst", "--body", "AC-1..5 xong")[0] == 0)
+code, out = hrun("post", "H1", "--role", "business-analyst", "--body", "thêm")
+check("post sau DONE bị từ chối (bảo kết thúc ngay)", code == 1 and "KẾT THÚC NGAY" in out)
+check("done lần 2 bị từ chối", hrun("done", "H1", "--role", "business-analyst", "--body", "x")[0] == 1)
+check("done quá 5 dòng bị từ chối", hrun("done", "H1", "--role", "solution-architect", "--body", "1\n2\n3\n4\n5\n6")[0] == 1)
+hb("pre", "solution-architect")
+hb("stop", "solution-architect")
+code, out = hrun("wait", "H1", "--interval", "1", "--max", "3")
+check("SubagentStop tự ghi DONE → wait trả về XONG (exit 0)", code == 0 and "XONG" in out and "AC-1..5 xong" in out)
+hrun("summary", "H1", "--body", "x"); hrun("close", "H1")
+hrun("open", "H1", "S2", "2", "--roles", "test-designer")
+hb("pre", "test-designer", ti={"command": "docker compose up app"})
+import sqlite3 as _sq
+_db = _sq.connect(os.path.join(hp, ".agent-team", "board.db"))
+_db.execute("UPDATE agent_runs SET last_seen=last_seen-600, busy_since=busy_since-600 WHERE role='test-designer'")
+_db.execute("UPDATE rounds SET opened_at=opened_at-600 WHERE stage='S2' AND round=2")
+_db.commit(); _db.close()
+code, out = hrun("wait", "H1", "--interval", "1", "--max", "3")
+check("agent im quá HANG_MINUTES → wait trả về CÓ AGENT TREO (exit 3)", code == 3 and "test-designer: ⚠ im" in out)
+code, out = hrun("stuck", "H1")
+check("stuck gợi ý lệnh tắt đúng lệnh đang kẹt", "pgrep -fl" in out and "docker compose up app" in out)
+hrun("open", "H1", "S9", "1")  # stage sai: không ảnh hưởng
+hb("pre", "test-designer", ti={"command": "timeout 1800 bundle exec rspec"})
+_db = _sq.connect(os.path.join(hp, ".agent-team", "board.db"))
+_db.execute("UPDATE agent_runs SET last_seen=last_seen-600, busy_since=busy_since-600 WHERE role='test-designer'")
+_db.commit(); _db.close()
+code, out = hrun("wait", "H1", "--interval", "1", "--max", "2")
+check("lệnh có timeout 1800: im 10 phút chưa coi là treo (exit 4)", code == 4 and "đang làm" in out)
+
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

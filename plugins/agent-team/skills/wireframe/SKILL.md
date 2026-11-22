@@ -1,6 +1,6 @@
 ---
 name: wireframe
-description: Vẽ wireframe ĐEN TRẮNG cho màn hình của task - đơn giản nhưng đủ mọi chức năng và trạng thái (có dữ liệu, rỗng, đang tải, lỗi, không có quyền) - 1 file HTML tự chứa mỗi màn, bên trái là trang app có header / footer, bên phải là bảng hướng dẫn xem (vai trò, trường hợp, luồng, ghi chú), không lộ mã nội bộ, các màn link với nhau bấm thử được, có index.html theo luồng. Dùng khi ui-designer làm mockup trong debate để team và client thống nhất luồng, chức năng.
+description: Vẽ wireframe ĐEN TRẮNG cho màn hình của task - đơn giản nhưng đủ mọi chức năng và trạng thái (có dữ liệu, rỗng, đang tải, lỗi, không có quyền) - 1 file HTML mỗi màn dùng chung _wf.css / _wf.js, bên trái là trang app có header / footer, bên phải là bảng hướng dẫn xem (vai trò, trường hợp, luồng, ghi chú), không lộ mã nội bộ, các màn link với nhau bấm thử được, có index.html theo luồng. Dùng khi ui-designer làm mockup trong debate để team và client thống nhất luồng, chức năng.
 ---
 
 # Wireframe đen trắng
@@ -8,7 +8,7 @@ description: Vẽ wireframe ĐEN TRẮNG cho màn hình của task - đơn giả
 Mục tiêu: thống nhất **chức năng và luồng**, không phải giao diện đẹp. Màu, font, component thật do FE lấy từ dự án khi code.
 
 ## Quy tắc
-1. **Một màn = một file** `docs/agent-tasks/<task-id>/design/mockup-<tên-màn>.html` (App / Module: `docs/product/.../design/`), tự chứa (không ảnh, không font, không thư viện ngoài). `<title>` là tên màn (tiếng Việt).
+1. **Một màn = một file** `docs/agent-tasks/<task-id>/design/mockup-<tên-màn>.html` (App / Module: `docs/product/.../design/`), **link tới `_wf.css` + `_wf.js` dùng chung** cùng thư mục (mục "File dùng chung"), không ảnh, không font, không thư viện ngoài. `<title>` là tên màn (tiếng Việt).
 2. **Chỉ đen, trắng, xám**: `#000`, `#fff`, `#666`, `#999`, `#ddd`, `#f2f2f2`. Không màu khác, không icon màu. Ảnh/biểu đồ = khung xám có chữ mô tả.
 3. **Màn chia 2 bên** (client xem như app thật, không lẫn ghi chú vào màn):
    ```
@@ -39,11 +39,12 @@ Mục tiêu: thống nhất **chức năng và luồng**, không phải giao di�
 8. Bố cục bám màn hình hiện có của dự án nếu sửa màn cũ (Scout đã ghi file màn trong CONTEXT.md): giữ vị trí menu, header, vùng nội dung.
 9. **Responsive** (config `VIEWPORTS` có chiều rộng < 768, hoặc `docs/product/intake.md` ghi `Responsive: CÓ`): **mọi màn bắt buộc có trường hợp `Điện thoại`** (`data-s=\"mobile\"`, khung 375px), vẽ đúng cách màn co lại: menu → nút ☰, bảng → thẻ hoặc cuộn trong khung, nút chính dễ bấm (≥ 44px), không cuộn ngang. `gap-check.py` báo thiếu nếu không có. Không responsive: chỉ thêm khi màn mobile khác desktop.
 
-## Khung mẫu (1 màn)
-```html
-<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Trang chủ</title>
-<style>
+## File dùng chung (viết 1 lần, mọi màn link tới, không chép vào từng màn)
+Cùng thư mục `design/`: `_wf.css` (khung 2 bên, nút, trường hợp, bảng hướng dẫn) và `_wf.js` (chọn trường hợp, vai trò, luồng, hiện mã). ui-designer tạo **1 lần** bằng cách chép nguyên 2 khối dưới; sửa thì sửa ở đây, không chép lại vào màn. Style riêng của 1 màn (ít dòng) được để `<style>` nhỏ trong màn đó. `board.py report` tự chèn 2 file này khi nhúng mockup vào REPORT.html.
+
+`_wf.css`
+```css
+/* _wf.css - dùng chung cho mọi mockup: khung 2 bên (trang app | hướng dẫn xem), đen trắng */
 *{box-sizing:border-box}body{margin:0;font:14px/1.5 system-ui,sans-serif;color:#000;background:#f2f2f2}
 .wrap{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;padding:16px;align-items:start}
 @media (max-width:900px){.wrap{grid-template-columns:1fr}}
@@ -68,7 +69,39 @@ body.codes [data-r]::after{content:" " attr(data-r);font-size:10px;border:1px so
 .guide button,.guide select{font:inherit;font-size:12px;margin:2px;border:1px solid #999;background:#fff;cursor:pointer;padding:2px 6px}
 .guide button.on{background:#000;color:#fff;border-color:#000}.guide a{color:#000}
 .guide ol{margin:4px 0;padding-left:18px}.guide li{margin:3px 0}
-</style></head><body>
+```
+
+`_wf.js` (màn không có vai trò / luồng thì bỏ mục đó trong bảng hướng dẫn, script tự bỏ qua)
+```js
+/* _wf.js - dùng chung cho mọi mockup: chọn trường hợp (#hash), vai trò (?vt=), luồng (?f=), hiện mã cho team */
+(function(){
+var q=new URLSearchParams(location.search),f=document.getElementById('f'),B=document.body;
+function go(href){var p=new URLSearchParams();if(f)p.set('f',f.value);if(B.dataset.vt)p.set('vt',B.dataset.vt);var s=p.toString();return s?href+'?'+s:href;}
+function links(){document.querySelectorAll('.page a[href]').forEach(function(a){var h=a.getAttribute('href');
+if(/\.html(\?|$)/.test(h))a.href=go(h.split('?')[0]);});}
+function state(){var id=location.hash.slice(1)||'normal';if(!document.getElementById(id))id='normal';
+document.querySelectorAll('.state').forEach(function(x){x.classList.toggle('on',x.id===id)});
+document.querySelectorAll('#st button').forEach(function(b){b.classList.toggle('on',b.dataset.s===id)});}
+function flow(){if(!f)return;var o=f.options[f.selectedIndex],st=document.getElementById('step');if(st)st.textContent=o.dataset.step||'';
+[['prev','data-prev'],['next','data-next']].forEach(function(x){var a=document.getElementById(x[0]),h=o.getAttribute(x[1]);if(!a)return;
+if(h){a.href=go(h);a.style.color='';}else{a.removeAttribute('href');a.style.color='#999';}});}
+function role(v){if(v)B.dataset.vt=v;document.querySelectorAll('[data-role]').forEach(function(e){e.style.display=e.dataset.role.split(' ').indexOf(v)>=0?'':'none'});
+document.querySelectorAll('#vt button').forEach(function(b){b.classList.toggle('on',b.dataset.vt===v)});links();flow();}
+if(f){if(q.get('f'))f.value=q.get('f');f.onchange=function(){links();flow();};}
+document.querySelectorAll('#st button').forEach(function(b){b.onclick=function(){location.hash=b.dataset.s;};});
+document.querySelectorAll('#vt button').forEach(function(b){b.onclick=function(){role(b.dataset.vt);};});
+var c=document.getElementById('codes');if(c)c.onchange=function(){B.classList.toggle('codes',this.checked);};
+window.addEventListener('hashchange',state);state();
+var v0=q.get('vt')||((document.querySelector('#vt button')||{dataset:{}}).dataset.vt);role(v0);
+})();
+```
+
+## Khung mẫu (1 màn)
+Màn chỉ chứa: header, các trường hợp, footer của app + bảng hướng dẫn (mô tả, vai trò, trường hợp, luồng, ghi chú). Không chép CSS / JS.
+```html
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Trang chủ</title>
+<link rel="stylesheet" href="_wf.css"></head><body>
 <div class="wrap">
 <main class="page">
   <header><span class="logo">vtb506</span><a href="mockup-trang-chu.html">Trang chủ</a>
@@ -121,24 +154,7 @@ body.codes [data-r]::after{content:" " attr(data-r);font-size:10px;border:1px so
   <p><a href="index.html">Mục lục mọi màn</a> · <label><input type="checkbox" id="codes"> Hiện mã (cho team)</label></p>
 </aside>
 </div>
-<script>
-var q=new URLSearchParams(location.search);
-function go(href){var p=new URLSearchParams();p.set('f',f.value);p.set('vt',document.body.dataset.vt);return href+'?'+p;}
-function state(){var id=location.hash.slice(1)||'normal';if(!document.getElementById(id))id='normal';
-document.querySelectorAll('.state').forEach(function(x){x.classList.toggle('on',x.id===id)});
-document.querySelectorAll('#st button').forEach(function(b){b.classList.toggle('on',b.dataset.s===id)});}
-function role(v){document.body.dataset.vt=v;document.querySelectorAll('[data-role]').forEach(function(e){e.style.display=e.dataset.role.split(' ').indexOf(v)>=0?'':'none'});
-document.querySelectorAll('#vt button').forEach(function(b){b.classList.toggle('on',b.dataset.vt===v)});
-document.querySelectorAll('.page a[href$=".html"]').forEach(function(a){a.href=go(a.getAttribute('href').split('?')[0])});flow();}
-function flow(){var o=f.options[f.selectedIndex];document.getElementById('step').textContent=o.dataset.step;
-[['prev','data-prev'],['next','data-next']].forEach(function(x){var a=document.getElementById(x[0]),h=o.getAttribute(x[1]);
-if(h){a.href=go(h);a.style.color='';}else{a.removeAttribute('href');a.style.color='#999';}});}
-var f=document.getElementById('f');if(q.get('f'))f.value=q.get('f');f.onchange=flow;
-document.querySelectorAll('#st button').forEach(function(b){b.onclick=function(){location.hash=b.dataset.s;};});
-document.querySelectorAll('#vt button').forEach(function(b){b.onclick=function(){role(b.dataset.vt);};});
-document.getElementById('codes').onchange=function(){document.body.classList.toggle('codes',this.checked);};
-window.addEventListener('hashchange',state);state();role(q.get('vt')||document.querySelector('#vt button').dataset.vt);
-</script>
+<script src="_wf.js"></script>
 </body></html>
 ```
 

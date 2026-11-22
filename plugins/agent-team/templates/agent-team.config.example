@@ -45,6 +45,10 @@ COST_TIER=standard
 # Nơi Lead ghi bài học sau mỗi task (Scout đọc ở task sau). Để trống = bỏ qua.
 LESSONS_PATH=docs/LESSONS.md
 
+# Agent im lặng (không dùng tool) quá số phút này thì coi là treo: board.py wait / status / status line báo ⚠.
+# Lệnh có `timeout N` thì ngưỡng theo N. Việc chạy lâu mà vẫn dùng tool (vẽ nhiều màn) không bị coi là treo.
+HANG_MINUTES=10
+
 # 1 = dùng code graph Graphify (cài riêng: xem release-notes của plugin; Lead chạy graphify update)
 USE_CODE_GRAPH=1
 

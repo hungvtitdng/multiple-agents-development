@@ -15,6 +15,7 @@ WHY trong bài post (mỗi dòng một lệnh, dòng sau không có từ khoá t
 WHY đóng khi MỌI thành viên team (trừ người trả lời) AGREE.
 """
 import argparse
+import json
 import os
 import re
 import sqlite3
@@ -48,6 +49,10 @@ CREATE TABLE IF NOT EXISTS votes (
 CREATE TABLE IF NOT EXISTS vote_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT, why_id INTEGER NOT NULL, role TEXT NOT NULL, vote TEXT NOT NULL,
   reason TEXT, answer_no INTEGER, created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS agent_runs (
+  task TEXT NOT NULL, role TEXT NOT NULL, run TEXT NOT NULL, started_at INTEGER NOT NULL, last_seen INTEGER NOT NULL,
+  last_tool TEXT, busy_since INTEGER, tool_timeout INTEGER, state TEXT NOT NULL DEFAULT 'RUNNING',
+  step TEXT, eta_min INTEGER, result TEXT, ended_at INTEGER, PRIMARY KEY(task, role, run));
 """
 OPEN_STATUS = ("open", "voting")
 _P = r"^\s*(?:[-*]\s*)?"
@@ -140,6 +145,10 @@ def cmd_open(db, a):
 
 def cmd_close(db, a):
     r = open_round(db, a.task) or die("không có lượt đang mở")
+    posted = db.execute("SELECT count(*) FROM messages WHERE task=? AND stage=? AND round=?", (a.task, r["stage"], r["round"])).fetchone()[0]
+    summed = db.execute("SELECT count(*) FROM summaries WHERE task=? AND stage=? AND round=?", (a.task, r["stage"], r["round"])).fetchone()[0]
+    if posted and not summed:
+        die(f"chưa tóm tắt {r['stage']}-R{r['round']}: chạy `board.py summary {a.task}` trước khi đóng (lượt sau mọi người chỉ đọc tóm tắt)")
     db.execute("UPDATE rounds SET closed_at=? WHERE id=?", (int(time.time()), r["id"]))
     db.commit()
     print(f"Đã đóng {r['stage']}-R{r['round']}")
@@ -288,6 +297,9 @@ def cmd_why_close(db, a):
 
 
 def cmd_post(db, a):
+    row = run_row(db, a.task, norm_role(a.role), current_run(db, a.task))
+    if row and row["state"] == "DONE":
+        die(f"{norm_role(a.role)} đã DONE ở lượt này. KẾT THÚC NGAY: trả kết quả về Lead, không post thêm")
     role = norm_role(a.role) or die("thiếu --role")
     r = open_round(db, a.task) or die("không có lượt đang mở, Lead chưa mở lượt")
     allowed = [x for x in (r["roles"] or "").split(",") if x]
@@ -311,7 +323,23 @@ def cmd_post(db, a):
         print("  " + n)
 
 
+def read_why(db, task, n):
+    """1 câu WHY: câu hỏi, trả lời hiện tại, lịch sử phiếu, các dòng bài post nhắc tới nó. Dùng khi cần phán quyết."""
+    w = db.execute("SELECT * FROM whys WHERE id=? AND task=?", (n, task)).fetchone() or die(f"không có WHY-{n}")
+    print(f"WHY-{n} [{w['status']}] {w['asker']} → {w['target']}: {w['question']}")
+    print(f"Trả lời (lần {w['answers']}): {w['answer'] or '-'}" + (f"\nGhi chú: {w['note']}" if w["note"] else ""))
+    for l in db.execute("SELECT * FROM vote_log WHERE why_id=? ORDER BY id", (w["id"],)):
+        print(f"  {l['vote']} {l['role']} (lần {l['answer_no']})" + (f": {l['reason']}" if l["reason"] else ""))
+    tag = re.compile(rf"\bWHY-{n}\b")
+    for m in db.execute("SELECT * FROM messages WHERE task=? AND body LIKE ? ORDER BY id", (task, f"%WHY-{n}%")):
+        lines = [x for x in m["body"].splitlines() if tag.search(x)]
+        if lines:
+            print(f"#{m['id']} [{m['stage']}-R{m['round']}] {m['role']}: " + " | ".join(lines))
+
+
 def cmd_read(db, a):
+    if a.why:
+        return read_why(db, a.task, a.why)
     q, args = "SELECT * FROM messages WHERE task=?", [a.task]
     if a.mention:
         q += " AND (',' || mentions || ',') LIKE ?"
@@ -378,6 +406,14 @@ def cmd_status(db, a):
     print(f"WHY chưa thống nhất: {len(opened)}")
     for line in opened:
         print(line)
+    root = find_root()
+    run = current_run(db, a.task, root)
+    view = agent_view(db, a.task, run, expected_roles(db, a.task, None), hang_minutes(root) * 60,
+                      r["opened_at"] if r else int(time.time()))
+    if view:
+        print(f"Agent ({run}):")
+        for _, _, line in view:
+            print("  " + line)
 
 
 def cmd_summary(db, a):
@@ -577,6 +613,15 @@ def mermaid_svg(code, root):
     return svg[svg.find("<svg"):].replace("my-svg", uid) if "<svg" in svg else None
 
 
+def inline_shared(html_text, ddir):
+    """Mockup link _wf.css / _wf.js dùng chung: chèn thẳng nội dung để nhúng được vào REPORT.html (iframe srcdoc không tải file ngoài)."""
+    def body(name):
+        p = os.path.join(ddir, name)
+        return open(p, encoding="utf-8").read() if os.path.isfile(p) else ""
+    html_text = re.sub(r'<link[^>]+href="_wf\.css"[^>]*>', lambda m: f"<style>{body('_wf.css')}</style>", html_text)
+    return re.sub(r'<script[^>]+src="_wf\.js"[^>]*>\s*</script>', lambda m: f"<script>{body('_wf.js')}</script>", html_text)
+
+
 def load_design(tdir):
     """{'diagrams': [(file, tiêu đề, [(mermaid, ghi chú)])], 'mockups': [(file, tên màn, html)]}."""
     ddir = os.path.join(tdir, "design")
@@ -593,7 +638,7 @@ def load_design(tdir):
             res["diagrams"].append((f, title, codes, notes))
     for f in sorted(os.listdir(ddir)):
         if re.match(r"^mockup-.+\.html$", f):
-            html_text = open(os.path.join(ddir, f), encoding="utf-8").read()
+            html_text = inline_shared(open(os.path.join(ddir, f), encoding="utf-8").read(), ddir)
             m = re.search(r"<title>(.*?)</title>", html_text, re.S)
             res["mockups"].append((f, (m.group(1).strip() if m else f[7:-5]), html_text))
     return res
@@ -921,6 +966,180 @@ def cmd_report(db, a):
     print(f"Đã tạo báo cáo {out} và {hout}")
 
 
+# ---------- trạng thái agent (nhịp tim): hook ghi, Lead `wait`, status line đọc ----------
+
+def current_run(db, task, root=None):
+    """Lượt đang mở (S2-R3), không có thì giai đoạn hiện tại (S3), không có nữa thì '-'."""
+    r = open_round(db, task)
+    if r:
+        return f"{r['stage']}-R{r['round']}"
+    try:
+        return open(os.path.join(root or find_root(), ".agent-team", "stage"), encoding="utf-8").read().strip().upper() or "-"
+    except OSError:
+        return "-"
+
+
+def hang_minutes(root):
+    try:
+        for line in open(os.path.join(root, ".claude", "agent-team.config"), encoding="utf-8", errors="ignore"):
+            m = re.match(r"^\s*HANG_MINUTES=\s*['\"]?(\d+)", line)
+            if m:
+                return int(m.group(1))
+    except OSError:
+        pass
+    return 10
+
+
+def run_row(db, task, role, run):
+    return db.execute("SELECT * FROM agent_runs WHERE task=? AND role=? AND run=?", (task, role, run)).fetchone()
+
+
+def touch_run(db, task, role, run, **kw):
+    now = int(time.time())
+    if not run_row(db, task, role, run):
+        db.execute("INSERT INTO agent_runs(task, role, run, started_at, last_seen) VALUES(?,?,?,?,?)", (task, role, run, now, now))
+    sets = ", ".join(f"{k}=?" for k in kw)
+    db.execute(f"UPDATE agent_runs SET last_seen=?{', ' + sets if sets else ''} WHERE task=? AND role=? AND run=?",
+               (now, *kw.values(), task, role, run))
+    db.commit()
+
+
+def cmd_done(db, a):
+    role, run = norm_role(a.role), current_run(db, a.task)
+    row = run_row(db, a.task, role, run)
+    if row and row["state"] == "DONE":
+        die(f"{role} đã DONE ở {run}. KẾT THÚC NGAY: trả kết quả về Lead, không post / done lại")
+    body = read_body(a)
+    if body.count("\n") + 1 > 5:
+        die("kết quả done tối đa 5 dòng (chi tiết đã nằm trên board / file)")
+    touch_run(db, a.task, role, run, state="DONE", result=body, ended_at=int(time.time()), busy_since=None)
+    print(f"Đã ghi DONE {role} ({run}). KẾT THÚC NGAY: trả kết quả về Lead, không chờ Lead trả lời.")
+
+
+def cmd_progress(db, a):
+    role, run = norm_role(a.role), current_run(db, a.task)
+    touch_run(db, a.task, role, run, step=a.step, eta_min=a.eta)
+    print(f"Đã ghi tiến độ {role}: {a.step}" + (f", còn ~{a.eta} phút" if a.eta else ""))
+
+
+def typical_minutes(db, role):
+    xs = sorted((r[0] - r[1]) / 60 for r in db.execute(
+        "SELECT ended_at, started_at FROM agent_runs WHERE role=? AND state='DONE' AND ended_at IS NOT NULL", (role,)))
+    return round(xs[len(xs) // 2]) if xs else None
+
+
+def agent_view(db, task, run, roles, hang_s, since):
+    """[(role, kind, dòng)] kind: done | running | stuck | waiting."""
+    now, out = int(time.time()), []
+    rows = {r["role"]: r for r in db.execute("SELECT * FROM agent_runs WHERE task=? AND run=?", (task, run))}
+    for role in roles or sorted(rows):
+        r = rows.get(role)
+        if not r:
+            idle = now - since
+            out.append((role, "stuck" if idle > hang_s else "waiting",
+                        f"{role}: chưa bắt đầu ({idle // 60} phút)" + (" ⚠ có thể bị từ chối chạy / chờ duyệt quyền" if idle > hang_s else "")))
+            continue
+        if r["state"] == "DONE":
+            out.append((role, "done", f"{role}: DONE · {(r['result'] or '').splitlines()[0][:120] if r['result'] else ''}"))
+            continue
+        idle = now - r["last_seen"]
+        limit = max(hang_s, (r["tool_timeout"] or 0) + 60) if r["busy_since"] else hang_s
+        typ = typical_minutes(db, role)
+        info = (f" · {r['step']}" if r["step"] else "") + (f" · còn ~{r['eta_min']} phút" if r["eta_min"] else "") + \
+               (f" · thường mất ~{typ} phút" if typ else "")
+        tool = f" · {'đang chạy' if r['busy_since'] else 'tool cuối'}: {r['last_tool']}" if r["last_tool"] else ""
+        if idle > limit:
+            out.append((role, "stuck", f"{role}: ⚠ im {idle // 60} phút{tool}{info}"))
+        else:
+            out.append((role, "running", f"{role}: đang làm (lần cuối {idle}s trước){tool}{info}"))
+    return out
+
+
+def expected_roles(db, task, a_roles):
+    if a_roles:
+        return [norm_role(x) for x in a_roles.split(",") if x.strip()]
+    r = open_round(db, task)
+    return [x for x in ((r["roles"] if r else "") or "").split(",") if x]
+
+
+def cmd_wait(db, a):
+    """Đọc trạng thái mỗi `--interval` giây. Trả về khi: mọi agent DONE (0), có agent im quá ngưỡng (3), hết `--max` giây (4)."""
+    root = find_root()
+    hang_s = (a.hang or hang_minutes(root)) * 60
+    r = open_round(db, a.task)
+    since = r["opened_at"] if r else int(time.time())
+    start = time.time()
+    while True:
+        run = current_run(db, a.task, root)
+        roles = expected_roles(db, a.task, a.roles)
+        view = agent_view(db, a.task, run, roles, hang_s, since)
+        if not view:
+            print("Không có agent nào để chờ (thêm --roles a,b)")
+            return
+        kinds = {k for _, k, _ in view}
+        done_all = kinds == {"done"}
+        if done_all or "stuck" in kinds or time.time() - start >= a.max:
+            head = ("XONG: mọi agent DONE" if done_all else "CÓ AGENT TREO: dừng (TaskStop) rồi gọi lại kèm lý do"
+                    if "stuck" in kinds else "CHƯA XONG, đang chạy bình thường: gọi wait lần nữa")
+            print(f"[{run}] {head}")
+            print("\n".join(line for _, _, line in view))
+            sys.exit(0 if done_all else 3 if "stuck" in kinds else 4)
+        time.sleep(a.interval)
+        db.commit()  # đọc bản mới nhất (WAL)
+
+
+def cmd_stuck(db, a):
+    root = find_root()
+    hang_s = (a.hang or hang_minutes(root)) * 60
+    run = current_run(db, a.task, root)
+    r = open_round(db, a.task)
+    view = agent_view(db, a.task, run, expected_roles(db, a.task, None), hang_s, r["opened_at"] if r else int(time.time()))
+    bad = [(role, line) for role, k, line in view if k == "stuck"]
+    if not bad:
+        print("Không có agent treo")
+        return
+    for role, line in bad:
+        print(line)
+        row = run_row(db, a.task, role, run)
+        if row and row["busy_since"] and row["last_tool"] and row["last_tool"].startswith("Bash: "):
+            key = row["last_tool"][6:].split("&&")[0].strip()[:40]
+            print(f"  tắt lệnh đang kẹt (terminal khác): pgrep -fl {json.dumps(key)}  →  kill <PID>")
+
+
+def heartbeat(event, data):
+    """Hook gọi: Pre / Post (mọi tool) và SubagentStop. Chỉ ghi cho subagent (có agent_type). Không bao giờ chặn."""
+    role = norm_role(data.get("agent_type") or "")
+    if not role:
+        return
+    os.chdir(data.get("cwd") or os.getcwd())
+    root = find_root()
+    if not os.path.isfile(os.path.join(root, ".claude", "agent-team.config")):
+        return
+    tasks = [p for p in (os.path.join(root, "docs", "agent-tasks", d, "TASK.md")
+                         for d in (os.listdir(os.path.join(root, "docs", "agent-tasks")) if os.path.isdir(os.path.join(root, "docs", "agent-tasks")) else []))
+             if os.path.isfile(p)]
+    if not tasks:
+        return
+    task = os.path.basename(os.path.dirname(max(tasks, key=os.path.getmtime)))
+    db = connect()
+    run = current_run(db, task, root)
+    if event == "stop":
+        row = run_row(db, task, role, run)
+        if row and row["state"] != "DONE":
+            touch_run(db, task, role, run, state="DONE", busy_since=None, ended_at=int(time.time()),
+                      result=row["result"] or "(agent kết thúc nhưng chưa chạy board.py done: xem bài post / kết quả trả về)")
+        return
+    ti = data.get("tool_input") or {}
+    tool = data.get("tool_name") or "?"
+    desc = f"Bash: {ti.get('command', '')}" if tool == "Bash" else f"{tool}: {os.path.basename(ti.get('file_path') or ti.get('path') or ti.get('pattern') or '')}"
+    desc = " ".join(desc.split())[:80]
+    if event == "pre":
+        m = re.search(r"\btimeout\s+(\d+)", ti.get("command", "") if tool == "Bash" else "")
+        touch_run(db, task, role, run, last_tool=desc, busy_since=int(time.time()), tool_timeout=int(m.group(1)) if m else None)
+    else:
+        touch_run(db, task, role, run, busy_since=None)
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="board.py", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sp = p.add_subparsers(dest="cmd", required=True)
@@ -935,7 +1154,7 @@ def main(argv=None):
     r = sp.add_parser("read")
     r.add_argument("task"), r.add_argument("--all", action="store_true")
     r.add_argument("--stage"), r.add_argument("--round", type=int), r.add_argument("--mention")
-    r.add_argument("--since", type=int)
+    r.add_argument("--since", type=int), r.add_argument("--why", type=int, help="chỉ 1 câu WHY: câu hỏi, trả lời, phiếu, dòng nhắc tới")
     s = sp.add_parser("summary")
     s.add_argument("task"), s.add_argument("--body")
     e = sp.add_parser("export")
@@ -947,6 +1166,15 @@ def main(argv=None):
     c = sp.add_parser("why-close")
     c.add_argument("task"), c.add_argument("n", type=int)
     c.add_argument("--as", dest="as_", choices=["ruling", "assumption"], required=True), c.add_argument("--note", required=True)
+    d = sp.add_parser("done", help="agent báo xong (≤ 5 dòng kết quả), sau đó không post thêm ở lượt này")
+    d.add_argument("task"), d.add_argument("--role", required=True), d.add_argument("--body")
+    g = sp.add_parser("progress", help="agent báo tiến độ việc dài")
+    g.add_argument("task"), g.add_argument("--role", required=True), g.add_argument("--step", required=True), g.add_argument("--eta", type=int)
+    wt = sp.add_parser("wait", help="Lead chờ agent nền: đọc trạng thái mỗi --interval giây")
+    wt.add_argument("task"), wt.add_argument("--roles"), wt.add_argument("--hang", type=int, help="phút im lặng coi là treo (mặc định HANG_MINUTES / 10)")
+    wt.add_argument("--interval", type=int, default=30), wt.add_argument("--max", type=int, default=540, help="giây tối đa 1 lần chờ (lệnh Bash tối đa 10 phút)")
+    sk = sp.add_parser("stuck", help="agent đang treo + lệnh đang kẹt")
+    sk.add_argument("task"), sk.add_argument("--hang", type=int)
     rp = sp.add_parser("report")
     rp.add_argument("task"), rp.add_argument("--task-md"), rp.add_argument("--out")
     a = p.parse_args(argv)
