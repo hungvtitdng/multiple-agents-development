@@ -1,3 +1,15 @@
+# Release notes - 22/11/2026 (v0.18.6 - mockup chia 2 bên cho client)
+
+## Thay đổi
+- **Mockup chia 2 bên:** trái là **trang app như thật** (header: logo, menu, tài khoản / Đăng nhập; footer: bản quyền, liên hệ); phải là bảng **"HƯỚNG DẪN XEM MOCKUP (không phải phần của app)"**: mô tả màn, xem với vai trò, trường hợp (Có dữ liệu / Rỗng / Đang tải / Lỗi / Không có quyền / Điện thoại), đi thử theo luồng (chọn luồng, bước x/n ← Trước | Sau →, giữ luồng + vai trò khi sang màn sau), ghi chú màn (lời thường). Màn hẹp: bảng xuống dưới.
+- **Không lộ mã nội bộ cho client:** R-n, AC-n, Q-n... gắn vào `data-r` / `data-q`, không in lên màn; ô "Hiện mã (cho team)" để team đối chiếu. Bỏ thanh luồng nhiều dòng và bảng nổi "XEM TRẠNG THÁI" của bản cũ.
+- `gap-check.py` mục mới "mockup cho client": thiếu `aside.guide` hoặc chữ hiện trên mockup còn mã → thiếu. Sửa theo: skill `wireframe` (khung mẫu mới), `ui-designer`, `app.md`. Test gap-check: 56 case.
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update multiple-agent`, khởi động lại Claude Code.
+- Project đã init: copy lại `scripts/gap-check.py` → `.claude/agent-team/` (chmod +x). Mockup cũ sẽ bị `gap-check` báo thiếu: giao ui-designer vẽ lại theo khung mới (chỉ đổi trình bày, giữ nội dung).
+- Không có ENV / key mới.
+
 # Release notes - 22/11/2026 (v0.18.5 - câu hỏi owner ngắn, đủ ý)
 
 ## Thay đổi

@@ -29,8 +29,8 @@ GOOD = {
     "screens.md": "| S | Màn | Vai trò | Flow | Mockup |\n|---|---|---|---|---|\n"
                   "| S-1 | Đặt lịch | Khách | F-1 | mockup-dat-lich.html |\n"
                   "| S-2 | Lịch ngày | Chủ | F-2 | mockup-lich-ngay.html |\n",
-    "design/mockup-dat-lich.html": "<title>Đặt lịch</title>",
-    "design/mockup-lich-ngay.html": "<title>Lịch ngày</title>",
+    "design/mockup-dat-lich.html": '<title>Đặt lịch</title><main class="page" data-r="R-1">Đặt lịch</main><aside class="guide">Ghi chú</aside>',
+    "design/mockup-lich-ngay.html": '<title>Lịch ngày</title><main class="page">Lịch</main><aside class="guide">Ghi chú</aside>',
     "design/index.html": '<a href="mockup-dat-lich.html">Đặt lịch</a> <a href="mockup-lich-ngay.html#rong">Lịch ngày</a>',
     "APP.md": "- Intake: YES\n- Challenger: DONE\n- Gap-check: PASS\n- Owner duyệt: APPROVED\n",
 }

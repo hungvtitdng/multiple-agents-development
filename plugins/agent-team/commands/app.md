@@ -110,7 +110,7 @@ Debate theo `task.md` mục 4 (board, WHY, chấm điểm, Security duyệt), đ
 3. Câu hỏi mới phát sinh → `questions.md` (có đề xuất, `Nhóm`, `Màn`), nháp tiếp theo đề xuất đó. Chưa build form.
 
 ## 5b. A3b Mockup (trước khi hỏi)
-`ui-designer` (chế độ App Mode): `screens.md` + `docs/product/design/mockup-<màn>.html` cho **mọi** màn trong nháp (đen trắng, 5 trạng thái ở bảng nổi "XEM TRẠNG THÁI", Mobile khi responsive, skill `wireframe`). **Các màn link với nhau theo `flows.md`** + `docs/product/design/index.html` theo luồng: owner mở `index.html` bấm thử như app thật. Chỗ nào trên màn phụ thuộc Q-n chưa chốt → vẽ theo đề xuất, ghi nhãn `Q-n` trên mockup.
+`ui-designer` (chế độ App Mode): `screens.md` + `docs/product/design/mockup-<màn>.html` cho **mọi** màn trong nháp (đen trắng, bên trái trang app có header / footer, bên phải bảng hướng dẫn xem (vai trò, 5 trường hợp, luồng, ghi chú), không in mã nội bộ, Mobile khi responsive, skill `wireframe`). **Các màn link với nhau theo `flows.md`** + `docs/product/design/index.html` theo luồng: owner mở `index.html` bấm thử như app thật. Chỗ nào trên màn phụ thuộc Q-n chưa chốt → vẽ theo đề xuất, ghi nhãn `Q-n` trên mockup.
 
 ## 6. A4 Săn gap trên nháp (song song, trước khi hỏi)
 Gọi cùng lượt:
@@ -135,7 +135,7 @@ Rồi bạn:
 2. Lượt sau mà owner đổi ý → sửa tài liệu, đề xuất lại qua form; không sửa lặng lẽ.
 
 ## 8. Cập nhật mockup + SPEC (sau khi logic đã chốt)
-`ui-designer` sửa mockup theo câu trả lời (bỏ nhãn `Q-n` đã chốt, sửa chỗ owner góp ý).
+`ui-designer` sửa mockup theo câu trả lời (bỏ ghi chú "chờ xác nhận" của câu đã chốt, sửa chỗ owner góp ý).
 Xong: chạy `.claude/agent-team/gap-check.py --spec`, sửa hết `THIEU` → `- Gap-check: PASS` trong `APP.md`. `docs/product/SPEC.md`: **toàn bộ tài liệu app trong 1 file** (ý tưởng, mục tiêu, stack, yêu cầu, flow, màn + link wireframe, dữ liệu, mặc định, câu hỏi, truy vết B → R → S, link quyết định, module). Sinh tự động, không sửa tay.
 
 ## 9. A5 Chia module

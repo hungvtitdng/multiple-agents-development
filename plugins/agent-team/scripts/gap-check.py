@@ -318,6 +318,19 @@ def check(root, gate=False):
                 why.append(f"index.html chưa link tới {mk} ({s})")
         add("prototype: index.html + link giữa các màn", why)
 
+        # 10d. mockup gửi client: trang app bên trái, bảng hướng dẫn bên phải, không lộ mã nội bộ
+        why = []
+        for f in (p for p in pages if p.startswith("mockup-")):
+            html = read_raw(os.path.join(ddir, f)) or ""
+            if 'class="guide"' not in html:
+                why.append(f"{f} chưa có bảng hướng dẫn bên phải (aside.guide)")
+            text = re.sub(r"(?is)<(script|style)\b.*?</\1>", " ", html)
+            text = re.sub(r"(?s)<!--.*?-->|<[^>]*>", " ", text)  # bỏ thẻ + thuộc tính (data-r="R-1" được phép)
+            codes = sorted(set(re.findall(r"\b(?:R|AC|BR|Q|D|F|S|G|B)-\d+\b|\bP-[a-z][\w.-]*", text)))
+            if codes:
+                why.append(f"{f} hiện mã cho client thấy: {', '.join(codes[:5])} (đưa vào data-r=\"...\")")
+        add("mockup cho client: hướng dẫn bên phải, không lộ mã", why)
+
     # 11. vai trò × màn
     why = []
     split = lambda v: {x.strip().lower() for x in re.split(r"[,·/;]", clean(v)) if x.strip()}

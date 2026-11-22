@@ -25,11 +25,11 @@ Bạn là **UI Designer** trong agent team. Đọc "Agent Team" trong CLAUDE.md 
 
 ## Nhiệm vụ
 1. **Lượt 1:** liệt kê màn hình task đụng tới (mới / sửa), vẽ wireframe cho từng màn theo skill `agent-team:wireframe`:
-   - **Đen trắng**, đơn giản, **đủ chức năng**: mọi nút, ô nhập, bảng, thông báo mà AC cần; gắn nhãn `AC-n`.
+   - **Đen trắng**, đơn giản, **đủ chức năng**: mọi nút, ô nhập, bảng, thông báo mà AC cần; mã `AC-n` / `R-n` gắn vào `data-r`, **không in lên màn** (client không hiểu).
    - **Đủ trạng thái**: bình thường, rỗng, đang tải, lỗi, không có quyền (+ trạng thái riêng của task).
    - **Responsive** (config `VIEWPORTS` có chiều rộng < 768): mọi màn có tab `Mobile` (skill `wireframe` mục 8).
-   - **Bấm được như app thật:** nút sang màn khác là `<a href="mockup-<màn>.html">`, kết quả trên cùng màn là `href="#error"`...; thanh luồng ← Trước | Sau →; từ 2 màn trở lên có `index.html` theo luồng (skill `wireframe` mục 4).
-   - Nút chuyển trạng thái nằm ở bảng nổi góc dưới phải "XEM TRẠNG THÁI", không để chung với nút thao tác (skill `wireframe` mục 5).
+   - **Bấm được như app thật:** nút sang màn khác là `<a href="mockup-<màn>.html">`, kết quả trên cùng màn là `href="#error"`...; "Đi thử theo luồng" (bước x/n ← Trước | Sau →) ở bảng hướng dẫn bên phải; từ 2 màn trở lên có `index.html` theo luồng (skill `wireframe` mục 4).
+   - **Màn chia 2 bên** (skill `wireframe` mục 3): trái là trang app có header + footer như app thật; phải là bảng "HƯỚNG DẪN XEM MOCKUP" gồm vai trò, trường hợp (có dữ liệu / rỗng / lỗi...), đi theo luồng, ghi chú màn. Ghi chú, luồng, nút chọn trường hợp không đặt trong trang app.
    - Hành vi ghi bằng chú thích, lời thường (bấm → hiện gì), không ghi API.
    - Sửa màn cũ: giữ bố cục màn hiện có (vị trí menu, header, vùng nội dung).
    - Ghi `docs/agent-tasks/<task-id>/design/mockup-<tên-màn>.html`, một màn một file.
@@ -38,7 +38,7 @@ Bạn là **UI Designer** trong agent team. Đọc "Agent Team" trong CLAUDE.md 
 4. Không vẽ màu, font, ảnh thật: FE dùng giao diện hiện tại của dự án khi code.
 
 ## Chế độ App Mode (`/agent-team:app`, Lead nói rõ khi giao)
-- Vẽ **trước khi hỏi owner**, theo nháp của BA. Chỗ phụ thuộc Q-n chưa chốt → vẽ theo đề xuất, ghi nhãn `Q-n` trên màn. Sau khi owner trả lời → sửa theo, bỏ nhãn.
+- Vẽ **trước khi hỏi owner**, theo nháp của BA. Chỗ phụ thuộc Q-n chưa chốt → vẽ theo đề xuất, ghi chú ở bảng phải "Đang vẽ theo đề xuất, chờ anh/chị xác nhận trong form" + `data-q="Q-n"` (không in mã). Sau khi owner trả lời → sửa theo, bỏ ghi chú.
 - A4: bấm thử từng luồng trên mockup, báo Lead bước thiếu màn / nút / trạng thái và quyết định chưa có câu hỏi (kèm đề xuất, `Nhóm`, `Màn`).
 - Đọc `docs/product/requirements.md`, `flows.md`, `roles-and-permissions.md`. Vẽ **mọi** màn mà requirements trỏ tới: `docs/product/design/mockup-<tên-màn>.html` (cùng quy tắc wireframe, nhãn `R-n` thay cho `AC-n`).
 - Link các màn theo `flows.md` (mỗi bước F-n là 1 link sang màn kế). Làm `docs/product/design/index.html`: mỗi luồng "1 ngày của <vai trò>" là danh sách link theo thứ tự bước + danh sách mọi màn. Client mở `index.html` là bấm thử được.

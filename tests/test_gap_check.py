@@ -97,7 +97,7 @@ code, rows = run(fresh({"design/mockup-dat-lich.html": '<title>Đặt lịch</ti
 check("link tới màn không có -> thiếu", (code, bad(rows, "prototype")), (1, True))
 code, rows = run(fresh({"design/index.html": '<a href="mockup-dat-lich.html">Đặt lịch</a>'}))
 check("index.html thiếu link tới màn -> thiếu", (code, bad(rows, "prototype")), (1, True))
-code, rows = run(fresh({"design/mockup-dat-lich.html": '<a href="mockup-lich-ngay.html#loi">Lưu</a><a href="#rong">x</a>'}))
+code, rows = run(fresh({"design/mockup-dat-lich.html": '<a href="mockup-lich-ngay.html#loi">Lưu</a><a href="#rong">x</a><aside class="guide"></aside>'}))
 check("link sang màn khác kèm #trạng thái -> đủ", code, 0)
 
 code, rows = run(fresh(drop=("screens.md",)))
@@ -107,7 +107,7 @@ check("--gate: owner chưa duyệt -> thiếu", (code, bad(rows, "APP.md")), (1,
 check("không --gate: bỏ qua APP.md", run(fresh({"APP.md": "- Owner duyệt: TODO\n"}))[0], 0)
 
 # ---- responsive: wireframe có tab Mobile ----
-MOB = '<button data-s="mobile">Mobile</button>'
+MOB = '<button data-s="mobile">Mobile</button><aside class="guide"></aside>'
 RESP = {"intake.md": GOOD["intake.md"] + "- Responsive: CÓ (375 768 1280)\n"}
 code, rows = run(fresh(RESP))
 check("responsive CÓ, wireframe thiếu tab Mobile -> thiếu", (code, bad(rows, "responsive")), (1, True))
@@ -166,6 +166,14 @@ code, _ = run(mroot, "--spec", DIR)
 check("module: --spec sinh SPEC.md trong thư mục module", os.path.isfile(os.path.join(MD, "SPEC.md")), True)
 r = subprocess.run([sys.executable, OWNER, "build", DIR, mroot], capture_output=True, text=True)
 check("owner-form --dir: chặn build khi MODULE.md chưa Debate DONE", (r.returncode != 0, "MODULE.md" in r.stdout + r.stderr), (True, True))
+
+# ---- mockup gửi client: hướng dẫn bên phải, không lộ mã ----
+code, rows = run(fresh({"design/mockup-dat-lich.html": '<title>Đặt lịch</title><main class="page">Đặt lịch</main>'}))
+check("mockup thiếu bảng hướng dẫn bên phải -> thiếu", bad(rows, "mockup cho client"), True)
+code, rows = run(fresh({"design/mockup-dat-lich.html": '<main class="page">Năm <span class="ac">R-60</span></main><aside class="guide">x</aside>'}))
+check("mockup hiện mã R-60 cho client -> thiếu", bad(rows, "mockup cho client") and "R-60" in rows["mockup cho client: hướng dẫn bên phải, không lộ mã"]["why"], True)
+code, rows = run(fresh())
+check("mã để trong data-r (ẩn) -> đạt", bad(rows, "mockup cho client"), False)
 
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)
