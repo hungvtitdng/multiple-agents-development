@@ -13,7 +13,7 @@ Mục đích: bù phần owner **không nghĩ tới**. BA chép mục vào `docs
 |---|---|
 | Mục | Tính năng / quy tắc |
 | Vì sao hay thiếu | Lý do owner hay quên |
-| Câu hỏi tình huống | Hỏi bằng tình huống cụ thể, không hỏi trừu tượng |
+| Câu hỏi tình huống | Câu hỏi ngắn đi thẳng vào quy tắc cần quyết (≤ 25 từ, không kể chuyện), xem `app.md` mục 0b |
 | Lựa chọn | Lựa chọn đầu là **đề xuất** gửi owner (cột "Đề xuất mặc định" trong `defaults.md`); các lựa chọn sau để BA tham khảo khi owner ghi "không" |
 
 ## Thêm loại app mới

@@ -1,3 +1,23 @@
+# Release notes - 22/11/2026 (v0.18.5 - câu hỏi owner ngắn, đủ ý)
+
+## Thay đổi
+- **Câu OWNER viết ngắn, đi thẳng vào điều cần quyết** (bỏ kiểu "tình huống có người + số liệu" làm câu dài mà mất ý chính): hỏi quy tắc, không hỏi 1 trường hợp; không kể chuyện tên người / phòng ban / số liệu; gộp câu cùng ý; viết tiếng Việt, từ tiếng Anh thông dụng (app, email, Excel, OTP, responsive, Admin...) giữ nguyên, không dịch. Câu hỏi ≤ 25 từ, Đề xuất ≤ 40 từ, Vì sao ≤ 30 từ. Có bảng Sai / Đúng lấy từ câu thật (responsive, lên cấp cây, phân quyền).
+- `owner-form.py build` từ chối câu OWNER quá dài (báo số từ từng cột). Sửa theo: `app.md` mục 0b, `business-analyst`, `templates/product/questions.md`, `catalog/README.md`. Test owner-form: 67 case.
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update multiple-agent`, khởi động lại Claude Code.
+- Project đã init: copy lại `scripts/owner-form.py` → `.claude/agent-team/` (chmod +x), `templates/product/questions.md` (chỉ phần hướng dẫn đầu file). App đang chờ build form: BA viết lại câu quá dài trước khi `build`.
+- Không có ENV / key mới.
+
+# Release notes - 22/11/2026 (v0.18.4 - câu hỏi viết sau mockup)
+
+## Thay đổi
+- Câu OWNER chỉ viết / sửa sau khi mockup của màn liên quan xong; mockup đổi thì BA đối chiếu lại câu trỏ tới màn đó. BA mở mockup trước khi viết phần "người dùng thấy gì".
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update multiple-agent`, `/reload-plugins`.
+- Không có ENV / key mới.
+
 # Release notes - 22/11/2026 (v0.18.3 - mockup bấm được, câu hỏi cho client)
 
 ## Thay đổi

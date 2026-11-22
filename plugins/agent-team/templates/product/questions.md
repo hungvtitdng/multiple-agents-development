@@ -2,9 +2,10 @@
 
 > Lead ghi. Mọi điểm mơ hồ thành 1 dòng, không "ngầm hiểu".
 > - **Đề xuất của team**: 1 best solution (OWNER: BA đề xuất, DEV: Architect đề xuất), bắt buộc. **Vì sao**: 1 câu.
-> - **Câu OWNER viết cho người không biết kỹ thuật, về nghiệp vụ.** Câu hỏi = tình huống có người + số liệu + hỏi có / không. Đề xuất = quy tắc + người dùng thấy gì. Vì sao = **giải thích** (bắt buộc với OWNER): vì sao phải quyết, chọn khác thì sao. Không mã nội bộ (R-, F-, AC-, Q-...), không từ kỹ thuật (API, status, role, database...): `owner-form.py build` từ chối.
->   - Sai: "R-3: cho phép cancel booking khi status = PENDING?"
->   - Đúng: Câu hỏi "Chị Lan đặt lịch 9h sáng mai, tối nay chị muốn huỷ. Chị có được tự huỷ trên app không?" · Đề xuất "Được huỷ miễn phí nếu còn hơn 2 tiếng. Chị bấm Huỷ, thấy 'Đã huỷ', tiệm nhận tin báo." · Vì sao "Huỷ sát giờ thì thợ ngồi không; không cho huỷ thì lễ tân phải huỷ hộ qua điện thoại."
+> - **Câu OWNER viết cho người không biết kỹ thuật, ngắn, đi thẳng vào điều cần quyết.** Câu hỏi = 1 câu hỏi quy tắc (≤ 25 từ), không kể chuyện tên người / số liệu, gộp câu cùng ý; viết tiếng Việt, từ tiếng Anh thông dụng (app, email, Excel, OTP, responsive, Admin...) giữ nguyên, không dịch. Đề xuất = quy tắc + người dùng thấy gì (≤ 40 từ). Vì sao = **giải thích** 1 câu (bắt buộc với OWNER, ≤ 30 từ). Owner đọc 1 lần là hiểu, trả lời được bằng OK hoặc 1 câu. Không mã nội bộ (R-, F-, AC-, Q-...), không từ kỹ thuật (API, status, role, database...): `owner-form.py build` từ chối (kể cả câu quá dài).
+>   - Sai (mã kỹ thuật): "R-3: cho phép cancel booking khi status = PENDING?"
+>   - Sai (dài, kể chuyện): "Anh Nam đã xong 6/10 mục tiêu năm 2027... cây của anh Nam có lên cấp chỉ theo số mục tiêu không?"
+>   - Đúng: Câu hỏi "Khách có được tự huỷ lịch trên app không?" · Đề xuất "Được huỷ nếu còn hơn 2 tiếng; khách bấm Huỷ, tiệm nhận tin báo." · Vì sao "Huỷ sát giờ thì thợ ngồi không; không cho huỷ thì lễ tân phải huỷ hộ."
 > - **Ai trả lời**: `OWNER` (nghiệp vụ, quy tắc, tiền, quyền) → form mục A · `DEV` (stack, hosting, git, hạ tầng) → form mục B. Cùng 1 file, không hỏi ngay.
 > - **Mức**: `CAO` (sai thì làm lại nhiều) / `THẤP`.
 > - **Trạng thái**: `MỞ` · `CHỜ OWNER` / `CHỜ DEV` (đã gửi form) · `ĐÃ TRẢ LỜI` · `GIẢ ĐỊNH` (chỉ mức THẤP).

@@ -153,6 +153,11 @@ def form_rows(root):
             if gc.empty(why):
                 errs.append(f"{q} chưa có Vì sao (giải thích cho owner: vì sao cần quyết, chọn khác thì sao)")
                 continue
+            long = [f"{name} {n} từ (tối đa {mx})" for name, txt, mx in (("Câu hỏi", r[qm["câu hỏi"]], 25), ("Đề xuất", r[qm["đề xuất"]], 40), ("Vì sao", why, 30))
+                    if (n := len(gc.clean(txt).split())) > mx]
+            if long:
+                errs.append(f"{q} quá dài: {', '.join(long)}. Viết lại ngắn, hỏi thẳng quy tắc cần quyết, không kể chuyện (app.md mục 0b)")
+                continue
             jargon = owner_jargon(" ".join((gc.clean(r[qm["câu hỏi"]]), gc.clean(r[qm["đề xuất"]]), why)))
             if jargon:
                 errs.append(f"{q} có từ owner không hiểu: {', '.join(jargon)} (viết lại bằng lời thường)")

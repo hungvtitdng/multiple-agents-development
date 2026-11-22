@@ -35,11 +35,23 @@ M-0 khung project (task này, S3-S6) → M-1..n: mỗi module 1 /agent-team:task
 - **Câu OWNER viết cho người không biết kỹ thuật, về nghiệp vụ** (đọc 1 lần là hiểu, không cần hỏi lại):
   | Cột | Viết gì | Ví dụ |
   |---|---|---|
-  | Câu hỏi | **Tình huống** có người, có số liệu + câu hỏi có / không hoặc chọn | "Chị Lan đặt lịch cắt tóc 9h sáng mai, tối nay chị muốn huỷ. Chị có được tự huỷ trên app không?" |
-  | Đề xuất của team | Quy tắc cụ thể + **owner / khách sẽ thấy gì** | "Được huỷ miễn phí nếu còn hơn 2 tiếng. Chị Lan bấm Huỷ, thấy 'Đã huỷ', tiệm nhận tin báo." |
-  | Vì sao (**Giải thích**, bắt buộc) | Vì sao phải quyết + chọn khác thì sao | "Huỷ sát giờ thì thợ ngồi không. Không cho huỷ thì khách gọi điện, lễ tân phải huỷ hộ." |
+  | Câu hỏi | **1 câu ngắn hỏi đúng quy tắc cần quyết** (có / không hoặc chọn) | "Khách có được tự huỷ lịch trên app không?" |
+  | Đề xuất của team | Quy tắc cụ thể + người dùng thấy gì, ≤ 2 câu | "Được huỷ nếu còn hơn 2 tiếng; khách bấm Huỷ, tiệm nhận tin báo." |
+  | Vì sao (**Giải thích**, bắt buộc) | 1 câu: vì sao phải quyết, chọn khác thì sao | "Huỷ sát giờ thì thợ ngồi không; không cho huỷ thì lễ tân phải huỷ hộ." |
+  **Viết ngắn, đi thẳng vào điều cần quyết** (owner-form từ chối câu quá dài):
+  - **Hỏi quy tắc, không hỏi 1 trường hợp:** "Khi nào cây lên cấp?", không phải "Cây của anh Nam (6/10 mục tiêu) có lên cấp không?".
+  - **Không kể chuyện** (tên người, phòng ban, số liệu, bối cảnh) trong câu hỏi. Cần ví dụ thì 1 câu ngắn ở cột Vì sao.
+  - **Gộp câu cùng ý thành 1 câu:** 2 câu "ai là Trưởng phòng / Ban Giám đốc?" + "Admin dùng 1 hay 2 tài khoản?" → 1 câu về cách cấp quyền.
+  - **Viết bằng tiếng Việt.** Từ tiếng Anh thông dụng mà ai cũng biết (app, email, Excel, OTP, link, responsive, Admin...) giữ nguyên, **không dịch, không giải thích**: "App có cần responsive không?".
+  - Tự kiểm: owner đọc **1 lần là hiểu** và trả lời được bằng `OK` hoặc 1 câu. Câu hỏi ≤ 25 từ, Đề xuất ≤ 40 từ, Vì sao ≤ 30 từ.
+  | Sai (dài, không có ý chính) | Đúng (ngắn, đủ ý) |
+  |---|---|
+  | Chị Hoa phòng Tín dụng muốn cập nhật tiến độ mục tiêu lúc ngồi chờ họp, bằng điện thoại nối wifi nội bộ của chi nhánh. App có cần dùng được trên điện thoại không, hay chỉ trên máy tính ở bàn làm việc? | App có cần responsive không? |
+  | Anh Nam đã hoàn thành 6/10 mục tiêu năm 2027. Tài liệu nói cây lên cấp khi đi xong lộ trình nghề nghiệp, nhưng lộ trình để giai đoạn 2... Ở giai đoạn 1, cây của anh Nam có lên cấp chỉ theo số mục tiêu đã hoàn thành không? | Giai đoạn 1 (chưa có lộ trình nghề nghiệp), cây lên cấp khi nào? |
+  | File Excel ghi anh Hùng là "TP", chị Hằng là "Phó TP phụ trách". App biết ai là Trưởng phòng... Chị Mai làm Admin dùng 1 tài khoản hay thêm tài khoản riêng? | Phân quyền theo cấp (Nhân viên < Trưởng phòng < Ban Giám đốc < Admin, cấp cao có cả quyền cấp thấp), Admin gán cấp cho từng người. Đúng không? |
   - **Cấm** mã nội bộ (R-, F-, AC-, BR-, P-, S-, Q-, D-...) và từ kỹ thuật (API, database, token, status, role, record, server...). `owner-form.py build` từ chối câu OWNER có các từ này hoặc thiếu Vì sao. Câu DEV không bị chặn.
   - Câu phụ thuộc câu khác: viết bằng lời ("Nếu ở câu trên anh/chị chọn có đặt cọc: ..."), không ghi `Q-n`.
+  - **Thứ tự:** viết / sửa câu OWNER **sau khi** mockup của màn ở cột `Màn` đã xong (A3b). Không gọi BA viết câu song song với ui-designer đang vẽ. Mockup đổi sau đó → BA đối chiếu lại mọi câu có `Màn` trỏ tới màn đó trước khi build form.
 - Sinh form: `.claude/agent-team/owner-form.py build` → `docs/product/owner-form-<n>.xlsx`:
   ```
   <Tên app>
@@ -93,7 +105,7 @@ Debate theo `task.md` mục 4 (board, WHY, chấm điểm, Security duyệt), đ
 - TASK.md: `- Phương án chốt:`, `- Security duyệt solution: APPROVED`.
 
 ## 5. A3 Nghiệp vụ
-1. **Mặc định (bù phần owner không nghĩ tới):** BA chép mục từ `catalog/chung.md` + `catalog/<loại>.md` vào `defaults.md` (bỏ mục đã rõ trong brief): `Mục` = câu hỏi tình huống ngắn, `Đề xuất mặc định` = lựa chọn đầu của catalog, `Owner chọn` = `CHƯA`.
+1. **Mặc định (bù phần owner không nghĩ tới):** BA chép mục từ `catalog/chung.md` + `catalog/<loại>.md` vào `defaults.md` (bỏ mục đã rõ trong brief): `Mục` = câu hỏi ngắn (quy tắc ở mục 0b), `Đề xuất mặc định` = lựa chọn đầu của catalog, `Owner chọn` = `CHƯA`.
 2. **Nháp trọn app (chưa gửi form):** mọi Q-n / D-n chưa trả lời coi như owner chọn đề xuất của team, ghi nhãn `Assumption (Q-n)` / `Assumption (D-n)` ngay chỗ dùng. BA viết `requirements.md` (mỗi R-n có Nguồn B/G/D, Vai trò, Màn, AC), `flows.md` (mỗi F-n có sơ đồ Mermaid + bảng có cột "Nếu lỗi"; mỗi vai trò chính có luồng "1 ngày của <vai trò>"), `data.md` (CRUD + vòng đời trạng thái), cập nhật `docs/roles-and-permissions.md`, `docs/domain-model.md`, `docs/business-rules.md`, `docs/glossary.md`. Cột `Màn` dùng tên màn dự kiến `S-n`.
 3. Câu hỏi mới phát sinh → `questions.md` (có đề xuất, `Nhóm`, `Màn`), nháp tiếp theo đề xuất đó. Chưa build form.
 
@@ -140,7 +152,7 @@ Xong: chạy `.claude/agent-team/gap-check.py --spec`, sửa hết `THIEU` → `
 4. **Tài liệu app luôn đúng với code:** module đổi yêu cầu / phát sinh GAP → sửa `docs/product/` (task.md mục 7b). Mỗi module xong: cập nhật cột Trạng thái trong `APP.md`, chạy `gap-check.py --spec`. Hook chặn S6 của mọi task khi tài liệu app thiếu hoặc SPEC.md cũ.
 
 ## 11. Thiếu sót phát hiện về sau
-- GAP khi code (task.md mục 7b) mà nguyên nhân là "Phase A bỏ sót" → ghi bài học **và** nêu ở báo cáo: "nên thêm vào `catalog/<loại>.md` của plugin: <mục, câu hỏi tình huống, đề xuất>". Lần sau app cùng loại sẽ được hỏi sớm.
+- GAP khi code (task.md mục 7b) mà nguyên nhân là "Phase A bỏ sót" → ghi bài học **và** nêu ở báo cáo: "nên thêm vào `catalog/<loại>.md` của plugin: <mục, câu hỏi ngắn, đề xuất>". Lần sau app cùng loại sẽ được hỏi sớm.
 
 ## 12. Báo cáo
 - **Mỗi lượt form:** dòng đầu "Gửi file `docs/product/owner-form-<n>.xlsx`: owner điền mục A, dev điền mục B" + số câu mỗi mục (số câu CAO). Việc tiếp theo: nhận file trả lời rồi `/agent-team:resume <task-id> <file>`.

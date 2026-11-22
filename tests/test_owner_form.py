@@ -190,6 +190,11 @@ for desc, text in (("mã nội bộ", "Theo R-3 khách huỷ thì sao?"), ("từ
     jr = project(questions=QH + f"| Q-1 | {text} | Cho huỷ trước 2 giờ | Giữ chỗ | CAO | OWNER | MỞ | | 3. F-1 | S-1 |\n")
     code, out = run("build", jr)
     check(f"câu OWNER có {desc} → không sinh form", (code, "owner không hiểu" in out), (1, True))
+LONGQ = ("Anh Nam phòng Kế toán đã hoàn thành 6 trong 10 mục tiêu năm 2027, tài liệu nói cây lên cấp khi đi xong lộ trình "
+         "nghề nghiệp nhưng lộ trình để giai đoạn 2, vậy cây của anh Nam có lên cấp không?")
+lq = project(questions=QH + f"| Q-1 | {LONGQ} | Lên cấp theo số mục tiêu | Lộ trình chưa có | CAO | OWNER | MỞ | | 3. F-1 | S-1 |\n")
+code, out = run("build", lq)
+check("câu OWNER quá dài (kể chuyện) → không sinh form", (code, "quá dài" in out and "Câu hỏi" in out), (1, True))
 dev_tech = project(questions=QH + "| Q-1 | API dùng REST? | REST + JSON | | THẤP | DEV | MỞ | | | |\n| Q-2 | Luồng đặt lịch đúng chưa? | Đúng | | THẤP | OWNER | ĐÃ TRẢ LỜI | OK | 3. F-1 | S-1 |\n", defaults=DH)
 check("câu DEV được dùng từ kỹ thuật", run("build", dev_tech)[0], 0)
 old = project(questions="| Q | Câu hỏi | Mức | Trạng thái | Trả lời |\n|---|---|---|---|---|\n| Q-1 | x | CAO | MỞ | |\n")
