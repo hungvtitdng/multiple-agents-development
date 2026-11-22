@@ -31,7 +31,15 @@ M-0 khung project (task này, S3-S6) → M-1..n: mỗi module 1 /agent-team:task
 - Debate, board, model, Security, bài học: như `task.md` (mục 2-4, 11). Đọc `task.md` của plugin trước khi bắt đầu.
 
 ## 0b. Form hỏi owner + dev (1 file, 2 mục)
-- **Mỗi câu 1 đề xuất best solution** của team (câu OWNER: BA đề xuất; câu DEV: Architect đề xuất; kèm 1 câu "vì sao"), **không** đưa danh sách phương án khác. Hỏi bằng tình huống cụ thể ("Khách đặt xong muốn huỷ thì sao?"), không hỏi trừu tượng.
+- **Mỗi câu 1 đề xuất best solution** của team (câu OWNER: BA đề xuất; câu DEV: Architect đề xuất; kèm 1 câu "vì sao"), **không** đưa danh sách phương án khác.
+- **Câu OWNER viết cho người không biết kỹ thuật, về nghiệp vụ** (đọc 1 lần là hiểu, không cần hỏi lại):
+  | Cột | Viết gì | Ví dụ |
+  |---|---|---|
+  | Câu hỏi | **Tình huống** có người, có số liệu + câu hỏi có / không hoặc chọn | "Chị Lan đặt lịch cắt tóc 9h sáng mai, tối nay chị muốn huỷ. Chị có được tự huỷ trên app không?" |
+  | Đề xuất của team | Quy tắc cụ thể + **owner / khách sẽ thấy gì** | "Được huỷ miễn phí nếu còn hơn 2 tiếng. Chị Lan bấm Huỷ, thấy 'Đã huỷ', tiệm nhận tin báo." |
+  | Vì sao (**Giải thích**, bắt buộc) | Vì sao phải quyết + chọn khác thì sao | "Huỷ sát giờ thì thợ ngồi không. Không cho huỷ thì khách gọi điện, lễ tân phải huỷ hộ." |
+  - **Cấm** mã nội bộ (R-, F-, AC-, BR-, P-, S-, Q-, D-...) và từ kỹ thuật (API, database, token, status, role, record, server...). `owner-form.py build` từ chối câu OWNER có các từ này hoặc thiếu Vì sao. Câu DEV không bị chặn.
+  - Câu phụ thuộc câu khác: viết bằng lời ("Nếu ở câu trên anh/chị chọn có đặt cọc: ..."), không ghi `Q-n`.
 - Sinh form: `.claude/agent-team/owner-form.py build` → `docs/product/owner-form-<n>.xlsx`:
   ```
   <Tên app>
@@ -54,8 +62,8 @@ M-0 khung project (task này, S3-S6) → M-1..n: mỗi module 1 /agent-team:task
   Câu trả lời của owner chép vào tài liệu với nhãn `Confirmed`. Góp ý làm phát sinh câu mới → ghi Q-n cho lượt sau.
 - **Form cuối, đi trọn hành trình:** câu hỏi là kết quả của debate + mockup, không phải câu lẻ phát sinh dọc đường. Chỉ build sau A4 + debate chốt. `owner-form.py build` chặn khi: `APP.md` chưa `Debate: DONE` / `Challenger: DONE`, chưa có mockup, câu `OWNER` thiếu `Nhóm`, câu thuộc luồng thiếu `Màn`, luồng `F-n` chưa có câu nào.
   - Cột `Nhóm` xếp form theo hành trình: `1. Tổng quan` → `2. Vai trò & quyền` → `3. F-1 <tên luồng>`, `4. F-2 ...` (câu trong luồng theo thứ tự bước) → `Tiền`, `Thông báo`, `Dữ liệu & báo cáo`. Mỗi luồng có 1 câu xác nhận cả luồng ("Khách chọn dịch vụ → chọn giờ → xác nhận → nhắc lịch. Đúng chưa?").
-  - Cột `Màn` (`S-n`): form in tên màn + file mockup, gửi kèm thư mục `docs/product/design/` để owner mở xem câu hỏi nằm ở đâu.
-  - Câu phụ thuộc câu khác gửi cùng lượt dạng "Nếu Q-n CÓ: ..." (có đề xuất). Câu vụn cùng 1 bước gộp thành 1 câu.
+  - Cột `Màn` (`S-n`): form in tên màn + file mockup, gửi kèm thư mục `docs/product/design/`; owner mở `index.html` bấm tới màn đó để xem câu hỏi nằm ở đâu.
+  - Câu phụ thuộc câu khác gửi cùng lượt, viết bằng lời ("Nếu ở câu trên chọn có: ...", có đề xuất). Câu vụn cùng 1 bước gộp thành 1 câu.
   - Lượt 2 chỉ gồm câu ghi "không", ô để trống, câu mới do góp ý làm đổi logic.
 - **Chờ trả lời:** TASK.md `Trạng thái: BLOCKED (chờ owner, form lượt <n>)`. Báo user: gửi file `owner-form-<n>.xlsx` cho owner (mục A) và dev (mục B), nhận lại rồi chạy `/agent-team:resume <task-id> <đường dẫn file trả lời>`. Dev trả lời trước hay sau owner đều được; logic chỉ chốt theo mục A.
 
@@ -90,7 +98,7 @@ Debate theo `task.md` mục 4 (board, WHY, chấm điểm, Security duyệt), đ
 3. Câu hỏi mới phát sinh → `questions.md` (có đề xuất, `Nhóm`, `Màn`), nháp tiếp theo đề xuất đó. Chưa build form.
 
 ## 5b. A3b Mockup (trước khi hỏi)
-`ui-designer` (chế độ App Mode): `screens.md` + `docs/product/design/mockup-<màn>.html` cho **mọi** màn trong nháp (đen trắng, 5 trạng thái, tab Mobile khi responsive, skill `wireframe`). Chỗ nào trên màn phụ thuộc Q-n chưa chốt → vẽ theo đề xuất, ghi nhãn `Q-n` trên mockup.
+`ui-designer` (chế độ App Mode): `screens.md` + `docs/product/design/mockup-<màn>.html` cho **mọi** màn trong nháp (đen trắng, 5 trạng thái ở bảng nổi "XEM TRẠNG THÁI", Mobile khi responsive, skill `wireframe`). **Các màn link với nhau theo `flows.md`** + `docs/product/design/index.html` theo luồng: owner mở `index.html` bấm thử như app thật. Chỗ nào trên màn phụ thuộc Q-n chưa chốt → vẽ theo đề xuất, ghi nhãn `Q-n` trên mockup.
 
 ## 6. A4 Săn gap trên nháp (song song, trước khi hỏi)
 Gọi cùng lượt:

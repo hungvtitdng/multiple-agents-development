@@ -1,3 +1,16 @@
+# Release notes - 22/11/2026 (v0.18.3 - mockup bấm được, câu hỏi cho client)
+
+## Thay đổi
+- Mockup bấm được như app thật: nút là link sang màn khác hoặc `#trạng-thái`, thanh luồng ← Trước | Sau →, `design/index.html` theo luồng. `gap-check.py` báo link hỏng và `index.html` thiếu màn.
+- Nút chuyển trạng thái (có dữ liệu, rỗng, lỗi...) chuyển sang bảng nổi góc dưới phải "XEM TRẠNG THÁI", không lẫn với nút thao tác.
+- Câu hỏi OWNER viết cho người không biết kỹ thuật: tình huống + đề xuất (người dùng thấy gì) + giải thích. `owner-form.py build` từ chối câu OWNER thiếu Vì sao hoặc có mã nội bộ / từ kỹ thuật. Form in "Đề xuất: ... / Giải thích: ...". Test: `test_gap_check.py` 53, `test_owner_form.py` 66.
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update multiple-agent`, `/reload-plugins`.
+- Project App / Module đang làm: copy lại `scripts/gap-check.py`, `owner-form.py` → `.claude/agent-team/`. Mockup cũ chưa có link → giao ui-designer thêm link + `index.html`, nếu không `gap-check` báo `THIEU` mục prototype.
+- Câu OWNER cũ thiếu Vì sao hoặc có mã R-/F-... → BA viết lại trước khi `owner-form.py build`.
+- Không có ENV / key mới.
+
 # Release notes - 21/11/2026 (v0.18.2 - lệnh /agent-team:audit, mock, quy chuẩn trước kiến trúc)
 
 ## Thay đổi

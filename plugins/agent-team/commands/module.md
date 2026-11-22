@@ -45,7 +45,7 @@ Form, câu hỏi OWNER / DEV, mức CAO / THẤP, không hỏi bằng `AskUserQu
 - **A1:** `problem.md` ghi cả **ngoài phạm vi** (phần cũ không đổi). `coverage.md` 12 góc nhìn: góc app đã giải quyết (vd đăng nhập) → `LOẠI`, ghi "đã có: <mã KB>".
 - **A2 debate:** không chọn stack; chọn cách làm **trong kiến trúc hiện tại** (`docs/architecture.md`, `docs/decisions/`). Đi ngược quyết định cũ → Architect ghi rõ, câu DEV vào form.
 - **A3 nháp:** R-n, F-n mới. Luồng đi qua màn / bước cũ thì ghi mã cũ (`F-3 bước 2`, `S-cũ: <file KB>`), không chép lại.
-- **A3b mockup:** màn mới + màn cũ bị sửa (đánh dấu phần thêm / đổi bằng nhãn `MỚI`), dùng menu, bố cục của app.
+- **A3b mockup:** màn mới + màn cũ bị sửa (đánh dấu phần thêm / đổi bằng nhãn `MỚI`), dùng menu, bố cục của app. Các màn link với nhau + `$M/design/index.html` theo luồng (skill `wireframe` mục 4).
 - **A4 săn gap** (bảng `app.md` mục 6) + thêm:
 
 | Agent | Soát **ảnh hưởng ngược** |

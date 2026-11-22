@@ -91,6 +91,15 @@ for desc, ov, item in cases:
     code, rows = run(fresh(ov))
     check(f"{desc} -> thiếu", (code, bad(rows, item)), (1, True))
 
+code, rows = run(fresh(drop=("design/index.html",)))
+check("không có index.html -> thiếu", (code, bad(rows, "prototype")), (1, True))
+code, rows = run(fresh({"design/mockup-dat-lich.html": '<title>Đặt lịch</title><a href="mockup-khong-co.html">Đặt</a>'}))
+check("link tới màn không có -> thiếu", (code, bad(rows, "prototype")), (1, True))
+code, rows = run(fresh({"design/index.html": '<a href="mockup-dat-lich.html">Đặt lịch</a>'}))
+check("index.html thiếu link tới màn -> thiếu", (code, bad(rows, "prototype")), (1, True))
+code, rows = run(fresh({"design/mockup-dat-lich.html": '<a href="mockup-lich-ngay.html#loi">Lưu</a><a href="#rong">x</a>'}))
+check("link sang màn khác kèm #trạng thái -> đủ", code, 0)
+
 code, rows = run(fresh(drop=("screens.md",)))
 check("không có screens.md -> thiếu", (code, bad(rows, "screens")), (1, True))
 code, rows = run(fresh({"APP.md": GOOD["APP.md"].replace("APPROVED", "TODO")}), "--gate")

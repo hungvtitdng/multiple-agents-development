@@ -31,6 +31,7 @@ GOOD = {
                   "| S-2 | Lịch ngày | Chủ | F-2 | mockup-lich-ngay.html |\n",
     "design/mockup-dat-lich.html": "<title>Đặt lịch</title>",
     "design/mockup-lich-ngay.html": "<title>Lịch ngày</title>",
+    "design/index.html": '<a href="mockup-dat-lich.html">Đặt lịch</a> <a href="mockup-lich-ngay.html#rong">Lịch ngày</a>',
     "APP.md": "- Intake: YES\n- Challenger: DONE\n- Gap-check: PASS\n- Owner duyệt: APPROVED\n",
 }
 

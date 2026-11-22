@@ -28,6 +28,8 @@ gc = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(gc)
 
 P = "docs/product"
+INTERNAL_CODE_RE = re.compile(r"\b(?:AC|BR|[RFSQDPCGB])-\d+\b")
+TECH_WORD_RE = re.compile(r"(?i)\b(api|endpoint|database|db|token|cache|role|status|record|crud|backend|frontend|server|json|query|id|bug|deploy)\b")
 SECTIONS = [("OWNER", "A. Owner: nghiệp vụ", "Owner duyệt / góp ý"), ("DEV", "B. Dev: kỹ thuật", "Dev duyệt / góp ý")]
 OK_WORDS = {"ok", "oke", "okay", "đồng ý", "duyệt", "được", "đúng", "yes", "y", "✓", "v"}
 NO_WORDS = {"không", "ko", "k", "no", "không đồng ý", "không duyệt", "không cần", "bỏ", "x"}
@@ -111,6 +113,12 @@ def gates(root, qrows, screens):
     return errs
 
 
+def owner_jargon(text):
+    """Mã nội bộ (R-1, AC-2...) và từ kỹ thuật mà owner không hiểu."""
+    found = INTERNAL_CODE_RE.findall(text) + [w.lower() for w in TECH_WORD_RE.findall(text)]
+    return sorted(set(found))
+
+
 def form_rows(root):
     """({OWNER: [...], DEV: [...]} câu hỏi, mặc định chưa chốt, lỗi). Xếp theo Nhóm (hành trình), giữ thứ tự trong file."""
     errs, qs, ds = [], {"OWNER": [], "DEV": []}, []
@@ -141,7 +149,17 @@ def form_rows(root):
             errs.append(f"{q} trỏ tới màn chưa có mockup: {', '.join(sorted(man - screens.keys()))}")
             continue
         why = gc.clean(r[qm["vì sao"]])
-        sug = gc.clean(r[qm["đề xuất"]]) + (f"\n{why}" if why and not gc.empty(why) else "")
+        if who == "OWNER":
+            if gc.empty(why):
+                errs.append(f"{q} chưa có Vì sao (giải thích cho owner: vì sao cần quyết, chọn khác thì sao)")
+                continue
+            jargon = owner_jargon(" ".join((gc.clean(r[qm["câu hỏi"]]), gc.clean(r[qm["đề xuất"]]), why)))
+            if jargon:
+                errs.append(f"{q} có từ owner không hiểu: {', '.join(jargon)} (viết lại bằng lời thường)")
+                continue
+            sug = f"Đề xuất: {gc.clean(r[qm['đề xuất']])}\nGiải thích: {why}"
+        else:
+            sug = gc.clean(r[qm["đề xuất"]]) + (f"\n{why}" if why and not gc.empty(why) else "")
         qs[who].append((q, gc.clean(r[qm["câu hỏi"]]), "\n".join(screens[s] for s in sorted(man)), sug, group or "Kỹ thuật"))
     dm, drows = gc.table(gc.read(root, "defaults.md") or "", "d", "mục", "đề xuất", "owner chọn")
     for r in drows if dm else []:

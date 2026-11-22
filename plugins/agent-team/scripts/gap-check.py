@@ -300,6 +300,24 @@ def check(root, gate=False):
                 why.append(f"{s} thiếu tab Mobile")
         add("responsive: wireframe có tab Mobile", why)
 
+    # 10c. prototype bấm được: index.html + link giữa các màn không hỏng
+    if screens:
+        why = []
+        ddir = os.path.join(root, P, "design")
+        idx = read_raw(os.path.join(ddir, "index.html"))
+        if idx is None:
+            why.append(f"chưa có {P}/design/index.html (trang bắt đầu, link tới mọi luồng)")
+        pages = sorted(f for f in os.listdir(ddir) if f.endswith(".html")) if os.path.isdir(ddir) else []
+        for f in pages:
+            for target in sorted(set(re.findall(r'href="([^"#?:]+\.html)', read_raw(os.path.join(ddir, f)) or ""))):
+                if not os.path.isfile(os.path.join(ddir, target)):
+                    why.append(f"{f} link tới {target} không có")
+        for s, r in screens.items():
+            mk = os.path.basename(clean(col(r, "mockup")))
+            if idx is not None and mk and f'href="{mk}' not in idx:
+                why.append(f"index.html chưa link tới {mk} ({s})")
+        add("prototype: index.html + link giữa các màn", why)
+
     # 11. vai trò × màn
     why = []
     split = lambda v: {x.strip().lower() for x in re.split(r"[,·/;]", clean(v)) if x.strip()}

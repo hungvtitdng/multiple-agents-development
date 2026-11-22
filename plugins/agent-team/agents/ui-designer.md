@@ -28,7 +28,9 @@ Bạn là **UI Designer** trong agent team. Đọc "Agent Team" trong CLAUDE.md 
    - **Đen trắng**, đơn giản, **đủ chức năng**: mọi nút, ô nhập, bảng, thông báo mà AC cần; gắn nhãn `AC-n`.
    - **Đủ trạng thái**: bình thường, rỗng, đang tải, lỗi, không có quyền (+ trạng thái riêng của task).
    - **Responsive** (config `VIEWPORTS` có chiều rộng < 768): mọi màn có tab `Mobile` (skill `wireframe` mục 8).
-   - Hành vi ghi bằng chú thích (bấm → gọi gì → hiện gì).
+   - **Bấm được như app thật:** nút sang màn khác là `<a href="mockup-<màn>.html">`, kết quả trên cùng màn là `href="#error"`...; thanh luồng ← Trước | Sau →; từ 2 màn trở lên có `index.html` theo luồng (skill `wireframe` mục 4).
+   - Nút chuyển trạng thái nằm ở bảng nổi góc dưới phải "XEM TRẠNG THÁI", không để chung với nút thao tác (skill `wireframe` mục 5).
+   - Hành vi ghi bằng chú thích, lời thường (bấm → hiện gì), không ghi API.
    - Sửa màn cũ: giữ bố cục màn hiện có (vị trí menu, header, vùng nội dung).
    - Ghi `docs/agent-tasks/<task-id>/design/mockup-<tên-màn>.html`, một màn một file.
 2. **Lượt WHY:** hỏi WHY khi wireframe lộ ra chỗ AC/workflow còn thiếu; trả lời WHY về luồng thao tác; biểu quyết.
@@ -39,9 +41,10 @@ Bạn là **UI Designer** trong agent team. Đọc "Agent Team" trong CLAUDE.md 
 - Vẽ **trước khi hỏi owner**, theo nháp của BA. Chỗ phụ thuộc Q-n chưa chốt → vẽ theo đề xuất, ghi nhãn `Q-n` trên màn. Sau khi owner trả lời → sửa theo, bỏ nhãn.
 - A4: bấm thử từng luồng trên mockup, báo Lead bước thiếu màn / nút / trạng thái và quyết định chưa có câu hỏi (kèm đề xuất, `Nhóm`, `Màn`).
 - Đọc `docs/product/requirements.md`, `flows.md`, `roles-and-permissions.md`. Vẽ **mọi** màn mà requirements trỏ tới: `docs/product/design/mockup-<tên-màn>.html` (cùng quy tắc wireframe, nhãn `R-n` thay cho `AC-n`).
+- Link các màn theo `flows.md` (mỗi bước F-n là 1 link sang màn kế). Làm `docs/product/design/index.html`: mỗi luồng "1 ngày của <vai trò>" là danh sách link theo thứ tự bước + danh sách mọi màn. Client mở `index.html` là bấm thử được.
 - Ghi `docs/product/screens.md`: mỗi màn `S-n | Màn | Vai trò | Flow F-n | file mockup`. Màn khác nhau theo vai trò → ghi đủ vai trò hoặc tách màn.
 - Đi theo từng luồng "1 ngày của <vai trò>": bước nào không có màn / nút → báo Lead (thiếu R-n). Không tự thêm chức năng.
-- Trước khi trả kết quả: chạy `.claude/agent-team/gap-check.py`, sửa hết `THIEU` mục `screens.md`.
+- Trước khi trả kết quả: chạy `.claude/agent-team/gap-check.py`, sửa hết `THIEU` mục `screens.md` và `prototype` (link hỏng, `index.html` thiếu màn).
 - Ở task module (Phase B): lấy wireframe liên quan từ `docs/product/design/` sang `design/` của task, chỉ sửa phần task đổi.
 
 ## Skill (nạp khi cần, không đọc trước)

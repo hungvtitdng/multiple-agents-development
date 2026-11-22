@@ -33,10 +33,10 @@ QH = "| Q | Câu hỏi | Đề xuất của team | Vì sao | Mức | Ai trả l�
 DH = "| D | Mục | Đề xuất mặc định | Owner chọn | Ghi chú |\n|---|---|---|---|---|\n"
 QUESTIONS = QH + (
     "| Q-1 | Khách muốn huỷ lịch thì sao? | Cho huỷ trước 2 giờ | Giữ chỗ cho khách khác | THẤP | OWNER | MỞ | | 3. F-1 Đặt lịch | S-1 |\n"
-    "| Q-2 | Khách không đến (no-show)? | Quá 3 lần thì phải đặt cọc | | CAO | OWNER | MỞ | | 3. F-1 Đặt lịch | S-1 |\n"
+    "| Q-2 | Khách không đến (no-show)? | Quá 3 lần thì phải đặt cọc | Khách bỏ lịch làm thợ ngồi không | CAO | OWNER | MỞ | | 3. F-1 Đặt lịch | S-1 |\n"
     "| Q-3 | Hosting ở đâu? | VPS | | THẤP | DEV | MỞ | | | |\n"
     "| Q-4 | Khách chọn thợ? | Được chọn thợ | | CAO | OWNER | ĐÃ TRẢ LỜI | Owner OK | 2. Vai trò | |\n"
-    "| Q-5 | Ai dùng app? | Chủ salon + khách | | THẤP | OWNER | MỞ | | 1. Tổng quan | |\n")
+    "| Q-5 | Ai dùng app? | Chủ salon + khách | Biết ai cần màn nào | THẤP | OWNER | MỞ | | 1. Tổng quan | |\n")
 SCREENS = "| S | Màn | Vai trò | Flow | Mockup |\n|---|---|---|---|---|\n| S-1 | Đặt lịch | Khách | F-1 | mockup-dat-lich.html |\n"
 FLOWS = "## F-1: Khách đặt lịch\n"
 DEFAULTS = DH + (
@@ -114,7 +114,7 @@ check("xếp theo hành trình: nhóm 1 → 3 → mặc định, giữ thứ t�
 k0 = next(i for i, r in enumerate(rows) if r.get("A") == "A. Owner: nghiệp vụ")
 check("mỗi nhóm có 1 dòng tiêu đề", [r.get("B") for r in rows[k0:] if not r.get("A") and r.get("B")][:3], ["1. Tổng quan", "3. F-1 Đặt lịch", "Mặc định"])
 check("cột Màn = tên màn + file mockup", data[1].get("C"), "S-1 Đặt lịch\ndesign/mockup-dat-lich.html")
-check("đề xuất kèm vì sao", data[1].get("D"), "Cho huỷ trước 2 giờ\nGiữ chỗ cho khách khác")
+check("đề xuất kèm giải thích", data[1].get("D"), "Đề xuất: Cho huỷ trước 2 giờ\nGiải thích: Giữ chỗ cho khách khác")
 check("cột owner để trống", [r.get("E", "") for r in data], ["", "", "", "", ""])
 check("số thứ tự", [r.get("A") for r in data], ["1", "2", "3", "4", "5"])
 with zipfile.ZipFile(xlsx) as z:
@@ -183,6 +183,15 @@ check("không có cột mã → khớp theo câu hỏi", "ĐÃ TRẢ LỜI" in r
 bad = project(questions=QH + "| Q-1 | Có cọc không? | | | CAO | OWNER | MỞ | | 3. F-1 | S-1 |\n")
 code, out = run("build", bad)
 check("câu OWNER thiếu đề xuất → không sinh form", (code, "chưa có Đề xuất" in out, os.path.isfile(os.path.join(bad, "docs/product/owner-form-1.xlsx"))), (1, True, False))
+nowhy = project(questions=QH + "| Q-1 | Khách muốn huỷ lịch thì sao? | Cho huỷ trước 2 giờ | | CAO | OWNER | MỞ | | 3. F-1 | S-1 |\n")
+code, out = run("build", nowhy)
+check("câu OWNER thiếu giải thích → không sinh form", (code, "chưa có Vì sao" in out), (1, True))
+for desc, text in (("mã nội bộ", "Theo R-3 khách huỷ thì sao?"), ("từ kỹ thuật", "Khách huỷ thì đổi status lịch?")):
+    jr = project(questions=QH + f"| Q-1 | {text} | Cho huỷ trước 2 giờ | Giữ chỗ | CAO | OWNER | MỞ | | 3. F-1 | S-1 |\n")
+    code, out = run("build", jr)
+    check(f"câu OWNER có {desc} → không sinh form", (code, "owner không hiểu" in out), (1, True))
+dev_tech = project(questions=QH + "| Q-1 | API dùng REST? | REST + JSON | | THẤP | DEV | MỞ | | | |\n| Q-2 | Luồng đặt lịch đúng chưa? | Đúng | | THẤP | OWNER | ĐÃ TRẢ LỜI | OK | 3. F-1 | S-1 |\n", defaults=DH)
+check("câu DEV được dùng từ kỹ thuật", run("build", dev_tech)[0], 0)
 old = project(questions="| Q | Câu hỏi | Mức | Trạng thái | Trả lời |\n|---|---|---|---|---|\n| Q-1 | x | CAO | MỞ | |\n")
 dv = project(questions=QH + "| Q-1 | SMTP? | | | THẤP | DEV | MỞ | |\n")
 check("câu DEV thiếu đề xuất → không sinh form", run("build", dv)[0], 1)
