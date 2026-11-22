@@ -1,3 +1,14 @@
+# Release notes - 22/11/2026 (v0.18.7 - tên file form QnA-v<n>.xlsx)
+
+## Thay đổi
+- `owner-form.py build` sinh `QnA-v<n>.xlsx` (thay cho `owner-form-<n>.xlsx`). Số `n` tiếp theo bản lớn nhất đang có, tính cả file `owner-form-<n>.xlsx` cũ (đang có `owner-form-3.xlsx` thì bản mới là `QnA-v4.xlsx`). `import` đọc được cả file tên cũ.
+- Sửa theo: `app.md`, `resume.md`, `templates/product/README.md`, README. Test owner-form: 68 case.
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update multiple-agent`, khởi động lại Claude Code.
+- Project đã init: copy lại `scripts/owner-form.py` → `.claude/agent-team/` (chmod +x). File `owner-form-<n>.xlsx` đã gửi client giữ nguyên, không cần đổi tên.
+- Không có ENV / key mới.
+
 # Release notes - 22/11/2026 (v0.18.6 - mockup chia 2 bên cho client)
 
 ## Thay đổi

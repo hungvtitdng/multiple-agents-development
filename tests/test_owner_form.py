@@ -97,9 +97,9 @@ def excel_like(path, rows):
 # ---- build ----
 root = project()
 code, out = run("build", root)
-xlsx = os.path.join(root, "docs", "product", "owner-form-1.xlsx")
+xlsx = os.path.join(root, "docs", "product", "QnA-v1.xlsx")
 check("build thành công", code, 0)
-check("có file owner-form-1.xlsx", os.path.isfile(xlsx), True)
+check("có file QnA-v1.xlsx", os.path.isfile(xlsx), True)
 rows = of.read_xlsx(xlsx)
 check("dòng 1 = tên app", rows[0].get("A"), "Salon Tóc Mây")
 check("dòng 3 = mục A. Owner", rows[1].get("A"), "A. Owner: nghiệp vụ")
@@ -168,7 +168,7 @@ q, d = doc(root2, "questions.md"), doc(root2, "defaults.md")
 check("Q-2 không đồng ý → MỞ", "| MỞ |" in row_of(q, "Q-2"), True)
 check("D-1 góp ý → KHÁC + ghi chú", ("KHÁC" in row_of(d, "D-1"), "QR tại quầy" in row_of(d, "D-1")), (True, True))
 code, out = run("build", root2)
-rows2 = of.read_xlsx(os.path.join(root2, "docs", "product", "owner-form-2.xlsx"))
+rows2 = of.read_xlsx(os.path.join(root2, "docs", "product", "QnA-v2.xlsx"))
 check("lượt 2: mục A chỉ Q-2 + Q-5 chưa trả lời, mục B vẫn Q-3", ([r.get("F") for r in section(rows2, "A. Owner")], [r.get("F") for r in section(rows2, "B. Dev")]), (["Q-5", "Q-2"], ["Q-3"]))
 
 # ---- mất cột mã: tìm theo câu hỏi ----
@@ -182,7 +182,7 @@ check("không có cột mã → khớp theo câu hỏi", "ĐÃ TRẢ LỜI" in r
 # ---- lỗi dữ liệu ----
 bad = project(questions=QH + "| Q-1 | Có cọc không? | | | CAO | OWNER | MỞ | | 3. F-1 | S-1 |\n")
 code, out = run("build", bad)
-check("câu OWNER thiếu đề xuất → không sinh form", (code, "chưa có Đề xuất" in out, os.path.isfile(os.path.join(bad, "docs/product/owner-form-1.xlsx"))), (1, True, False))
+check("câu OWNER thiếu đề xuất → không sinh form", (code, "chưa có Đề xuất" in out, os.path.isfile(os.path.join(bad, "docs/product/QnA-v1.xlsx"))), (1, True, False))
 nowhy = project(questions=QH + "| Q-1 | Khách muốn huỷ lịch thì sao? | Cho huỷ trước 2 giờ | | CAO | OWNER | MỞ | | 3. F-1 | S-1 |\n")
 code, out = run("build", nowhy)
 check("câu OWNER thiếu giải thích → không sinh form", (code, "chưa có Vì sao" in out), (1, True))
@@ -201,14 +201,14 @@ old = project(questions="| Q | Câu hỏi | Mức | Trạng thái | Trả lời 
 dv = project(questions=QH + "| Q-1 | SMTP? | | | THẤP | DEV | MỞ | |\n")
 check("câu DEV thiếu đề xuất → không sinh form", run("build", dv)[0], 1)
 only = project(questions=QH + "| Q-1 | SMTP? | Có | | THẤP | DEV | MỞ | | | |\n| Q-2 | Luồng đặt lịch đúng chưa? | Đúng | | THẤP | OWNER | ĐÃ TRẢ LỜI | OK | 3. F-1 | S-1 |\n", defaults=DH)
-rows_o = of.read_xlsx(os.path.join(only, "docs/product/owner-form-1.xlsx")) if run("build", only)[0] == 0 else []
+rows_o = of.read_xlsx(os.path.join(only, "docs/product/QnA-v1.xlsx")) if run("build", only)[0] == 0 else []
 check("chỉ có câu DEV → bỏ mục A", ([r.get("A") for r in rows_o if (r.get("A") or "")[:2] in ("A.", "B.")]), ["B. Dev: kỹ thuật"])
 check("questions.md bản cũ → báo copy template", "bản cũ" in run("build", old)[1], True)
 none = project(questions=QH + "| Q-1 | Luồng đặt lịch? | Đúng | | THẤP | OWNER | ĐÃ TRẢ LỜI | OK | 3. F-1 | S-1 |\n", defaults=DH)
-check("không có câu nào → báo, không sinh file", (run("build", none)[0], os.path.isfile(os.path.join(none, "docs/product/owner-form-1.xlsx"))), (0, False))
+check("không có câu nào → báo, không sinh file", (run("build", none)[0], os.path.isfile(os.path.join(none, "docs/product/QnA-v1.xlsx"))), (0, False))
 def refused(root, msg):
     code, out = run("build", root)
-    return code, msg in out, os.path.isfile(os.path.join(root, "docs/product/owner-form-1.xlsx"))
+    return code, msg in out, os.path.isfile(os.path.join(root, "docs/product/QnA-v1.xlsx"))
 
 
 check("Debate chưa DONE → không sinh form", refused(project(app="# S\n- Challenger: DONE\n"), "Debate chưa DONE"), (1, True, False))
@@ -243,6 +243,12 @@ check("gap-check: CHỜ DEV hợp lệ", "trạng thái 'CHỜ DEV'" in g, False
 g = gap(project(questions=QH + "| Q-1 | SMTP? | | | THẤP | DEV | MỞ | | | |\n"))
 check("gap-check: câu DEV thiếu đề xuất", "Q-1 gửi dev nhưng chưa có Đề xuất" in g, True)
 check("gap-check: CHỜ OWNER là trạng thái hợp lệ", "trạng thái 'CHỜ OWNER'" in g, False)
+
+# ---- tên file QnA-v<n>.xlsx, tiếp số sau bản cũ owner-form-<n>.xlsx ----
+legacy = project(questions=QH + "| Q-1 | Khách được tự huỷ lịch không? | Cho huỷ trước 2 giờ | Giữ chỗ cho khách khác | CAO | OWNER | MỞ | | 3. F-1 | S-1 |\n")
+open(os.path.join(legacy, "docs/product/owner-form-3.xlsx"), "wb").close()
+run("build", legacy)
+check("có owner-form-3 cũ → bản mới là QnA-v4.xlsx", os.path.isfile(os.path.join(legacy, "docs/product/QnA-v4.xlsx")), True)
 
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

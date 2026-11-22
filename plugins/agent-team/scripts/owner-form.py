@@ -2,7 +2,7 @@
 """owner-form - form hỏi owner + dev (App Mode). Không cần thư viện ngoài.
 
 Dùng (Lead chạy, trong project):
-  owner-form.py build  [thư mục project]          → docs/product/owner-form-<n>.xlsx
+  owner-form.py build  [thư mục project]          → docs/product/QnA-v<n>.xlsx
   owner-form.py import <file .xlsx|.csv> [project] → ghi câu trả lời vào questions.md, defaults.md
   --dir=<thư mục>: module mới trong app đang chạy (vd --dir=docs/product/modules/thanh-toan), cổng đọc ở MODULE.md
 
@@ -314,8 +314,10 @@ def cmd_build(root):
     if not own and not dev:
         print("Không có câu nào cần trả lời (OWNER / DEV đang MỞ, mặc định CHƯA).")
         return 0
-    n = 1 + len([f for f in os.listdir(os.path.join(root, P)) if re.match(r"owner-form-\d+\.xlsx$", f)])
-    out = os.path.join(root, P, f"owner-form-{n}.xlsx")
+    # QnA-v<n>.xlsx; tiếp số sau bản cũ (QnA-v<n> hoặc owner-form-<n> của bản trước)
+    nums = [int(m.group(1)) for f in os.listdir(os.path.join(root, P)) if (m := re.match(r"(?:QnA-v|owner-form-)(\d+)\.xlsx$", f))]
+    n = 1 + max(nums, default=0)
+    out = os.path.join(root, P, f"QnA-v{n}.xlsx")
     write_xlsx(out, app_name(root), [(SECTIONS[0][1], SECTIONS[0][2], own), (SECTIONS[1][1], SECTIONS[1][2], dev)])
     qp, dp = os.path.join(root, P, "questions.md"), os.path.join(root, P, "defaults.md")
     upd = {q[0]: {"trạng thái": f"CHỜ {who}"} for who, v in qs.items() for q in v}

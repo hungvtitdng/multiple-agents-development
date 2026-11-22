@@ -139,7 +139,7 @@ PHASE A: chỉ tài liệu (stage S1-S2)
 PHASE B: M-0 trong task app (S3-S6), M-1..n mỗi module 1 /agent-team:task, lần lượt
 ```
 
-**Form hỏi owner + dev** (`owner-form.py build` → `docs/product/owner-form-<n>.xlsx`, mở bằng Excel hoặc Google Sheet). 1 file, 2 mục; mục A cho owner:
+**Form hỏi owner + dev** (`owner-form.py build` → `docs/product/QnA-v<n>.xlsx`, mở bằng Excel hoặc Google Sheet). 1 file, 2 mục; mục A cho owner:
 
 | # | Câu hỏi | Màn / mockup | Đề xuất của team | Owner duyệt / góp ý |
 |---|---|---|---|---|

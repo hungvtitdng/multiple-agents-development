@@ -52,7 +52,7 @@ M-0 khung project (task này, S3-S6) → M-1..n: mỗi module 1 /agent-team:task
   - **Cấm** mã nội bộ (R-, F-, AC-, BR-, P-, S-, Q-, D-...) và từ kỹ thuật (API, database, token, status, role, record, server...). `owner-form.py build` từ chối câu OWNER có các từ này hoặc thiếu Vì sao. Câu DEV không bị chặn.
   - Câu phụ thuộc câu khác: viết bằng lời ("Nếu ở câu trên anh/chị chọn có đặt cọc: ..."), không ghi `Q-n`.
   - **Thứ tự:** viết / sửa câu OWNER **sau khi** mockup của màn ở cột `Màn` đã xong (A3b). Không gọi BA viết câu song song với ui-designer đang vẽ. Mockup đổi sau đó → BA đối chiếu lại mọi câu có `Màn` trỏ tới màn đó trước khi build form.
-- Sinh form: `.claude/agent-team/owner-form.py build` → `docs/product/owner-form-<n>.xlsx`:
+- Sinh form: `.claude/agent-team/owner-form.py build` → `docs/product/QnA-v<n>.xlsx`:
   ```
   <Tên app>
 
@@ -77,7 +77,7 @@ M-0 khung project (task này, S3-S6) → M-1..n: mỗi module 1 /agent-team:task
   - Cột `Màn` (`S-n`): form in tên màn + file mockup, gửi kèm thư mục `docs/product/design/`; owner mở `index.html` bấm tới màn đó để xem câu hỏi nằm ở đâu.
   - Câu phụ thuộc câu khác gửi cùng lượt, viết bằng lời ("Nếu ở câu trên chọn có: ...", có đề xuất). Câu vụn cùng 1 bước gộp thành 1 câu.
   - Lượt 2 chỉ gồm câu ghi "không", ô để trống, câu mới do góp ý làm đổi logic.
-- **Chờ trả lời:** TASK.md `Trạng thái: BLOCKED (chờ owner, form lượt <n>)`. Báo user: gửi file `owner-form-<n>.xlsx` cho owner (mục A) và dev (mục B), nhận lại rồi chạy `/agent-team:resume <task-id> <đường dẫn file trả lời>`. Dev trả lời trước hay sau owner đều được; logic chỉ chốt theo mục A.
+- **Chờ trả lời:** TASK.md `Trạng thái: BLOCKED (chờ owner, form lượt <n>)`. Báo user: gửi file `QnA-v<n>.xlsx` cho owner (mục A) và dev (mục B), nhận lại rồi chạy `/agent-team:resume <task-id> <đường dẫn file trả lời>`. Dev trả lời trước hay sau owner đều được; logic chỉ chốt theo mục A.
 
 ## 1. Chuẩn bị
 1. Thư mục plugin: `find ~/.claude/plugins -type d -path "*agent-team" -exec test -f {}/scripts/gap-check.py \; -print | head -1` (dùng cho `catalog/`, `templates/product/`).
@@ -155,7 +155,7 @@ Xong: chạy `.claude/agent-team/gap-check.py --spec`, sửa hết `THIEU` → `
 - GAP khi code (task.md mục 7b) mà nguyên nhân là "Phase A bỏ sót" → ghi bài học **và** nêu ở báo cáo: "nên thêm vào `catalog/<loại>.md` của plugin: <mục, câu hỏi ngắn, đề xuất>". Lần sau app cùng loại sẽ được hỏi sớm.
 
 ## 12. Báo cáo
-- **Mỗi lượt form:** dòng đầu "Gửi file `docs/product/owner-form-<n>.xlsx`: owner điền mục A, dev điền mục B" + số câu mỗi mục (số câu CAO). Việc tiếp theo: nhận file trả lời rồi `/agent-team:resume <task-id> <file>`.
+- **Mỗi lượt form:** dòng đầu "Gửi file `docs/product/QnA-v<n>.xlsx`: owner điền mục A, dev điền mục B" + số câu mỗi mục (số câu CAO). Việc tiếp theo: nhận file trả lời rồi `/agent-team:resume <task-id> <file>`.
 - **Cuối Phase A:** dòng đầu "Owner đã chốt logic" (hoặc còn chờ gì). Kèm: đường dẫn `docs/product/SPEC.md`, số yêu cầu, số luồng, số màn, danh sách module + thứ tự, các `GIẢ ĐỊNH` mức THẤP.
 - **Sau mỗi module:** như `task.md` mục 10, thêm "Module tiếp theo: M-<n>".
 - Cuối cùng: đúng 1 việc user làm tiếp (≤ 2 phút).
