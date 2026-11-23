@@ -81,6 +81,9 @@ def connect(root):
     db.row_factory = sqlite3.Row
     db.execute("PRAGMA busy_timeout=15000")
     db.executescript(SCHEMA)
+    if "design_at" not in {r[1] for r in db.execute("PRAGMA table_info(pool_modules)")}:  # board.db cũ
+        db.execute("ALTER TABLE pool_modules ADD COLUMN design_at INTEGER")
+        db.commit()
     return db
 
 
@@ -158,6 +161,25 @@ def module_deps_ok(db, root, m, need):
     return True
 
 
+def module_wait(db, root, m):
+    """Vì sao task của module m chưa READY dù task phụ thuộc đã xong: ['nền dữ liệu'] / module phụ thuộc chưa xong."""
+    if missing_tables(root) and m not in ("M-0", "M-DB"):
+        return ["nền dữ liệu (M-DB)"]
+    rows, reasons = app_rows(root)
+    me = next((x for x in rows if x["M"] == m), None)
+    if not me:
+        return []
+    deps = [x["M"] for x in rows if x["M"] != m] if me["deps"] == ["*"] else me["deps"]
+    out = []
+    for d in deps:
+        if mod_state(db, root, d, rows) == "DONE":
+            continue
+        if reasons.get((m, d)) == "contract" and os.path.isfile(os.path.join(root, contract_path(d))) and me["deps"] != ["*"]:
+            continue
+        out.append(d + (" (contract)" if reasons.get((m, d)) == "contract" else ""))
+    return out
+
+
 def plan_fill(db, root):
     """Chia slot trống theo thứ tự bảng Module: task READY của module đã chia (không giới hạn / module),
     hoặc bắt đầu debate module kế (1 slot, tối đa MAX_DEBATE debate cùng lúc). Trả (task, module debate, debate chờ)."""
@@ -204,6 +226,8 @@ def cmd_module(db, root, a):
         v = getattr(a, k)
         if v:
             db.execute(f"UPDATE pool_modules SET {k}=? WHERE module=?", (v.upper() if k == "state" else v, a.module))
+            if k == "state" and v.upper() == "DESIGN":
+                db.execute("UPDATE pool_modules SET design_at=COALESCE(design_at, ?) WHERE module=?", (int(time.time()), a.module))
     if a.state and a.state.upper() == "DESIGN":
         others = [x[0] for x in db.execute("SELECT module FROM pool_modules WHERE state='DESIGN' AND module!=?", (a.module,))]
         if len(others) >= max_debate(root):
@@ -297,7 +321,7 @@ def cmd_fill(db, root, a):
         n = db.execute("SELECT count(*) FROM pool_modules").fetchone()[0]
         idx = next((i for i, x in enumerate(rows) if x["M"] == m), n)
         db.execute("INSERT OR IGNORE INTO pool_modules(module, ord) VALUES(?,?)", (m, idx + 1))
-        db.execute("UPDATE pool_modules SET state='DESIGN' WHERE module=?", (m,))
+        db.execute("UPDATE pool_modules SET state='DESIGN', design_at=COALESCE(design_at, ?) WHERE module=?", (int(time.time()), m))
         db.commit()
         print(f"💬 {m}: bắt đầu debate (1 slot) → TASK.md thiết kế ở thư mục chính, debate theo Loại, chia task → pool.py add → module {m} --state SPLIT")
     if not start_t:
@@ -486,16 +510,18 @@ def status_rows(db, root):
 
 
 def cmd_status(db, root, a):
-    mods = db.execute("SELECT * FROM pool_modules ORDER BY ord").fetchall()
-    design = [m["module"] for m in mods if m["state"] == "DESIGN"]
-    rows = status_rows(db, root)
-    busy = sum(1 for x in rows if x[4] in SLOT_STATES)
+    """Bảng giống status line (progress.py), không cắt dòng: module · task · Debate · Code · Test · Review · Merge · trạng thái."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("progress", os.path.join(os.path.dirname(os.path.abspath(__file__)), "progress.py"))
+    prog = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(prog)
+    print("\n".join(prog.pool_block(root, all_rows=True)) or "Pool trống")
     _, _, wait_d = plan_fill(db, root)
-    print(f"Module ✅ {sum(1 for m in mods if m['state'] == 'DONE')}/{len(mods)} · chạy {busy + len(design)}/{max_parallel(root)}"
-          f" (task {busy} · 💬 debate {len(design)}/{max_debate(root)}: {', '.join(design) or '-'}"
-          + (f" · chờ debate: {', '.join(wait_d)}" if wait_d else "") + ")")
-    for label, title, agents, st, _ in rows:
-        print(f"  {label:<10} {title[:30]:<30} {agents[:24]:<24} {st}")
+    if wait_d:
+        print(f"Chờ debate: {', '.join(wait_d)} (đủ {max_debate(root)} debate / hết slot)")
+    miss = missing_tables(root)
+    if miss:
+        print(f"⛔ Thiếu migration {len(miss)} bảng: {', '.join(miss[:8])} → M-DB trước")
 
 
 def cmd_resume(db, root, a):
@@ -699,7 +725,7 @@ def cmd_claim(db, root, a):
     if code:
         die(f"push lỗi (có thể người khác vừa nhận): {out[:200]}")
     db.execute("INSERT OR IGNORE INTO pool_modules(module, ord) VALUES(?, 0)", (m,))
-    db.execute("UPDATE pool_modules SET state='DESIGN' WHERE module=?", (m,))
+    db.execute("UPDATE pool_modules SET state='DESIGN', design_at=COALESCE(design_at, ?) WHERE module=?", (int(time.time()), m))
     db.commit()
     print(f"✅ Đã nhận {m} · branch {br} (đã push) · task-id {tid}\n"
           f"Tiếp: thiết kế {m} theo Loại (app.md Phase C) → chia task → pool.py add → module {m} --state SPLIT → fill / wait\n"

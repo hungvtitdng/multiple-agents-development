@@ -1,4 +1,28 @@
-# Release notes - 24/11/2026 (v0.30.0 - nền dữ liệu M-DB trước, module độc lập)
+# Release notes - 24/11/2026 (v0.30.2 - thời gian chạy + nhịp tim agent trên status line)
+
+## Thay đổi
+- Ô đang chạy hiện thời gian `mm:ss` (quá 1 giờ `h:mm:ss`), lấy từ dữ liệu thật: giai đoạn của task = giờ sửa file `.agent-team/stage` của worktree · merge + IT = giờ tạo `.git/MERGE_HEAD` · debate module = giờ chuyển DESIGN (cột mới `pool_modules.design_at`, board.db cũ tự thêm).
+- Trạng thái task đang chạy có nhịp tim agent: `▶ Code · backend-dev 8s trước` (số giây về thấp = agent còn làm), `⚠ backend-dev im 12p` khi quá `HANG_MINUTES`, `chưa có agent` khi worktree chưa có agent nào chạy.
+- Merge quá `MERGE_WARN_MINUTES` (mặc định 20) hiện ⚠. Task thường (không pool): bước đang làm `▶ Đang làm 12:40`, dòng agent `backend-dev 8s trước · <tiến độ>`.
+- Số giây cập nhật mỗi lần Claude Code vẽ lại status line (khi có tin nhắn / tool chạy), không tự chạy từng giây.
+- Test: pool 36, slots 12, progress 30.
+
+## Cần làm thủ công
+- Commit + push, `/plugin marketplace update multiple-agent`, khởi động lại Claude Code.
+- Key mới (không bắt buộc): `MERGE_WARN_MINUTES=20`. Không phải secret.
+
+# Release notes - 24/11/2026 (v0.30.1 - bảng điều phối theo giai đoạn)
+
+## Thay đổi
+- Status line + `pool.py status` (điều phối nhiều task): 1 dòng / task, cột `Module · Task · Debate · Code · Test · Review · Merge · Trạng thái`. Ô: ✅ xong · ▶ Np đang làm · ⏳ chưa tới · 🔧 sửa lại · ⛔ GAP / chặn · ✗ merge lỗi · 🔀 IT đang chạy. Không có dòng tổng.
+- Module đã xong: 1 dòng `(n task) ✅ Xong`. Module đang debate chưa có task: `(chưa chia task) 💬 Debate`. Module chưa bắt đầu gộp 1 dòng: `⏳ Chờ slot debate` hoặc `⏳ Chờ phụ thuộc`. Task chờ module / nền dữ liệu hiện lý do (`⏳ Chờ M-1 (contract)`, `⏳ Chờ nền dữ liệu (M-DB)`), không còn hiện nhầm 🟢 READY.
+- Chỉ 1 module (không có `APP.md`): bỏ cột Module, tiêu đề `M-n · x/y task xong`. Status line quá 16 dòng: task đã merge gộp, rồi cắt kèm `… +n dòng (pool.py status)`; `pool.py status` in đủ.
+- Test: slots 11, pool 34.
+
+## Cần làm thủ công
+- Commit + push, `/plugin marketplace update multiple-agent`, khởi động lại Claude Code (hook `sync.py` tự chép `progress.py`, `pool.py`).
+
+ - nền dữ liệu M-DB trước, module độc lập)
 
 ## Thay đổi
 - **Bảng dữ liệu không thuộc module nào:** mọi bảng trong `docs/database/schema.md` nằm ở module **M-DB** (Phase B, sau M-0): migration + model + quan hệ + enum + factory + seeder + service dùng chung (giao diện + bản tối thiểu). Module mặc định chỉ phụ thuộc `M-DB (code)` → chạy song song. Trước đây bảng đi theo module dùng nó → chuỗi phụ thuộc (vd `04.Cay`: idps ở M-6 nên M-7..M-11 chờ).

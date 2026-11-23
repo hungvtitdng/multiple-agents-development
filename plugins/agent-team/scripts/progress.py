@@ -96,8 +96,8 @@ def agent_info(root, task):
         limit = max(hang * 60, (tmo or 0) + 60) if busy else hang * 60
         if idle > limit:
             out.append(f"⚠ {role} im {idle // 60}p" + (f": {tool[:40]}" if tool else ""))
-        elif step:
-            out.append(f"{role} {step}")
+        else:
+            out.append(f"{role} {idle}s trước" + (f" · {step}" if step else ""))  # nhịp tim: số giây nhảy về thấp = agent còn chạy
     return out
 
 
@@ -328,7 +328,7 @@ def collapse(steps):
     size = {}
     for x in steps:
         size[x[3]] = size.get(x[3], 0) + 1
-    rows = [(str(i), t, r or "", s, (now - st) // 60 if s == "doing" and st else None, g is not None and size[g] > 1)
+    rows = [(str(i), t, r or "", s, now - st if s == "doing" and st else None, g is not None and size[g] > 1)
             for i, (t, s, r, g, st) in enumerate(steps, 1)]
 
     def merge(a, b, state):
@@ -349,12 +349,78 @@ def collapse(steps):
     return rows
 
 
-POOL_MARK = {"RUNNING": "▶", "GAP": "⛔ GAP", "FIX": "🔧 Sửa", "BLOCKED": "⛔ Chặn",
-             "MERGE_WAIT": "🔀 Chờ merge", "MERGING": "🔀 IT đang chạy", "DONE": "✅ Merged"}
+POOL_COLS = ["Debate", "Code", "Test", "Review", "Merge"]
+POOL_STAGE_COL = {"S1": 1, "S2": 1, "S3": 1, "S4": 2, "S5": 3, "S6": 3}  # stage của worktree → cột đang làm
+POOL_MAX_ROWS = 16
 
 
-def pool_block(root):
-    """Điều phối nhiều task (pool.py): bảng task của cả app. [] khi không dùng pool."""
+def clock(sec):
+    """Thời gian chạy: mm:ss, quá 1 giờ thì h:mm:ss."""
+    sec = max(0, int(sec))
+    h, m, s_ = sec // 3600, sec % 3600 // 60, sec % 60
+    return f"{h}:{m:02d}:{s_:02d}" if h else f"{m:02d}:{s_:02d}"
+
+
+def mtime(path):
+    try:
+        return os.path.getmtime(path)
+    except OSError:
+        return None
+
+
+def agent_pulse(root, wt, hang):
+    """Agent đang chạy trong worktree + lần cuối dùng tool (nhịp tim): 'backend-dev 8s trước' / '⚠ backend-dev im 12p'."""
+    try:
+        c = sqlite3.connect(f"file:{os.path.join(root, wt, '.agent-team', 'board.db')}?mode=ro", uri=True, timeout=2)
+        rows = c.execute("SELECT role, last_seen, busy_since, tool_timeout FROM agent_runs WHERE state='RUNNING' ORDER BY last_seen DESC").fetchall()
+        c.close()
+    except sqlite3.Error:
+        return ""
+    if not rows:
+        return ""
+    role, seen, busy, tmo = rows[0]
+    idle = int(time.time()) - seen
+    limit = max(hang, (tmo or 0) + 60) if busy else hang
+    more = f" +{len(rows) - 1}" if len(rows) > 1 else ""
+    return (f"⚠ {role}{more} im {idle // 60}p" if idle > limit else f"{role}{more} {idle}s trước")
+
+
+def task_cells(root, r, design, now):
+    """5 ô Debate · Code · Test · Review · Merge + trạng thái chung của 1 task trong pool."""
+    st, note = r["state"], (r["note"] or "")
+    cells = ["💬 ▶" if design else "✅"] + ["⏳"] * 4
+    if st == "DONE":
+        return ["✅"] * 5, "✅ Merged"
+    if st == "MERGE_WAIT":
+        return ["✅"] * 4 + ["⏳"], "🔀 Chờ merge"
+    if st == "MERGING":
+        t0 = mtime(os.path.join(root, ".git", "MERGE_HEAD"))  # git tạo lúc merge --no-commit
+        el = clock(now - t0) if t0 else ""
+        warn = " ⚠" if t0 and now - t0 > int(cfg(root, "MERGE_WARN_MINUTES", "20") or 20) * 60 else ""
+        return ["✅"] * 4 + [f"🔀 IT {el}".strip()], f"🔀 Đang merge {el}{warn}".strip()
+    if st == "WAIT":
+        return cells, ""
+    stg = read(os.path.join(root, r["worktree"] or "", ".agent-team", "stage")).strip().upper() if r["worktree"] else ""
+    cur = POOL_STAGE_COL.get(stg, 1)
+    for i in range(1, cur):
+        cells[i] = "✅"
+    t0 = mtime(os.path.join(root, r["worktree"] or "", ".agent-team", "stage")) or r["started_at"]  # vào giai đoạn này lúc nào
+    el = f" {clock(now - t0)}" if t0 else ""
+    mark = {"RUNNING": "▶" + el, "FIX": "🔧" + el, "GAP": "⛔", "BLOCKED": "⛔"}.get(st, "▶")
+    cells[cur] = mark
+    if st == "FIX" and re.match(r"(IT fail|conflict)", note):
+        cells[4] = "✗"
+    label = {"RUNNING": f"▶ {POOL_COLS[cur]}", "FIX": "🔧 Sửa", "GAP": "⛔ GAP", "BLOCKED": "⛔ Chặn"}.get(st, st)
+    if note and st in ("FIX", "GAP", "BLOCKED"):
+        label += f" ({short(note.split(':')[0], 12)})"
+    if st in ("RUNNING", "FIX") and r["worktree"]:
+        pulse = agent_pulse(root, r["worktree"], int(cfg(root, "HANG_MINUTES", "10") or 10) * 60)
+        label += f" · {pulse}" if pulse else " · chưa có agent"
+    return cells, label
+
+
+def pool_block(root, all_rows=False):
+    """Điều phối nhiều task (pool.py): 1 dòng / task, cột theo giai đoạn + trạng thái chung, gom theo module. [] khi không dùng pool."""
     p = os.path.join(root, ".agent-team", "board.db")
     if not os.path.isfile(p):
         return []
@@ -362,48 +428,87 @@ def pool_block(root):
         db = sqlite3.connect(f"file:{p}?mode=ro", uri=True, timeout=2)
         db.row_factory = sqlite3.Row
         rows = db.execute("SELECT * FROM pool ORDER BY ord").fetchall()
-        mods = db.execute("SELECT * FROM pool_modules ORDER BY ord").fetchall()
+        mods = {m["module"]: m for m in db.execute("SELECT * FROM pool_modules ORDER BY ord")}
         db.close()
     except sqlite3.Error:
         return []
     if not rows and not mods:
         return []
-    done = {r["label"] for r in rows if r["state"] == "DONE"}
+    try:  # luật READY / chờ của pool.py (phụ thuộc module, nền dữ liệu, hàng chờ debate)
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("pool", os.path.join(os.path.dirname(os.path.abspath(__file__)), "pool.py"))
+        pool = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(pool)
+        pdb = sqlite3.connect(f"file:{p}?mode=ro", uri=True, timeout=2)
+        pdb.row_factory = sqlite3.Row
+        wait_d = set(pool.plan_fill(pdb, root)[2])
+    except Exception:
+        pool, pdb, wait_d = None, None, set()
+    app = read(os.path.join(root, "docs", "product", "APP.md"))
+    table = [r for r in table_rows(app, "M") if r[1]]
+    names = {r[0]: r[1] for r in table}
+    app_done = {r[0] for r in table if r[-1].upper().startswith("DONE")}
+    order = [r[0] for r in table] + [m for m in mods if m not in {r[0] for r in table}]
+    order += [r["module"] for r in rows if r["module"] not in order]
+    done_lbl = {r["label"] for r in rows if r["state"] == "DONE"}
     now = int(time.time())
-    body, running = [], 0
-    for r in rows:
-        if r["state"] == "DONE":
+    single = not table and len({r["module"] for r in rows} | set(mods)) == 1
+    body, idle, running, debating = [], [], 0, 0
+    for m in order:
+        tasks = [r for r in rows if r["module"] == m]
+        mst = mods[m]["state"] if m in mods else ""
+        is_done = mst == "DONE" or m in app_done
+        design = mst == "DESIGN"
+        debating += design
+        if is_done and all(t["state"] == "DONE" for t in tasks):
+            body.append([m, f"({len(tasks)} task)" if tasks else "(đã xong)"] + ["✅"] * 5 + ["✅ Xong"])
             continue
-        agents, st = "", POOL_MARK.get(r["state"], r["state"])
-        deps = [x.strip() for x in (r["deps"] or "").split(",") if x.strip()]
-        if r["state"] == "WAIT":
-            wait = [d for d in deps if d not in done]
-            st = "⏳ Chờ " + ", ".join(wait) if wait else "🟢 READY"
-        elif r["state"] in ("RUNNING", "FIX", "GAP"):
-            running += 1
-            wt = os.path.join(root, r["worktree"] or "")
-            try:
-                c = sqlite3.connect(f"file:{os.path.join(wt, '.agent-team', 'board.db')}?mode=ro", uri=True, timeout=2)
-                agents = ", ".join(x[0] for x in c.execute("SELECT role FROM agent_runs WHERE state='RUNNING'"))
-                c.close()
-            except sqlite3.Error:
-                pass
-            stg = read(os.path.join(wt, ".agent-team", "stage")).strip().upper()
-            st += (f" {STAGES[stg][0].capitalize()}" if stg in STAGES else "") + (f" {(now - r['started_at']) // 60}p" if r["started_at"] else "")
-        if r["note"] and r["state"] in ("FIX", "GAP", "BLOCKED"):
-            st += f" · {short(r['note'], 24)}"
-        body.append([r["label"], short(r["title"], 24), short(agents, 26) or "–", st])
-    design = [m["module"] for m in mods if m["state"] == "DESIGN"]
-    body = [[m, "Debate + chia task", "Lead", "💬 Debate"] for m in design] + body  # mỗi debate chiếm 1 slot
-    if len(body) > MAX_STEP_ROWS:
-        body = body[:MAX_STEP_ROWS - 1] + [["…", f"+{len(body) - MAX_STEP_ROWS + 1} task", "", "⏳"]]
-    if done:
-        body.insert(0, ["✅", f"{len(done)} task đã merge", "", "✅ Merged"])
-    title = (re.search(r"(?m)^#\s+(.+)$", read(os.path.join(root, "docs", "product", "APP.md"))) or [None, ""])[1].strip()
+        if not tasks:
+            if design:
+                dat = mods[m]["design_at"] if "design_at" in mods[m].keys() else None
+                el = f" {clock(now - dat)}" if dat else ""
+                body.append([m, "(chưa chia task)", "💬 ▶" + el] + ["⏳"] * 4 + ["💬 Debate" + el])
+            elif mst == "SPLIT":
+                body.append([m, "(chưa có task)", "✅"] + ["⏳"] * 4 + ["⚠ Chưa add task"])
+            else:
+                idle.append(m)
+            continue
+        merged = [t for t in tasks if t["state"] == "DONE"]
+        for i, t in enumerate(tasks):
+            cells, label = task_cells(root, t, design, now)
+            if t["state"] in ("RUNNING", "FIX", "GAP"):
+                running += 1
+            if t["state"] == "WAIT":
+                deps = [x.strip() for x in (t["deps"] or "").split(",") if x.strip() and x.strip() not in done_lbl]
+                mw = pool.module_wait(pdb, root, m) if pool and not deps and not design else []
+                label = ("⏳ Chờ " + ", ".join(d.replace(m + "/", "") for d in deps)) if deps else \
+                    "💬 Chờ chia task" if design else ("⏳ Chờ " + ", ".join(mw)) if mw else "🟢 READY"
+            body.append(["", short(t["label"].split("/")[-1] + " " + t["title"], 26)] + cells + [label])
+        first = len(body) - len(tasks)  # dòng đầu của module: ghi tên module
+        body[first][0] = m
+        if not all_rows and merged and len(merged) < len(tasks) and len(body) > POOL_MAX_ROWS:  # gọn: task đã merge gộp 1 dòng
+            keep = [x for x in body[first:] if x[-1] != "✅ Merged"]
+            body[first:] = [[m, f"({len(merged)} task đã merge)"] + ["✅"] * 5 + ["✅ Merged"]] + [[""] + x[1:] for x in keep]
+    for group, label in (([x for x in idle if x in wait_d], "⏳ Chờ slot debate"), ([x for x in idle if x not in wait_d], "⏳ Chờ phụ thuộc")):
+        if group:
+            nm = f"{group[0]}…" if len(group) > 1 else group[0]
+            body.append([nm, f"{len(group)} module" if len(group) > 1 else short(names.get(group[0], ""), 26)]
+                        + ["⏳", "", "", "", ""] + [label])
+    if pdb:
+        pdb.close()
+    if not all_rows and len(body) > POOL_MAX_ROWS:
+        cut = len(body) - POOL_MAX_ROWS + 1
+        body = body[:POOL_MAX_ROWS - 1] + [["…", f"+{cut} dòng (pool.py status)", "", "", "", "", "", ""]]
+    title = (re.search(r"(?m)^#\s+(.+)$", app) or [None, ""])[1].strip()
+    total_m = len(table) or len(set(order))
     head = (f"App {short(title, 30)} · " if title and not title.startswith("<") else "") + \
-        f"Module ✅ {sum(1 for m in mods if m['state'] == 'DONE')}/{len(mods)} · " \
-        f"chạy {running + len(design)}/{cfg(root, 'MAX_PARALLEL', '8')} (task {running} · 💬 debate {len(design)}/{cfg(root, 'MAX_DEBATE', '4')})"
-    return [head] + (box(["Task", "Việc", "Agent", "Trạng thái"], body) if body else [])
+        f"Module ✅ {sum(1 for m in order if (mods.get(m) and mods[m]['state'] == 'DONE') or m in app_done)}/{total_m} · " \
+        f"chạy {running + debating}/{cfg(root, 'MAX_PARALLEL', '8')} (task {running} · 💬 debate {debating}/{cfg(root, 'MAX_DEBATE', '4')})"
+    if single:
+        m = order[0]
+        head = f"{m} {short(names.get(m, ''), 30)} · {len(done_lbl)}/{len(rows)} task xong · chạy {running}/{cfg(root, 'MAX_PARALLEL', '8')}"
+        return [head] + box(["Task"] + POOL_COLS + ["Trạng thái"], [x[1:] for x in body])
+    return [head] + box(["Module", "Task"] + POOL_COLS + ["Trạng thái"], body)
 
 
 def progress_table(root):
@@ -431,7 +536,7 @@ def progress_table(root):
         rows = collapse(steps)
         has_role = any(r[2] for r in rows)
         body = [[n, short(t) + ("  ∥" if par else ""), *([r] if has_role else []),
-                 MARK.get(s, "⏳ Chờ") + (f" {mins}p" if mins is not None else "")] for n, t, r, s, mins, par in rows]
+                 MARK.get(s, "⏳ Chờ") + (f" {clock(mins)}" if mins is not None else "")] for n, t, r, s, mins, par in rows]
         out += box(["#", "Bước", *(["Role"] if has_role else []), "Trạng thái"], body)
     extra = []
     waiting, whys = board_info(root, task)

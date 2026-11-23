@@ -2,6 +2,7 @@
 """Test progress.py: python3 tests/test_progress.py"""
 import json
 import os
+import re
 import sqlite3
 import subprocess
 import sys
@@ -154,7 +155,7 @@ check("status line: bước 1+2/3 chạy cùng lúc", "bước 1+2/3: API; Màn 
 open(os.path.join(d, ".claude", "agent-team.config"), "w").write("X=1\n")
 out = run()[1]
 check("PROGRESS_LINES mặc định = bảng nhiều dòng", out.count("\n") >= 3 and "Trạng thái" in out and "⏳ Chờ" in out)
-check("bước đang làm có số phút", "▶ Đang làm" in out and any(l.rstrip().endswith("p  ∥") or "p " in l for l in out.splitlines() if "Đang làm" in l))
+check("bước đang làm có thời gian chạy mm:ss", re.search(r"▶ Đang làm \d+:\d\d", out) is not None)
 open(os.path.join(d, ".claude", "agent-team.config"), "w").write("X=1\nPROGRESS_LINES=1\n")
 check("PROGRESS_LINES=1: 1 dòng như cũ", "\n" not in run()[1])
 db = sqlite3.connect(os.path.join(d, ".agent-team", "board.db"))

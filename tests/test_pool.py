@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Test pool.py (điều phối nhiều task, mỗi task 1 worktree): python3 tests/test_pool.py"""
 import os
+import re
 import sqlite3
 import subprocess
 import sys
@@ -89,6 +90,7 @@ code, out = run("merge-begin", "M-1/T-1")
 check("merge-begin: merge --no-commit, chờ integration test", code == 0 and "merge-end" in out and os.path.isfile(os.path.join(d, "app", "auth.txt")))
 code, out = run("fill")
 check("đang MERGING thì không fill", "Đang merge" in out)
+check("status: task đang merge có thời gian chạy (từ .git/MERGE_HEAD)", re.search(r"🔀 Đang merge \d\d:\d\d", run("status")[1]) is not None)
 code, out = run("merge-end", "M-1/T-1", "pass")
 log = sh(d, "git", "log", "--oneline", "-1")
 check("merge-end pass: commit merge 1 dòng [lead], xoá worktree", "[lead] 20261124-m1-t1: merge M-1/T-1" in log and not os.path.isdir(w1))
@@ -120,7 +122,7 @@ code, out = run("merge-end", "M-1/T-2", "pass")
 check("task cuối của module merged → module DONE + tag", "✅ M-1 xong" in out and "20261124-app-m1-done" in sh(d, "git", "tag"))
 
 code, out = run("status")
-check("status: Module ✅ 1/1, task ✅ Merged", "Module ✅ 1/1" in out and out.count("✅ Merged") == 3)
+check("status 1 module: không cột Module, tiêu đề M-1 · 3/3 task xong, module xong gộp 1 dòng", "M-1" in out.splitlines()[0] and "3/3 task xong" in out and "│ Module" not in out and "✅ Xong" in out)
 code, out = run("wait", "--interval", "1", "--max", "2")
 check("wait: hết việc trong pool", code == 0 and "HẾT VIỆC" in out)
 
@@ -141,13 +143,14 @@ c.execute("UPDATE agent_runs SET state='RUNNING', last_seen=last_seen-1200, ende
 c.commit(); c.close()
 code, out = run("wait", "--interval", "1", "--max", "3")
 check("wait: agent im quá HANG_MINUTES → exit 3", code == 3 and "⚠ backend-dev" in out)
+check("status: agent im lâu hiện ⚠ <role> im Np ở dòng task", re.search(r"▶ Code · ⚠ backend-dev im 2\dp", run("status")[1]) is not None)
 code, out = run("resume")
 check("resume: liệt kê task đang chạy + worktree", "M-2/T-1: RUNNING" in out and ".worktrees/20261124-m2-t1" in out)
 
 PROG = os.path.join(os.path.dirname(POOL), "progress.py")
 out = subprocess.run([sys.executable, PROG], input="{}", capture_output=True, text=True, cwd=d).stdout
-check("status line: bảng điều phối (Module ✅, task ▶, đã merge gộp 1 dòng)", "Module ✅ 1/2" in out and "chạy 1/3" in out
-      and "│ M-2/T-1 │" in out and "3 task đã merge" in out)
+check("status line: bảng điều phối (Module ✅ 1/2, M-1 xong gộp 1 dòng, M-2/T-1 ▶)", "Module ✅ 1/2" in out and "chạy 1/3" in out
+      and "│ M-1    │ (3 task)" in out and re.search(r"│ M-2\s*│ T-1 Nhật ký.*▶", out) is not None)
 
 cfg("")
 check("config không có MAX_PARALLEL → mặc định 8", "/8" in run("fill")[1])

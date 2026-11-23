@@ -57,7 +57,7 @@ code, out = run("fill")
 check("fill: 4 module đầu bắt đầu debate (mỗi debate 1 slot), MAX_DEBATE=4", out.count("💬 ") == 4 and all(f"💬 M-{i}:" in out for i in range(1, 5)))
 code, out = run("status")
 check("status: debate 4/4, chờ debate M-5, M-6 (M-7, M-8 chưa đủ điều kiện vì M-1 chưa chia task)",
-      "debate 4/4" in out and "chờ debate: M-5, M-6" in out and "M-7" not in out.split("chờ debate:")[1])
+      "debate 4/4" in out and "Chờ debate: M-5, M-6 (" in out and "⏳ Chờ slot debate" in out and "⏳ Chờ phụ thuộc" in out)
 
 for k in range(1, 7):
     run("add", f"M-1/T-{k}", "--task-id", f"m1-t{k}", "--title", f"Task {k}")
@@ -70,7 +70,7 @@ check("M-1 chia task: slot debate thành slot task, M-1 lấy 5 slot (8 − 3 de
       len(started) == 5 and all(s.startswith("M-1/") for s in started))
 code, out = run("status")
 check("M-1 đã chia task → M-7, M-8 đủ điều kiện debate, nhưng hết slot: vào hàng chờ debate",
-      "chạy 8/8" in out and "chờ debate: M-5, M-6, M-7, M-8" in out)
+      "chạy 8/8" in out and "Chờ debate: M-5, M-6, M-7, M-8" in out)
 
 run("module", "M-2", "--state", "SPLIT")
 run("module", "M-3", "--state", "SPLIT")
@@ -84,11 +84,18 @@ run("module", "M-8", "--state", "DESIGN")
 run("add", "M-8/T-1", "--task-id", "m8-t1", "--title", "Xuất file"), run("module", "M-8", "--state", "SPLIT")
 code, out = run("status")
 check("phụ thuộc module: M-7 (code) chờ M-1 DONE · M-8 (contract) chưa có file contract cũng chờ",
-      re.search(r"M-7/T-1.*⏳", out) is not None and re.search(r"M-8/T-1.*⏳", out) is not None)
+      re.search(r"M-7\s*│ T-1.*⏳ Chờ M-1 ", out) is not None and re.search(r"M-8\s*│ T-1.*⏳ Chờ M-1 \(contract\)", out) is not None)
 w("docs/product/contracts/M-1.md", "service M-1\n")
 code, out = run("status")
-check("có contract M-1 → M-8/T-1 READY, M-7/T-1 vẫn chờ code M-1", re.search(r"M-8/T-1.*🟢 READY", out) is not None
-      and re.search(r"M-7/T-1.*⏳", out) is not None)
+check("có contract M-1 → M-8/T-1 READY, M-7/T-1 vẫn chờ code M-1", re.search(r"M-8\s*│ T-1.*🟢 READY", out) is not None
+      and re.search(r"M-7\s*│ T-1.*⏳ Chờ M-1", out) is not None)
+
+lines = [l for l in out.splitlines() if l.startswith("│")]
+check("bảng: cột Module · Task · Debate · Code · Test · Review · Merge · Trạng thái, không có dòng tổng",
+      "│ Module │ Task" in out and re.search(r"│ Debate\s*│ Code\s*│ Test\s*│ Review\s*│ Merge\s*│ Trạng thái", out) is not None and "tổng" not in out.lower())
+check("task đang code: ✅ Debate, ▶ mm:ss Code, ⏳ Test/Review/Merge, chưa có agent", re.search(r"T-1 Task 1\s*│ ✅\s*│ ▶ \d\d:\d\d\s*│ ⏳\s*│ ⏳\s*│ ⏳\s*│ ▶ Code · chưa có agent", out) is not None)
+check("module đang debate có thời gian chạy", re.search(r"💬 Debate \d\d:\d\d", out) is not None)
+check("tên module chỉ ở dòng đầu của nhóm", sum(1 for l in lines if re.match(r"│ M-1\s", l)) == 1)
 
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

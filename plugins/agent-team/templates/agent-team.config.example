@@ -60,6 +60,8 @@ SCHEMA_DOC=docs/database/schema.md
 MAX_PARALLEL=8
 # Số module debate cùng lúc (mỗi debate 1 slot), module khác chờ
 MAX_DEBATE=4
+# Merge + integration test chạy quá số phút này thì status line hiện ⚠
+MERGE_WARN_MINUTES=20
 # Thư mục worktree của task (tự thêm vào .git/info/exclude)
 WORKTREE_DIR=.worktrees
 # Cổng E2E của worktree: E2E_PORT_BASE, +1, +2... (không đụng nhau khi chạy song song)
