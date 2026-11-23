@@ -33,7 +33,7 @@ $ARGUMENTS
 3. `docs/agent-tasks/*/TASK.md` (quyết định, Assumption, phán quyết của Lead) của các task liên quan.
 4. **Code** để đối chiếu và dẫn `file:dòng`. Có `graphify-out/` (Graphify): đọc `GRAPH_REPORT.md`, query `graphify explain "<Tên|file>"` (ai gọi, gọi ai, `file:dòng`) · `graphify affected "<Tên>"` (sửa thì ảnh hưởng đâu) · `graphify query "<câu hỏi>"` · `graphify path "A" "B"`. Nhiều repo: thêm `--graph graphify-out/merged-graph.json`. Cạnh `INFERRED` chỉ là gợi ý.
 - Nhiều repo (`REPOS`): tìm ở tất cả repo trong config.
-- Không đọc `.env*`, key, credentials.
+- Không đọc key, credentials. `.env*` chỉ xem khi câu hỏi cần, không in giá trị KEY.
 
 ## 4. Cách trả lời
 1. **Dòng đầu là kết luận** trả lời thẳng câu hỏi.

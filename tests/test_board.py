@@ -270,5 +270,39 @@ check("lập lại: bước trùng tên giữ trạng thái + role, bước mớ
       "✅ 1. Scaffold" in out and "▶  2. Đăng ký, 2FA" in out and "○  3. Khung R-54" in out and "backend-dev" in out.splitlines()[0])
 check("status có mục Các bước", "Các bước:" in run("status", P)[1])
 
+# done / SubagentStop tự ✅ bước ▶ của role
+hrun("plan", "H1", "--set", "Quét KB @scout | Thiết kế test @test-designer")
+hrun("step", "H1", "1", "start"); hrun("step", "H1", "2", "start")
+hrun("done", "H1", "--role", "scout", "--body", "KB xong")
+check("board.py done: tự ✅ bước ▶ của role", "✅ 1. Quét KB" in hrun("plan", "H1")[1])
+hb("stop", "test-designer")
+check("SubagentStop (chưa done): tự ✅ bước ▶ của role", "✅ 2. Thiết kế test" in hrun("plan", "H1")[1])
+
+# ---- v0.21.0: ∥ song song, tự ▶ / ✅ ----
+Q = "20261123-par"
+code, out = run("plan", Q, "--set", "Auth BE @backend-dev ∥ Trang auth FE @frontend-dev | Test @test-executor")
+check("∥: 2 bước cùng nhóm có dấu ∥, bước 3 không", out.count("∥") == 2 and "3. Test" in out and not out.splitlines()[2].endswith("∥"))
+check("' // ' cũng là song song", run("plan", "Q2", "--set", "A @backend-dev // B @frontend-dev")[1].count("∥") == 2)
+import importlib.util as _iu, sqlite3 as _sql3
+_spec = _iu.spec_from_file_location("board", BOARD); bm = _iu.module_from_spec(_spec); _spec.loader.exec_module(bm)
+os.environ["AGENT_TEAM_BOARD_DB"] = ENV["AGENT_TEAM_BOARD_DB"]
+_db = bm.connect()
+check("parallel_ok: BE ∥ FE", bm.parallel_ok(_db, Q))
+check("begin_agent: ▶ bước của backend-dev", bm.begin_agent(_db, Q, "backend-dev", tmp) == 1)
+check("begin_agent lần 2 khi đang ▶: không ▶ thêm", bm.begin_agent(_db, Q, "backend-dev", tmp) is None)
+check("finish_step: ✅ bước ▶ của role", bm.finish_step(_db, Q, "backend-dev") == 1)
+check("finish_step khi không còn ▶: không làm gì", bm.finish_step(_db, Q, "backend-dev") is None)
+check("role không có bước: bỏ qua", bm.begin_agent(_db, Q, "security", tmp) is None)
+run("plan", "Q3", "--set", "A @backend-dev | B @frontend-dev")
+check("parallel_ok: BE rồi FE nối tiếp = không song song", not bm.parallel_ok(_db, "Q3"))
+_db.close()
+# board.db của v0.20.0 (plan_steps chưa có grp) tự thêm cột
+_old = os.path.join(tmp, "old.db")
+_c = _sql3.connect(_old); _c.execute("CREATE TABLE plan_steps (task TEXT NOT NULL, n INTEGER NOT NULL, title TEXT NOT NULL, role TEXT, "
+                                     "state TEXT NOT NULL DEFAULT 'todo', started_at INTEGER, ended_at INTEGER, PRIMARY KEY(task, n))"); _c.commit(); _c.close()
+_r = subprocess.run([sys.executable, BOARD, "plan", "X", "--set", "A @backend-dev ∥ B @frontend-dev"], capture_output=True, text=True,
+                    env={**ENV, "AGENT_TEAM_BOARD_DB": _old}, cwd=tmp)
+check("board.db cũ (0.20.0): tự thêm cột grp, plan chạy được", _r.returncode == 0 and _r.stdout.count("∥") == 2)
+
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

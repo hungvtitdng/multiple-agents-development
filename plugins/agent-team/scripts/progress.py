@@ -157,7 +157,10 @@ def board_steps(root, task):
         return []
     try:
         db = sqlite3.connect(f"file:{p}?mode=ro", uri=True, timeout=2)
-        rows = db.execute("SELECT title, state, role FROM plan_steps WHERE task=? ORDER BY n", (task,)).fetchall()
+        try:
+            rows = db.execute("SELECT title, state, role, grp FROM plan_steps WHERE task=? ORDER BY n", (task,)).fetchall()
+        except sqlite3.OperationalError:  # board.db của v0.20.0 chưa có cột grp
+            rows = [r + (None,) for r in db.execute("SELECT title, state, role FROM plan_steps WHERE task=? ORDER BY n", (task,))]
         db.close()
         return rows
     except sqlite3.Error:
@@ -189,7 +192,7 @@ def steps_summary(steps):
 def as_steps(phase):
     """Phase A: bước đầu chưa xong là bước đang làm."""
     first = next((i for i, (_, ok) in enumerate(phase) if not ok), None)
-    return [(t, "done" if ok else "doing" if i == first else "todo", None) for i, (t, ok) in enumerate(phase)]
+    return [(t, "done" if ok else "doing" if i == first else "todo", None, None) for i, (t, ok) in enumerate(phase)]
 
 
 def parent_line(root, text):
@@ -255,9 +258,16 @@ def progress_list(root):
     head = [x for x in (parent_line(root, text), f"[{task}] {stage} {src or STAGES[stage][0]}") if x]
     if not steps:
         return " · ".join(head) + "\nChưa có danh sách bước (Lead: board.py plan " + task + ' --set "bước 1 @role | ...")'
-    w = max(len(t) for t, _, _ in steps)
+    w = max(len(x[0]) for x in steps)
+    wr = max(len(x[2] or "") for x in steps)
+    size = {}
+    for x in steps:
+        size[x[3]] = size.get(x[3], 0) + 1
     mark = {"done": "✅", "doing": "▶ ", "todo": "○ ", "skip": "– "}
-    lines = [f"{mark.get(s, '○ ')} {i}. {t.ljust(w)}" + (f"  {r}" if r else "") for i, (t, s, r) in enumerate(steps, 1)]
+    lines = [(f"{mark.get(s, '○ ')} {i}. {t.ljust(w)}  {(r or '').ljust(wr)}".rstrip() + ("  ∥" if g is not None and size[g] > 1 else ""))
+             for i, (t, s, r, g) in enumerate(steps, 1)]
+    if any(size[g] > 1 for g in size if g is not None):
+        lines.append("(∥ = chạy song song)")
     return "\n".join([" · ".join(head)] + lines)
 
 

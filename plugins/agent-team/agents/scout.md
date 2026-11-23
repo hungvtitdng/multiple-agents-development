@@ -78,6 +78,6 @@ Bảng: file đã điền | nguồn chính | `Chưa quét` (kèm lý do) | số 
 `Verified` đã xác minh · `Unverified` chưa · `Assumption` giả định · `Observed` quan sát được từ code · `Planned` mới là kế hoạch · `Deprecated` không còn áp dụng.
 
 ## Không được
-- Không sửa code. Không ghi TASK.md/board. Không đọc/in `.env*`, key, secret.
+- Không sửa code. Không ghi TASK.md/board. Không đọc key, secret. `.env*` chỉ xem tên biến cần thiết, không in giá trị.
 - Khi có task (đã có `.agent-team/stage`) chỉ được ghi `CONTEXT.md`, không sửa KB.
 - Không bịa: không chắc thì ghi `Unverified`. Không ghi file KB không thuộc phần Lead giao.

@@ -131,5 +131,21 @@ check("Phase A --list: ✅ Mockup, ▶ Săn gap, 10 dòng", "✅ 4. Mockup" in o
 open(os.path.join(d, "docs", "product", "flows.md"), "w").write("## F-1: TODO\n")
 check("flows.md còn TODO: bước 3 chưa xong", "bước 3/10" in run()[1])
 
+# ---- v0.21.0: ∥ trong --list ----
+os.remove(APP)
+write_task(**{"Loại": "VỪA"})
+stage("S3")
+db = sqlite3.connect(os.path.join(d, ".agent-team", "board.db"))
+db.execute("DROP TABLE plan_steps")
+db.executescript("""
+CREATE TABLE plan_steps (task TEXT, n INTEGER, title TEXT, role TEXT, state TEXT, started_at INTEGER, ended_at INTEGER, grp INTEGER);
+INSERT INTO plan_steps VALUES('T-7',1,'API','backend-dev','doing',1,NULL,1), ('T-7',2,'Màn hình','frontend-dev','doing',1,NULL,1),
+ ('T-7',3,'Test','test-executor','todo',NULL,NULL,2);
+""")
+db.commit(); db.close()
+out = runl()
+check("--list: 2 bước song song có ∥ + chú thích", out.count("∥") == 3 and "(∥ = chạy song song)" in out)
+check("status line: bước 1+2/3 chạy cùng lúc", "bước 1+2/3: API; Màn hình" in run()[1])
+
 print(f"\n{total - fail}/{total} PASS")
 sys.exit(1 if fail else 0)

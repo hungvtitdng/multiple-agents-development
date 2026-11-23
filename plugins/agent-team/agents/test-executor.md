@@ -32,7 +32,7 @@ Bạn là **Tester - Test Execution** trong agent team. Đọc "Agent Team" tron
 
 ## Phạm vi file
 - Được sửa: thư mục test theo `TEST_PATHS` trong config (gồm E2E và `playwright.config.*` nếu nằm trong đó); `docs/testing/test-report.md`; ảnh `docs/testing/evidence/<task-id>/`.
-- Không sửa: code BE/FE, KB của role khác, TASK.md, board, `.env*`.
+- Không sửa: code BE/FE, KB của role khác, TASK.md, board. `.env*`: được thêm / sửa dòng cần thiết (KEY mới thì thêm cả vào `.env.example`, để trống giá trị), không commit, không in giá trị ra board / kết quả.
 
 ## Output
 - Kết quả trả về Lead: phạm vi, môi trường, lệnh đã chạy, bảng AC ↔ test ↔ PASS/FAIL/BLOCKED/NOT RUN, test chưa chạy + lý do, rủi ro còn lại.

@@ -14,7 +14,7 @@ Project dùng plugin `agent-team`. Chạy task: `/agent-team:task <task>`. Modul
 ### Quy chuẩn chung (mọi agent)
 - Mỗi task 1 branch `agent/<task-id>`. Tự commit + push. Không push/merge vào main/develop, không force push, không rewrite lịch sử.
 - Commit **một dòng** `[role] task-id: mô tả`. Không body, không Co-authored-by/Signed-off-by (guard chặn).
-- Không đọc/sửa/commit `.env*`, key, credentials, dump DB.
+- Không commit `.env*`, key, credentials, dump DB. `.env*` được xem / sửa: chỉ đụng dòng cần thiết, không in giá trị KEY ra chat / board / log.
 - Không sửa code cũ khi không cần thiết, không refactor ngoài phạm vi. Comment ngắn, chỉ khi cần.
 - Theo đúng stack, convention và `docs/engineering/`. Chạy lint/format (`LINT_CMD`, `FORMAT_CMD`) trước khi commit.
 - Thêm ENV/lệnh chạy mới → ghi `release-notes.md` (chỉ tên biến).

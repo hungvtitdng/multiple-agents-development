@@ -1,3 +1,31 @@
+# Release notes - 23/11/2026 (v0.21.1 - .env được xem / sửa, chỉ cấm commit)
+
+## Thay đổi
+- **Guard:** `.env`, `.env.local`, `.env.production`... được Read / Edit / Write và dùng trong Bash (`cat`, `sed -i`...), mọi role.
+- **Vẫn chặn:** commit khi đang stage `.env*`, push commit có `.env*` hoặc chuỗi giống secret; đọc / sửa `*.key`, `*.pem`, `master.key`, `id_rsa*`, `.npmrc`, `.pgpass`, `.netrc`, dump DB; `printenv` / `env` / `docker inspect` / `docker compose config`.
+- Quy tắc mới (CLAUDE.md mẫu, agent dev / test / scout, `ask`, `task`): "Không commit `.env*`, key, credentials, dump DB". Sửa `.env` chỉ dòng cần thiết, KEY mới thêm cả vào `.env.example` (để trống giá trị), không in giá trị KEY ra chat / board.
+- Test guard: 376 case.
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update multiple-agent`, khởi động lại Claude Code.
+- Project đã init: mục "## Agent Team" trong CLAUDE.md không tự cập nhật. Nếu còn dòng "Không đọc/sửa/commit `.env*`..." thì sửa thành "Không commit `.env*`, key, credentials, dump DB."
+- ⚠ Giá trị KEY agent đọc từ `.env` sẽ nằm trong lịch sử hội thoại. `.env*` vẫn phải nằm trong `.gitignore`.
+
+# Release notes - 23/11/2026 (v0.21.0 - checklist tự cập nhật, BE ∥ FE, tự đồng bộ script)
+
+## Thay đổi
+- **Tự đồng bộ script (hook mới `SessionStart` → `hooks/sync.py`):** đầu mỗi phiên, project đã init: `board.py`, `progress.py` (và script project đang dùng: gap-check, owner-form, kb-check, agent-db-clone) khác bản plugin → tự chép lại. Template trong `.claude/agent-team/templates/` khác bản plugin → chỉ báo, không ghi đè (có thể bạn đã sửa).
+- **Tự thêm status line:** `.claude/settings.json` chưa có `statusLine` → tự thêm (giữ key khác). Đang có lệnh khác hoặc JSON lỗi → không sửa, chỉ báo.
+- **Checklist tự đổi trạng thái:** Lead gọi agent X → bước ○ đầu tiên của X thành ▶ (hook guard); X chạy `board.py done` hoặc kết thúc (`SubagentStop`) → ✅. Gọi lại cùng agent trong 1 giai đoạn: tính là lượt chạy mới (trước đây bị "đã DONE" chặn `done`).
+- **Bước song song `∥`** (hoặc ` // `) trong `board.py plan --set`; `progress.py --list` hiện dấu ∥, status line hiện `bước 1+2/3`.
+- **Guard S3 có `FE_PATHS`:** kế hoạch phải cho `backend-dev ∥ frontend-dev` cùng nhóm, hoặc TASK.md có `- Song song: KHÔNG - <vì sao>`. Thiếu → chặn gọi agent.
+- `board.db` của v0.20.0 tự thêm cột `grp`. Test: board 94, guard 366, progress 22, sync 13 (mới).
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update multiple-agent`, **khởi động lại Claude Code** (hook `SessionStart` mới chỉ nạp khi khởi động). Phiên đầu tiên sau đó sẽ tự chép script + thêm status line; status line hiện từ phiên kế tiếp nếu chưa hiện ngay.
+- `.claude/settings.json` do hook tạo chỉ có `statusLine`, không chứa KEY: commit được.
+- Không có KEY env mới.
+
 # Release notes - 23/11/2026 (v0.20.0 - hiện bước đang làm và các bước còn lại)
 
 ## Thay đổi

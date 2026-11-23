@@ -107,6 +107,15 @@ def norm_role(data):
     return raw.strip().lower().split(":")[-1]
 
 
+ENV_FILE_RE = re.compile(r"^\.env(\..+)?$")
+
+
+def is_env_file(p):
+    """.env, .env.local...: được xem / sửa, chỉ cấm commit / push (mẫu .env.example không tính)."""
+    base = os.path.basename((p or "").strip("'\"").rstrip("/"))
+    return bool(ENV_FILE_RE.match(base)) and base not in ENV_SAMPLES
+
+
 def is_secret_path(p):
     if not p:
         return False
@@ -168,8 +177,8 @@ def check_secret_tokens(cmd):
     for tk in parse(cmd):
         for t in tk:
             for part in re.split(r"[=:,]", t):
-                if is_secret_path(part):
-                    block(f"không được đụng file nhạy cảm '{part}' (.env, key, dump DB...)")
+                if is_secret_path(part) and not is_env_file(part):
+                    block(f"không được đụng file nhạy cảm '{part}' (key, credentials, dump DB...). `.env*` thì được xem / sửa, không được commit")
 
 
 def check_env_dump(cmd):
@@ -1020,27 +1029,63 @@ def check_stage_change(new_stage, cwd):
         block(f"chưa đủ điều kiện sang {new_stage}. Thiếu trong {os.path.relpath(latest, root)}: {'; '.join(miss)}")
 
 
-def check_plan(cwd):
-    """Lead gọi agent ở S3-S5: task phải có danh sách bước (board.py plan) để user biết đang ở bước nào."""
-    root = find_root(cwd)
-    if not root or stage_value(cwd) not in ("S3", "S4", "S5"):
-        return
+def latest_task(root):
     base = os.path.join(root, DOCS_DIR)
     tasks = [os.path.join(base, d, "TASK.md") for d in os.listdir(base)] if os.path.isdir(base) else []
     tasks = [t for t in tasks if os.path.isfile(t)]
-    if not tasks:
+    return max(tasks, key=os.path.getmtime) if tasks else None
+
+
+def load_board():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("board", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts", "board.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def check_plan(ti, cwd):
+    """Lead gọi agent: S3-S5 phải có danh sách bước; S3 có FE_PATHS thì BE ∥ FE hoặc ghi lý do. Qua thì ▶ bước của agent đó."""
+    root = find_root(cwd)
+    path = latest_task(root) if root else None
+    if not path:
         return
-    task = os.path.basename(os.path.dirname(max(tasks, key=os.path.getmtime)))
-    db = os.path.join(root, ".agent-team", "board.db")
-    try:
-        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=5)
-        n = con.execute("SELECT count(*) FROM plan_steps WHERE task=?", (task,)).fetchone()[0]
-        con.close()
-    except sqlite3.Error:
-        n = 0
-    if not n:
+    task, stage = os.path.basename(os.path.dirname(path)), stage_value(cwd)
+    dbp = os.path.join(root, ".agent-team", "board.db")
+    rows = []
+    if os.path.isfile(dbp):
+        try:
+            con = sqlite3.connect(f"file:{dbp}?mode=ro", uri=True, timeout=5)
+            rows = con.execute("SELECT * FROM plan_steps WHERE task=?", (task,)).fetchall()
+            cols = [c[0] for c in con.execute("SELECT * FROM plan_steps LIMIT 0").description]
+            con.close()
+            rows = [dict(zip(cols, r)) for r in rows]
+        except sqlite3.Error:
+            rows = []
+    if stage in ("S3", "S4", "S5") and not rows:
         block(f"chưa có danh sách bước cho {task}. Trước khi gọi agent: "
-              f"`board.py plan {task} --set \"bước 1 @role | bước 2 @role\"`, rồi in `progress.py --list` vào chat cho user")
+              f"`board.py plan {task} --set \"bước 1 @backend-dev ∥ bước 2 @frontend-dev | bước 3 @test-executor\"`, "
+              "rồi in `progress.py --list` vào chat cho user")
+    if stage == "S3" and rows and cfg_value(root, "FE_PATHS"):
+        groups = {}
+        for r in rows:
+            groups.setdefault(r.get("grp"), set()).add(r.get("role"))
+        par = any(g is not None and {"backend-dev", "frontend-dev"} <= v for g, v in groups.items())
+        why = task_field(open(path, encoding="utf-8", errors="ignore").read(), "Song song")
+        if not par and not why:
+            block("S3 có FE_PATHS: cho backend-dev ∥ frontend-dev chạy cùng lúc (cùng nhóm ∥ trong `board.py plan`), "
+                  "hoặc ghi lý do vào TASK.md: `- Song song: KHÔNG - <vì sao: FE chờ API nào / task chỉ BE / chỉ FE>`")
+    role = (ti.get("subagent_type") or "").strip().lower().split(":")[-1]
+    if rows and role:
+        try:
+            os.chdir(root)
+            board = load_board()
+            db = board.connect()
+            board.begin_agent(db, task, role, root)
+            db.close()
+        except BaseException as e:  # ghi trạng thái lỗi thì bỏ qua, không chặn gọi agent
+            if os.environ.get("AGENT_TEAM_DEBUG") == "1":
+                sys.stderr.write(f"[agent-team guard] begin_agent: {e!r}\n")
 
 
 def check_stage(path, cwd):
@@ -1211,12 +1256,12 @@ def main():
         sys.exit(0)
 
     if tool in ("Agent", "Task") and not role:
-        check_plan(cwd)
+        check_plan(ti, cwd)
         sys.exit(0)
 
     path = ti.get("file_path") or ti.get("notebook_path") or ti.get("path") or ""
     if tool in ("Read", "Edit", "Write", "MultiEdit", "NotebookEdit", "Grep", "Glob"):
-        if is_secret_path(path) or is_secret_path(ti.get("glob", "")):
+        if (is_secret_path(path) and not is_env_file(path)) or (is_secret_path(ti.get("glob", "")) and not is_env_file(ti.get("glob", ""))):
             block(f"không được đọc/sửa file nhạy cảm '{path or ti.get('glob')}'")
 
     # challenger không biết ticket: không đọc docs/ (TASK, board, CONTEXT, KB)

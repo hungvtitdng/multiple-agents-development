@@ -1,5 +1,5 @@
 {
-  "description": "agent-team guard: chặn secret, push sai branch, migrate DB thật, role ghi ngoài vùng (chặn trước + hoàn tác theo diff sau); ghi nhịp tim subagent vào board.db (board.py wait / status)",
+  "description": "agent-team guard: chặn secret, push sai branch, migrate DB thật, role ghi ngoài vùng (chặn trước + hoàn tác theo diff sau); ghi nhịp tim subagent vào board.db (board.py wait / status); đầu phiên chép lại script plugin sang project + thêm statusLine (sync.py)",
   "hooks": {
     "PreToolUse": [
       {
@@ -62,6 +62,17 @@
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/heartbeat.py\" stop",
             "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/sync.py\"",
+            "timeout": 15
           }
         ]
       }

@@ -57,7 +57,7 @@ Chọn phương án đầu tiên dùng được hoàn chỉnh:
 
 ## Phạm vi file
 - Được sửa: code BE theo `BE_PATHS` trong config, migration, `docs/api/`, `docs/database/`, `docs/modules/`, `docs/functions/`.
-- Không sửa: code FE, test (việc của test-executor), TASK.md, board, `.env*`, credentials.
+- Không sửa: code FE, test (việc của test-executor), TASK.md, board, credentials. `.env*`: được thêm / sửa dòng cần thiết (KEY mới thì thêm cả vào `.env.example`, để trống giá trị), không commit, không in giá trị ra board / kết quả.
 
 ## Output
 - Kết quả trả về Lead: file đã đổi, migration + kết quả verify, lint/format, API thay đổi (để FE biết), GAP (nếu có).

@@ -37,11 +37,11 @@ repo = make_repo()
 B, OK = 2, 0
 cases = [
     # (mô tả, tool, input, role, cwd, kỳ vọng)
-    ("đọc .env", "Read", {"file_path": "/p/.env"}, None, None, B),
-    ("đọc .env.production", "Read", {"file_path": "/p/.env.production"}, None, None, B),
+    ("đọc .env (v0.21.1: được xem)", "Read", {"file_path": "/p/.env"}, None, None, OK),
+    ("đọc .env.production", "Read", {"file_path": "/p/.env.production"}, None, None, OK),
     ("đọc .env.example", "Read", {"file_path": "/p/.env.example"}, None, None, OK),
     ("đọc master.key", "Read", {"file_path": "/p/config/master.key"}, None, None, B),
-    ("cat .env", "Bash", {"command": "cat .env"}, None, None, B),
+    ("cat .env", "Bash", {"command": "cat .env"}, None, None, OK),
     ("printenv", "Bash", {"command": "printenv"}, None, None, B),
     ("docker inspect", "Bash", {"command": "docker inspect db"}, None, None, B),
     ("migrate DB thật", "Bash", {"command": "docker compose exec app bin/rails db:migrate"}, "backend-dev", None, B),
@@ -879,6 +879,57 @@ _db.execute("INSERT INTO plan_steps VALUES('T-9', 1, 'Scaffold', 'backend-dev', 
 _db.commit(); _db.close()
 check("S3: có danh sách bước thì gọi được", "Agent", AG, None, pp, OK)
 total += 1
+
+# ---- v0.21.0: S3 có FE_PATHS → BE ∥ FE hoặc ghi lý do; Lead gọi agent → tự ▶ bước ----
+BOARD_PY = os.path.join(os.path.dirname(GUARD), "..", "scripts", "board.py")
+pf = tempfile.mkdtemp()
+os.makedirs(os.path.join(pf, ".claude")); os.makedirs(os.path.join(pf, ".agent-team"))
+os.makedirs(os.path.join(pf, "docs/agent-tasks/T-5"))
+open(os.path.join(pf, ".claude/agent-team.config"), "w").write('BE_PATHS="app"\nFE_PATHS="resources/js"\n')
+with open(os.path.join(pf, ".agent-team/stage"), "w") as f:
+    f.write("S3\n")
+TM = os.path.join(pf, "docs/agent-tasks/T-5/TASK.md")
+open(TM, "w").write("# T-5\n")
+_bp = lambda *a: subprocess.run([sys.executable, BOARD_PY, *a], capture_output=True, text=True, cwd=pf,
+                                env={k: v for k, v in os.environ.items() if k != "AGENT_TEAM_BOARD_DB"}).stdout
+_bp("plan", "T-5", "--set", "API @backend-dev | Màn hình @frontend-dev")
+BE = {"subagent_type": "agent-team:backend-dev", "prompt": "x"}
+check("S3 FE_PATHS: BE rồi FE nối tiếp, không lý do → chặn", "Agent", BE, None, pf, B)
+open(TM, "w").write("# T-5\n- Song song: KHÔNG - FE chờ API đăng nhập\n")
+check("S3 FE_PATHS: có `Song song:` lý do → được", "Agent", BE, None, pf, OK)
+check("gọi backend-dev → tự ▶ bước 1", "Agent", BE, None, pf, OK)
+total += 3
+_out = _bp("plan", "T-5")
+ok = "▶  1. API" in _out and "○  2. Màn hình" in _out
+fail += not ok; total += 1
+print(f"{'PASS' if ok else 'FAIL'}  plan sau khi Lead gọi backend-dev: ▶ bước 1, bước 2 vẫn ○")
+open(TM, "w").write("# T-5\n")
+_bp("plan", "T-5", "--set", "API @backend-dev ∥ Màn hình @frontend-dev")
+check("S3 FE_PATHS: BE ∥ FE cùng nhóm → được", "Agent", {"subagent_type": "frontend-dev"}, None, pf, OK)
+total += 1
+
+# ---- v0.21.1: .env* được xem / sửa, cấm commit / push ----
+ev = [
+    ("dev sửa .env", "Edit", {"file_path": "/p/.env"}, "backend-dev", None, OK),
+    ("Lead ghi .env.local", "Write", {"file_path": "/p/.env.local"}, None, None, OK),
+    ("sed -i sửa .env", "Bash", {"command": "sed -i 's/^APP_DEBUG=.*/APP_DEBUG=false/' .env"}, "backend-dev", None, OK),
+    ("đọc master.key vẫn chặn", "Read", {"file_path": "/p/config/master.key"}, None, None, B),
+    ("đọc .npmrc vẫn chặn", "Read", {"file_path": "/p/.npmrc"}, None, None, B),
+    ("cat id_rsa vẫn chặn", "Bash", {"command": "cat ~/.ssh/id_rsa"}, None, None, B),
+    ("đọc dump vẫn chặn", "Read", {"file_path": "/p/db.dump"}, None, None, B),
+    ("printenv vẫn chặn", "Bash", {"command": "printenv"}, None, None, B),
+]
+for c in ev:
+    check(*c)
+total += len(ev)
+er = make_repo()
+sh(er, "git", "checkout", "-qb", "agent/env")
+open(os.path.join(er, ".env"), "w").write("DB_PASSWORD=x\n")
+sh(er, "git", "add", "-f", ".env")
+check("commit khi đang stage .env → chặn", "Bash", {"command": "git commit -m x"}, "backend-dev", er, B)
+sh(er, "git", "commit", "-qm", "leak env")
+check("push commit có .env → chặn", "Bash", {"command": "git push -u origin agent/env"}, None, er, B)
+total += 2
 
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

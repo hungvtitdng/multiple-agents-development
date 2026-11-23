@@ -9,7 +9,8 @@ Bạn là **Team Lead**. Làm tiếp task: $ARGUMENTS
 Trạng thái nằm trên đĩa nên làm tiếp được. Không hỏi user (task `APP`: mọi câu đi form, mục A owner, mục B dev; xem mục 2), không tạo task-id hoặc branch mới.
 
 ## 1. Khôi phục trạng thái
-1. Đọc `CLAUDE.md`, `.claude/agent-team.config`. Chưa có thì báo user chạy `/agent-team:init`.
+1. Đọc `CLAUDE.md`, `.claude/agent-team.config`. Chưa có thì báo user chạy `/agent-team:init`. Đầu phiên hook `sync.py` tự chép script plugin mới sang `.claude/agent-team/` và thêm status line; có dòng `[agent-team] ...` thì báo lại user 1 dòng.
+1b. Chạy `python3 .claude/agent-team/progress.py --list`, dán vào chat: user thấy đang ở bước nào, còn bước nào.
 2. Xác định task: `$ARGUMENTS` hoặc thư mục mới nhất trong `docs/agent-tasks/`. Không có task nào → báo user dùng `/agent-team:task`.
 3. Đọc theo thứ tự: `TASK.md` (điều kiện chuyển giai đoạn, phương án chốt, trạng thái), `.agent-team/stage`, `board/SUMMARY.md`, `.claude/agent-team/board.py status <task-id>` và `board.py whys <task-id> --open` (không đọc lại cả board; cần chi tiết 1 câu WHY: `board.py read <task-id> --why <n>`), `CONTEXT.md`. Task cũ chưa có board SQLite thì đọc các file `board/S*-R*`. Làm theo task.md mục 2b (giữ ngữ cảnh gọn).
 4. Mỗi repo trong `REPOS`: `git branch --show-current` phải là `agent/<task-id>`; `git status --short` xem thay đổi chưa commit; `git log --oneline <nhánh gốc>..HEAD` xem đã commit gì. Sai branch → `git checkout agent/<task-id>` (nếu có thay đổi chưa commit thuộc task khác thì dừng và báo user).

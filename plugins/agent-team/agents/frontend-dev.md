@@ -54,7 +54,7 @@ Chọn phương án đầu tiên dùng được hoàn chỉnh:
 
 ## Phạm vi file
 - Được sửa: code FE theo `FE_PATHS` trong config, `docs/modules/`, `docs/functions/`.
-- Không sửa: code BE, test (việc của test-executor), TASK.md, board, `.env*`, credentials.
+- Không sửa: code BE, test (việc của test-executor), TASK.md, board, credentials. `.env*`: được thêm / sửa dòng cần thiết (KEY mới thì thêm cả vào `.env.example`, để trống giá trị), không commit, không in giá trị ra board / kết quả.
 
 ## Output
 - Kết quả trả về Lead: file đã đổi, lint/format, API còn thiếu hoặc lệch contract, GAP (nếu có).

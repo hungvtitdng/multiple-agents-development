@@ -137,8 +137,9 @@ $B export  <task-id>                         # → docs/agent-tasks/<task-id>/bo
 Hook chặn theo giai đoạn: S1-S2 chỉ tài liệu, S3 chỉ code, S4 chỉ test, S5-S6 theo quyền role. Sang giai đoạn mới: `echo S<n> > .agent-team/stage` (hook kiểm TASK.md). Sau mỗi lần đổi giai đoạn và mỗi lượt board xong: chạy `python3 .claude/agent-team/progress.py --list`, in nguyên văn vào chat cho user.
 
 **Danh sách bước (user phải biết đang ở bước nào, còn bước nào):**
-- Trước khi gọi agent ở S3-S5: `$B plan <task-id> --set "Scaffold @backend-dev | Đăng ký, 2FA @backend-dev | Test + lint @test-executor"`. Hook chặn gọi agent ở S3-S5 khi chưa có danh sách bước.
-- Giao bước cho agent: `$B step <task-id> <n> start`. Agent DONE: `$B step <task-id> <n> done` (bỏ: `skip`). Mỗi lần đổi: dán danh sách in ra vào chat (✅ xong · ▶ đang làm · ○ chưa làm).
+- Trước khi gọi agent ở S3-S5: `$B plan <task-id> --set "Auth API @backend-dev ∥ Trang auth @frontend-dev | Test + lint @test-executor"` (`|` = bước sau, `∥` = chạy cùng lúc). Hook chặn gọi agent ở S3-S5 khi chưa có danh sách bước.
+- **S3 có `FE_PATHS`: BE ∥ FE mặc định** (gọi cả 2 agent trong cùng 1 message, FE dùng mock theo API contract). Không chạy song song được → ghi `- Song song: KHÔNG - <vì sao>` vào TASK.md (FE chờ API nào / task chỉ BE / chỉ FE), không có thì hook chặn.
+- Trạng thái tự đổi: bạn gọi agent X → bước ○ đầu tiên của X thành ▶; X `done` (hoặc kết thúc) → ✅. Bước của bạn (role `lead`) hoặc sửa tay: `$B step <task-id> <n> start|done|skip`. Mỗi lần đổi: chạy `progress.py --list`, dán vào chat (✅ xong · ▶ đang làm · ○ chưa làm · ∥ song song).
 - Đổi kế hoạch giữa chừng: `plan --set` lại, bước trùng tên giữ trạng thái.
 - **Không tự đoán giờ xong** ("dự kiến 1-2 giờ"). Chỉ báo bước hiện tại và các bước còn lại.
 
@@ -209,7 +210,7 @@ Lỗi thuộc sản phẩm của người khác → ghi vào kết quả giao l�
 ## 9. Git
 - Commit sau mỗi giai đoạn, **một dòng** `[<role>] <task-id>: <mô tả>`. Không body, không Co-authored-by/Signed-off-by (hook chặn). Board và `docs/` commit cùng repo chính.
 - Push: `git push -u origin agent/<task-id>` (`PUSH=0`: không push, báo user branch nằm ở máy). Nhiều repo: commit/push trong từng repo (`git -C ../FrontEnd push -u origin agent/<task-id>`), mỗi repo chỉ commit file của repo đó.
-- Không push/merge vào main/develop, không force push, không rewrite lịch sử, không tạo PR, không xoá branch. Hook chặn push có secret, `.env`, key, dump DB.
+- Không push/merge vào main/develop, không force push, không rewrite lịch sử, không tạo PR, không xoá branch. Hook chặn commit / push có secret, `.env*`, key, dump DB. `.env*` được xem / sửa, không in giá trị KEY ra chat / board.
 
 ## 10. Báo cáo cho user (cuối cùng)
 Dòng đầu: kết quả + link branch (mỗi repo một branch). Dòng 2: đường dẫn `REPORT.html` (gửi client: giả định tô đỏ đầu trang, client chọn Đúng/Sai rồi bấm Copy câu trả lời) và `REPORT.md`. Danh sách tối đa 5 mục mỗi nhóm:
