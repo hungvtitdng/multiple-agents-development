@@ -852,5 +852,33 @@ for c in fv:
     check(*c)
 total += len(fv)
 
+# ---- v0.20.0: Lead gọi agent ở S3-S5 phải có danh sách bước ----
+import sqlite3 as _sq
+pp = tempfile.mkdtemp()
+os.makedirs(os.path.join(pp, ".claude")); os.makedirs(os.path.join(pp, ".agent-team"))
+os.makedirs(os.path.join(pp, "docs/agent-tasks/T-9"))
+open(os.path.join(pp, ".claude/agent-team.config"), "w").write('BE_PATHS="app"\n')
+open(os.path.join(pp, "docs/agent-tasks/T-9/TASK.md"), "w").write("# T-9\n")
+def _stage(v):
+    with open(os.path.join(pp, ".agent-team/stage"), "w") as f:
+        f.write(v + "\n")
+AG = {"subagent_type": "backend-dev", "prompt": "x"}
+_stage("S2")
+check("S2: gọi agent không cần danh sách bước", "Agent", AG, None, pp, OK)
+total += 1
+pc = []
+_stage("S3")
+pc.append(("S3: Lead gọi agent khi chưa có danh sách bước bị chặn", "Agent", AG, None, pp, B))
+pc.append(("S3: tool tên Task cũng bị chặn", "Task", AG, None, pp, B))
+for c in pc:
+    check(*c)
+total += len(pc)
+_db = _sq.connect(os.path.join(pp, ".agent-team/board.db"))
+_db.execute("CREATE TABLE plan_steps (task TEXT, n INTEGER, title TEXT, role TEXT, state TEXT, started_at INTEGER, ended_at INTEGER)")
+_db.execute("INSERT INTO plan_steps VALUES('T-9', 1, 'Scaffold', 'backend-dev', 'todo', NULL, NULL)")
+_db.commit(); _db.close()
+check("S3: có danh sách bước thì gọi được", "Agent", AG, None, pp, OK)
+total += 1
+
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

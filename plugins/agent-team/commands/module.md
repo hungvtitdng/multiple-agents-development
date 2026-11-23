@@ -41,6 +41,8 @@ Form, câu hỏi OWNER / DEV, mức CAO / THẤP, không hỏi bằng `AskUserQu
 ## 2. M0 Nền từ KB (Scout, trước A0)
 `scout` đọc KB + code liên quan: `roles-and-permissions.md`, `permission-matrix.md`, `business-rules.md`, `flows/`, `modules/`, `functions/`, `tech-stack.md`, màn hiện có (bảng Tra page), `graphify affected` cho phần ý tưởng chạm tới. Ghi vào `CONTEXT.md` của task: vai trò, P-, BR-, F-, màn, hàm có sẵn **liên quan module**, module cũ bị chạm. Lead điền `$M/intake.md` từ đó (ô đã có trong KB: chép + nguồn, không tạo Q-n).
 
+**Tiến độ cho user:** 10 bước như `app.md` (bước cuối: Chia task + ghép KB), ✅ theo cổng trong `MODULE.md`. Xong mỗi bước: `python3 .claude/agent-team/progress.py --list`, dán vào chat. Task con: dòng đầu hiện `Module: x/N task xong`.
+
 ## 3. A0-A4 như App Mode, phạm vi module
 - **A1:** `problem.md` ghi cả **ngoài phạm vi** (phần cũ không đổi). `coverage.md` 12 góc nhìn: góc app đã giải quyết (vd đăng nhập) → `LOẠI`, ghi "đã có: <mã KB>".
 - **A2 debate:** không chọn stack; chọn cách làm **trong kiến trúc hiện tại** (`docs/architecture.md`, `docs/decisions/`). Đi ngược quyết định cũ → Architect ghi rõ, câu DEV vào form.

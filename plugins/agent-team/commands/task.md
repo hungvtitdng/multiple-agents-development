@@ -134,7 +134,13 @@ $B export  <task-id>                         # → docs/agent-tasks/<task-id>/bo
 - Nhãn: `Verified` · `Assumption` · `Proposed` · `Confirmed`.
 
 ## 6. S3-S6: Code, test, review, đóng
-Hook chặn theo giai đoạn: S1-S2 chỉ tài liệu, S3 chỉ code, S4 chỉ test, S5-S6 theo quyền role. Sang giai đoạn mới: `echo S<n> > .agent-team/stage` (hook kiểm TASK.md). Sau mỗi lần đổi giai đoạn và mỗi lượt board xong: chạy `python3 .claude/agent-team/progress.py`, in dòng tiến độ đó vào chat cho user.
+Hook chặn theo giai đoạn: S1-S2 chỉ tài liệu, S3 chỉ code, S4 chỉ test, S5-S6 theo quyền role. Sang giai đoạn mới: `echo S<n> > .agent-team/stage` (hook kiểm TASK.md). Sau mỗi lần đổi giai đoạn và mỗi lượt board xong: chạy `python3 .claude/agent-team/progress.py --list`, in nguyên văn vào chat cho user.
+
+**Danh sách bước (user phải biết đang ở bước nào, còn bước nào):**
+- Trước khi gọi agent ở S3-S5: `$B plan <task-id> --set "Scaffold @backend-dev | Đăng ký, 2FA @backend-dev | Test + lint @test-executor"`. Hook chặn gọi agent ở S3-S5 khi chưa có danh sách bước.
+- Giao bước cho agent: `$B step <task-id> <n> start`. Agent DONE: `$B step <task-id> <n> done` (bỏ: `skip`). Mỗi lần đổi: dán danh sách in ra vào chat (✅ xong · ▶ đang làm · ○ chưa làm).
+- Đổi kế hoạch giữa chừng: `plan --set` lại, bước trùng tên giữ trạng thái.
+- **Không tự đoán giờ xong** ("dự kiến 1-2 giờ"). Chỉ báo bước hiện tại và các bước còn lại.
 
 | Giai đoạn | Việc |
 |---|---|

@@ -5,6 +5,7 @@ import os
 import re
 import shlex
 import shutil
+import sqlite3
 import subprocess
 import sys
 import time
@@ -1019,6 +1020,29 @@ def check_stage_change(new_stage, cwd):
         block(f"chưa đủ điều kiện sang {new_stage}. Thiếu trong {os.path.relpath(latest, root)}: {'; '.join(miss)}")
 
 
+def check_plan(cwd):
+    """Lead gọi agent ở S3-S5: task phải có danh sách bước (board.py plan) để user biết đang ở bước nào."""
+    root = find_root(cwd)
+    if not root or stage_value(cwd) not in ("S3", "S4", "S5"):
+        return
+    base = os.path.join(root, DOCS_DIR)
+    tasks = [os.path.join(base, d, "TASK.md") for d in os.listdir(base)] if os.path.isdir(base) else []
+    tasks = [t for t in tasks if os.path.isfile(t)]
+    if not tasks:
+        return
+    task = os.path.basename(os.path.dirname(max(tasks, key=os.path.getmtime)))
+    db = os.path.join(root, ".agent-team", "board.db")
+    try:
+        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=5)
+        n = con.execute("SELECT count(*) FROM plan_steps WHERE task=?", (task,)).fetchone()[0]
+        con.close()
+    except sqlite3.Error:
+        n = 0
+    if not n:
+        block(f"chưa có danh sách bước cho {task}. Trước khi gọi agent: "
+              f"`board.py plan {task} --set \"bước 1 @role | bước 2 @role\"`, rồi in `progress.py --list` vào chat cho user")
+
+
 def check_stage(path, cwd):
     sz = stage_zones(cwd)
     loaded = load_zones(cwd) if sz is not None else None
@@ -1184,6 +1208,10 @@ def main():
     debug_log("post" if POST else "pre", data, role, cwd)
     if POST:
         post_check(data, role, cwd)
+        sys.exit(0)
+
+    if tool in ("Agent", "Task") and not role:
+        check_plan(cwd)
         sys.exit(0)
 
     path = ti.get("file_path") or ti.get("notebook_path") or ti.get("path") or ""

@@ -93,6 +93,8 @@ M-0 khung project (task này, S3-S6) → M-1..n: mỗi module 1 /agent-team:task
 3b. **Quy chuẩn code trước kiến trúc:** `project-setup.md` mục 6 đã điền (hoặc có dự án mẫu) → giao `solution-architect` ghi vào `docs/engineering/backend.md` / `frontend.md` (nhãn `Confirmed`, nguồn = project-setup) **trước A2**. Chưa điền → A2 Architect đề xuất quy chuẩn cùng stack, ghi Q-n `DEV`, chốt ở mục B form lượt 1.
 4. `docs/product/APP.md`: `- Intake: YES` khi intake không còn TODO (ô chờ owner ghi "chờ form, Q-n"). `echo S2 > .agent-team/stage`.
 
+**Tiến độ cho user:** Phase A có 10 bước cố định (Intake → Vấn đề → Giải pháp + nháp → Mockup → Săn gap → Chốt câu hỏi → Gửi form → Owner duyệt → Mockup + SPEC → Chia module), ✅ theo cổng trong `APP.md` + file có thật. Xong mỗi bước: chạy `python3 .claude/agent-team/progress.py --list`, dán nguyên văn vào chat. Phase B (M-0): danh sách bước như `task.md` mục 6. Không tự đoán giờ xong.
+
 ## 3. A1 Vấn đề + 12 góc nhìn
 `business-analyst` (chế độ App Mode trong file agent): `problem.md` (G-n, thước đo, ngoài phạm vi) + `coverage.md` (12 góc nhìn). Góc nào `CHƯA BIẾT` → BA trả câu hỏi kèm **đề xuất + vì sao + mức + ai trả lời**. Bạn ghi `questions.md`.
 

@@ -19,7 +19,7 @@ Plugin cho Claude Code. Đưa 1 task → Lead + BA + Architect + Test Design deb
 │   │   ├── audit.md     ← /agent-team:audit  - audit dự án cũ: cấu trúc, code, bảo mật, KB, skill → duyệt → sửa, lỗi code vào Backlog
 │   │   └── init.md      ← /agent-team:init   - cài cho 1 project, dựng KB
 │   ├── hooks/           ← hooks.json, guard.py (chặn thật), show_post.py
-│   ├── scripts/         ← agent-db-clone.sh, kb-check.py, board.py (board chat SQLite), gap-check.py (App Mode), progress.py (status line % tiến độ)
+│   ├── scripts/         ← agent-db-clone.sh, kb-check.py, board.py (board chat SQLite), gap-check.py (App Mode), progress.py (status line: đang ở bước nào, còn bước nào)
 │   ├── skills/          ← 10 skill chung, agent tự nạp khi cần
 │   ├── catalog/         ← mặc định theo loại app (chung, quản lý nội bộ, đặt lịch) để bù ý owner không nghĩ tới
 │   └── templates/       ← TASK, SUMMARY, POST, CONTEXT, config, mục CLAUDE.md, kb/ (khung docs/), product/ (App Mode)

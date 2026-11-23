@@ -4,6 +4,7 @@
 Lead:  team <task> --roles a,b | open <task> <S#> <R#> [--roles a,b] [--goal ".."] | close | summary | export
        report <task>   → docs/agent-tasks/<task>/REPORT.md (bảng debate + quyết định, để user đọc)
        why-close <task> <n> --as ruling|assumption --note ".."
+       plan <task> [--set "bước 1 @role | bước 2 @role"] | step <task> <n> start|done|skip|todo
 Role:  post <task> --role <role> [--reply ID] [--mention a,b] [--body ".." | stdin]
 Mọi người: read <task> [--all | --stage S2 --round 1 | --mention role | --since ID] | status <task> | whys <task> [--open]
 
@@ -53,6 +54,9 @@ CREATE TABLE IF NOT EXISTS agent_runs (
   task TEXT NOT NULL, role TEXT NOT NULL, run TEXT NOT NULL, started_at INTEGER NOT NULL, last_seen INTEGER NOT NULL,
   last_tool TEXT, busy_since INTEGER, tool_timeout INTEGER, state TEXT NOT NULL DEFAULT 'RUNNING',
   step TEXT, eta_min INTEGER, result TEXT, ended_at INTEGER, PRIMARY KEY(task, role, run));
+CREATE TABLE IF NOT EXISTS plan_steps (
+  task TEXT NOT NULL, n INTEGER NOT NULL, title TEXT NOT NULL, role TEXT, state TEXT NOT NULL DEFAULT 'todo',
+  started_at INTEGER, ended_at INTEGER, PRIMARY KEY(task, n));
 """
 OPEN_STATUS = ("open", "voting")
 _P = r"^\s*(?:[-*]\s*)?"
@@ -414,6 +418,10 @@ def cmd_status(db, a):
         print(f"Agent ({run}):")
         for _, _, line in view:
             print("  " + line)
+    steps = plan_lines(db, a.task)
+    if steps:
+        print("Các bước:")
+        print("\n".join("  " + x for x in steps))
 
 
 def cmd_summary(db, a):
@@ -1140,6 +1148,59 @@ def heartbeat(event, data):
         touch_run(db, task, role, run, busy_since=None)
 
 
+# ---------- danh sách bước: Lead ghi, status line (progress.py) + chat đọc ----------
+STEP_MARK = {"done": "✅", "doing": "▶ ", "todo": "○ ", "skip": "– "}
+STEP_STATE = {"start": "doing", "done": "done", "skip": "skip", "todo": "todo"}
+
+
+def parse_steps(spec):
+    out = []
+    for part in spec.split("|"):
+        part = " ".join(part.split())
+        if part:
+            m = re.match(r"^(.*?)\s*@([a-z][a-z-]+)$", part)
+            out.append((m.group(1), m.group(2)) if m else (part, None))
+    return out
+
+
+def plan_rows(db, task):
+    return db.execute("SELECT * FROM plan_steps WHERE task=? ORDER BY n", (task,)).fetchall()
+
+
+def plan_lines(db, task):
+    rows = plan_rows(db, task)
+    w = max((len(r["title"]) for r in rows), default=0)
+    return [f"{STEP_MARK.get(r['state'], '○ ')} {r['n']}. {r['title'].ljust(w)}" + (f"  {r['role']}" if r["role"] else "")
+            for r in rows]
+
+
+def cmd_plan(db, a):
+    if a.set is not None:
+        steps = parse_steps(a.set)
+        if not steps:
+            die('danh sách bước trống. Dạng: --set "bước 1 @role | bước 2 @role"')
+        old = {r["title"].lower(): r for r in plan_rows(db, a.task)}  # lập lại: bước trùng tên giữ trạng thái
+        db.execute("DELETE FROM plan_steps WHERE task=?", (a.task,))
+        for i, (title, role) in enumerate(steps, 1):
+            o = old.get(title.lower())
+            db.execute("INSERT INTO plan_steps(task, n, title, role, state, started_at, ended_at) VALUES(?,?,?,?,?,?,?)",
+                       (a.task, i, title, role or (o["role"] if o else None), o["state"] if o else "todo",
+                        o["started_at"] if o else None, o["ended_at"] if o else None))
+        db.commit()
+    lines = plan_lines(db, a.task)
+    print("\n".join(lines) if lines else f'Chưa có danh sách bước: board.py plan {a.task} --set "bước 1 @role | bước 2 @role"')
+
+
+def cmd_step(db, a):
+    if not db.execute("SELECT 1 FROM plan_steps WHERE task=? AND n=?", (a.task, a.n)).fetchone():
+        die(f"không có bước {a.n} (xem: board.py plan {a.task})")
+    now, state = int(time.time()), STEP_STATE[a.action]
+    db.execute("UPDATE plan_steps SET state=?, started_at=COALESCE(started_at, ?), ended_at=? WHERE task=? AND n=?",
+               (state, now if state == "doing" else None, now if state in ("done", "skip") else None, a.task, a.n))
+    db.commit()
+    print("\n".join(plan_lines(db, a.task)))
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="board.py", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sp = p.add_subparsers(dest="cmd", required=True)
@@ -1175,6 +1236,10 @@ def main(argv=None):
     wt.add_argument("--interval", type=int, default=30), wt.add_argument("--max", type=int, default=540, help="giây tối đa 1 lần chờ (lệnh Bash tối đa 10 phút)")
     sk = sp.add_parser("stuck", help="agent đang treo + lệnh đang kẹt")
     sk.add_argument("task"), sk.add_argument("--hang", type=int)
+    pl = sp.add_parser("plan", help="Lead: danh sách bước của task (in ra để dán vào chat)")
+    pl.add_argument("task"), pl.add_argument("--set", help='"bước 1 @role | bước 2 @role" (lập lại: bước trùng tên giữ trạng thái)')
+    st = sp.add_parser("step", help="Lead: đánh dấu 1 bước, in lại danh sách")
+    st.add_argument("task"), st.add_argument("n", type=int), st.add_argument("action", choices=list(STEP_STATE))
     rp = sp.add_parser("report")
     rp.add_argument("task"), rp.add_argument("--task-md"), rp.add_argument("--out")
     a = p.parse_args(argv)

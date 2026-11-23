@@ -35,7 +35,7 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
    - `scripts/board.py` → `.claude/agent-team/board.py` (chmod +x). Board chat SQLite, dữ liệu ở `.agent-team/board.db` (đã gitignore).
    - `scripts/gap-check.py` → `.claude/agent-team/gap-check.py` (chmod +x). Kiểm tài liệu sản phẩm `docs/product/` của App Mode.
    - `scripts/owner-form.py` → `.claude/agent-team/owner-form.py` (chmod +x, cần `gap-check.py` cùng thư mục). Sinh form `.xlsx` gửi owner và nhập câu trả lời.
-   - `scripts/progress.py` → `.claude/agent-team/progress.py` (chmod +x). Thêm vào `.claude/settings.json` của repo chính (merge, không ghi đè key khác; đã có `statusLine` thì hỏi user): `"statusLine": {"type": "command", "command": "python3 .claude/agent-team/progress.py"}`. Status line hiện `[task] S3 CODE ▓▓▓▓░░ 52% · chờ: role · WHY mở · thiếu: ...`.
+   - `scripts/progress.py` → `.claude/agent-team/progress.py` (chmod +x). Thêm vào `.claude/settings.json` của repo chính (merge, không ghi đè key khác; đã có `statusLine` thì hỏi user): `"statusLine": {"type": "command", "command": "python3 .claude/agent-team/progress.py"}`. Status line hiện `[task] S3 CODE · bước 2/4: <tên bước> · còn: <bước chưa làm> · chờ: role · WHY mở`. `progress.py --list` in đủ danh sách ✅ / ▶ / ○ để Lead dán vào chat.
 5. **CLAUDE.md**: chưa có mục "## Agent Team" thì thêm nội dung `templates/claude-md-section.md` vào cuối. Không sửa phần khác.
 5a. **Vẽ sơ đồ trong báo cáo**: kiểm `mmdc --version` (Mermaid CLI). Chưa có → báo user lệnh cài `npm i -g @mermaid-js/mermaid-cli` (không tự cài). Không có thì REPORT.html vẫn tạo được, sơ đồ hiện dạng văn bản.
 5b. **Code graph = Graphify (tùy chọn)**: hỏi user có muốn dùng không. Không → `USE_CODE_GRAPH=0`, bỏ qua.

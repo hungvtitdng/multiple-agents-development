@@ -253,5 +253,22 @@ _db.commit(); _db.close()
 code, out = hrun("wait", "H1", "--interval", "1", "--max", "2")
 check("lệnh có timeout 1800: im 10 phút chưa coi là treo (exit 4)", code == 4 and "đang làm" in out)
 
+# ---- v0.20.0: danh sách bước ----
+P = "20261123-plan"
+code, out = run("plan", P)
+check("plan chưa có: nhắc lệnh --set", code == 0 and "Chưa có danh sách bước" in out)
+check("plan --set trống bị từ chối", run("plan", P, "--set", " | ")[0] == 1)
+code, out = run("plan", P, "--set", "Scaffold @backend-dev | Đăng ký, 2FA @backend-dev | Test + lint @test-executor")
+check("plan --set: 3 bước ○, có role", code == 0 and out.count("○") == 3 and "3. Test + lint" in out and "test-executor" in out)
+code, out = run("step", P, "1", "done")
+check("step done: ✅ bước 1", code == 0 and "✅ 1. Scaffold" in out)
+code, out = run("step", P, "2", "start")
+check("step start: ▶ bước 2", "▶  2. Đăng ký, 2FA" in out)
+check("step bước không có bị từ chối", run("step", P, "9", "done")[0] == 1)
+code, out = run("plan", P, "--set", "Scaffold | Đăng ký, 2FA | Khung R-54 @backend-dev | Test + lint @test-executor")
+check("lập lại: bước trùng tên giữ trạng thái + role, bước mới ○",
+      "✅ 1. Scaffold" in out and "▶  2. Đăng ký, 2FA" in out and "○  3. Khung R-54" in out and "backend-dev" in out.splitlines()[0])
+check("status có mục Các bước", "Các bước:" in run("status", P)[1])
+
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

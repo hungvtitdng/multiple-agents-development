@@ -1,3 +1,19 @@
+# Release notes - 23/11/2026 (v0.20.0 - hiện bước đang làm và các bước còn lại)
+
+## Thay đổi
+- **Danh sách bước trong `board.db`** (bảng `plan_steps`): Lead lập `board.py plan <task> --set "bước 1 @role | bước 2 @role"`, đánh dấu `board.py step <task> <n> start|done|skip`. Lập lại giữa chừng: bước trùng tên giữ trạng thái. `board.py status` có mục "Các bước".
+- **Status line bỏ %, bỏ thanh ▓░:** `[task] S3 CODE · bước 2/4: <tên> · còn: <bước chưa làm>`. `progress.py --list` in đủ ✅ xong / ▶ đang làm / ○ chưa làm, kèm `App: x/N module xong` (hoặc `Module: x/N task xong`) khi bảng đã điền.
+- **App / Module Phase A:** 10 bước cố định, ✅ theo cổng trong `APP.md` / `MODULE.md` và file có thật (problem.md có G-n, requirements có R-n, flows có F-n, có mockup, có `QnA-v*.xlsx`...). Trước đây Phase A dùng cổng của task thường nên % đứng yên.
+- **Guard:** Lead gọi agent (tool `Agent` / `Task`) ở S3-S5 khi task chưa có danh sách bước → chặn, bảo lập `plan` trước.
+- `task.md`, `app.md`, `module.md`: Lead dán `progress.py --list` vào chat mỗi khi đổi bước; không tự đoán giờ xong.
+- Test: board 82, guard 361, progress 20 case.
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update multiple-agent`, khởi động lại Claude Code (matcher hook đổi).
+- Project đã init: copy lại `scripts/board.py`, `scripts/progress.py` → `.claude/agent-team/` (chmod +x).
+- Status line chưa hiện: kiểm `.claude/settings.json` của project có `"statusLine": {"type": "command", "command": "python3 .claude/agent-team/progress.py"}`.
+- Không có KEY env mới.
+
 # Release notes - 23/11/2026 (v0.19.2 - FE và BE chung 1 repo)
 
 ## Thay đổi
