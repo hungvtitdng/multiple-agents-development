@@ -51,7 +51,14 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
    !.env.example
    *.dump
    *.sql.gz
+   # agent-team: script do plugin chép mỗi phiên (hook sync.py) + config riêng mỗi dev → không commit
+   .claude/agent-team/*.py
+   .claude/agent-team/*.sh
+   .claude/agent-team/__pycache__/
+   .claude/agent-team.local.config
    ```
+   Commit: `.claude/agent-team.config` (config chung của team), `.claude/agent-team/templates/`, `.claude/settings.json`.
+   Tạo `.claude/agent-team.local.config` từ `templates/agent-team.local.config.example` (riêng máy này: `DEV_ID`, `MAX_PARALLEL`, `E2E_PORT_BASE`...).
 7. **Khung Knowledge Base `docs/`** trong repo chính (tên thư mục luôn là `docs` viết thường, vì guard so khớp phân biệt hoa thường):
    - Copy `templates/kb/` → `docs/`, **không ghi đè file đã có**. Thêm `docs/agent-tasks/.gitkeep`.
    - Đã có `Docs/` viết hoa → hỏi user đổi tên thành `docs` (`git mv Docs docs`) trước khi tạo.

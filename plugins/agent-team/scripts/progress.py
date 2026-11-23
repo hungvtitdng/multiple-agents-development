@@ -77,9 +77,8 @@ def agent_info(root, task):
     p = os.path.join(root, ".agent-team", "board.db")
     hang = 10
     try:
-        m = re.search(r"(?m)^\s*HANG_MINUTES=\s*['\"]?(\d+)", open(os.path.join(root, ".claude", "agent-team.config"), encoding="utf-8").read())
-        hang = int(m.group(1)) if m else 10
-    except OSError:
+        hang = int(cfg(root, "HANG_MINUTES", "10") or 10)
+    except (OSError, ValueError):
         pass
     if not os.path.isfile(p):
         return []
@@ -269,8 +268,12 @@ MARK = {"done": "✅ Xong", "doing": "▶ Đang làm", "todo": "⏳ Chờ", "ski
 
 
 def cfg(root, key, default=""):
-    m = re.search(rf"(?m)^\s*{key}=\s*['\"]?([^'\"#\n]*)", read(os.path.join(root, ".claude", "agent-team.config")))
-    return m.group(1).strip() if m else default
+    """.claude/agent-team.local.config (riêng mỗi dev) trước, rồi .claude/agent-team.config."""
+    for name in ("agent-team.local.config", "agent-team.config"):
+        m = re.search(rf"(?m)^\s*{key}=\s*['\"]?([^'\"#\n]*)", read(os.path.join(root, ".claude", name)))
+        if m and (m.group(1).strip() or name == "agent-team.config"):  # local để trống = không ghi đè
+            return m.group(1).strip()
+    return default
 
 
 def dwidth(t):

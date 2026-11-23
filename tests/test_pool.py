@@ -150,5 +150,22 @@ check("status line: bảng điều phối (Module ✅, task ▶, đã merge gộ
 cfg("")
 check("config không có MAX_PARALLEL → mặc định 8", "/8" in run("fill")[1])
 
+# ---- v0.28.0: config riêng mỗi dev + worktree nhận script không commit ----
+LOC = os.path.join(d, ".claude", "agent-team.local.config")
+cfg("MAX_PARALLEL=3\n")
+open(LOC, "w").write("MAX_PARALLEL=6\nE2E_PORT_BASE=\n")
+check("local config ghi đè MAX_PARALLEL (6), để trống thì không ghi đè", "/6" in run("fill")[1])
+open(LOC, "w").write("MAX_PARALLEL=\n")
+check("local MAX_PARALLEL trống → dùng config chung (3)", "/3" in run("fill")[1])
+os.makedirs(os.path.join(d, ".claude", "agent-team"), exist_ok=True)
+open(os.path.join(d, ".claude", "agent-team", "board.py"), "w").write("# bản chép của plugin, không commit\n")
+run("module", "M-3", "--state", "SPLIT")
+run("add", "M-3/T-1", "--task-id", "20261124-hv-m3-t1", "--title", "Báo cáo")
+run("fill")
+w31 = os.path.join(d, ".worktrees", "20261124-hv-m3-t1")
+check("worktree mới có script + local config chép từ thư mục chính (vì không commit)",
+      os.path.isfile(os.path.join(w31, ".claude", "agent-team", "board.py")) and os.path.isfile(os.path.join(w31, ".claude", "agent-team.local.config")))
+os.remove(LOC)
+
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

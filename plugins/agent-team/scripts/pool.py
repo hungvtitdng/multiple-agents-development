@@ -12,7 +12,12 @@ Lead:
   set <M-n/T-k> <RUNNING|GAP|FIX|BLOCKED|MERGE_WAIT> [--note ".."]
   merge-begin <M-n/T-k>    merge --no-commit vào branch phiên; conflict → --abort, FIX
   merge-end <M-n/T-k> pass|fail [--note ".."]   pass: commit + xoá worktree + DONE; fail: --abort, FIX
-  wait [--interval 30] [--max 540]   exit 0 có việc · 3 agent treo · 4 hết giờ chờ
+  wait [--interval 30] [--max 540]   exit 0 có việc (kể cả develop có commit mới) · 3 agent treo · 4 hết giờ chờ
+Team (Phase B / C):
+  handoff         kiểm bàn giao cuối Phase B
+  claimable       module nhận được ngay / chờ / đã có người nhận
+  claim <M-n>     nhận module: branch agent/YYYYMMDD-<DEV_ID>-m<n> từ origin/BASE_BRANCH, ghi Người chạy, push
+  sync            đồng bộ origin/BASE_BRANCH vào branch hiện tại (conflict → --abort, báo file)
   status | resume
 """
 import argparse
@@ -52,14 +57,19 @@ def find_root():
 
 
 def cfg(root, key, default):
-    try:
-        for line in open(os.path.join(root, ".claude", "agent-team.config"), encoding="utf-8", errors="ignore"):
-            m = re.match(rf"^\s*{key}=(.*)$", line)
-            if m:
-                v = m.group(1).split("#")[0].strip().strip("'\"")
-                return v or default
-    except OSError:
-        pass
+    """.claude/agent-team.local.config (riêng mỗi dev, gitignore) trước, rồi .claude/agent-team.config."""
+    for name in ("agent-team.local.config", "agent-team.config"):
+        try:
+            for line in open(os.path.join(root, ".claude", name), encoding="utf-8", errors="ignore"):
+                m = re.match(rf"^\s*{key}=(.*)$", line)
+                if m:
+                    v = m.group(1).split("#")[0].strip().strip("'\"")
+                    if v:
+                        return v
+                    if name == "agent-team.config":
+                        return default
+        except OSError:
+            pass
     return default
 
 
@@ -161,6 +171,29 @@ def exclude_worktrees(root, wdir):
             f.write(("" if cur.endswith("\n") or not cur else "\n") + line + "\n")
 
 
+LOCAL_FILES = [".claude/agent-team.local.config"]
+LOCAL_DIRS = [".claude/agent-team"]  # script plugin chép vào (không commit) → worktree không có, chép từ thư mục chính
+
+
+def copy_local_files(root, path):
+    """Worktree chỉ có file đã commit: chép script agent-team + config riêng của dev từ thư mục chính sang."""
+    import shutil
+    for rel in LOCAL_FILES:
+        s, t = os.path.join(root, rel), os.path.join(path, rel)
+        if os.path.isfile(s) and not os.path.isfile(t):
+            os.makedirs(os.path.dirname(t), exist_ok=True)
+            shutil.copy2(s, t)
+    for rel in LOCAL_DIRS:
+        sd = os.path.join(root, rel)
+        if not os.path.isdir(sd):
+            continue
+        for f in os.listdir(sd):
+            s, t = os.path.join(sd, f), os.path.join(path, rel, f)
+            if os.path.isfile(s) and f.endswith((".py", ".sh")) and not os.path.isfile(t):
+                os.makedirs(os.path.dirname(t), exist_ok=True)
+                shutil.copy2(s, t)
+
+
 def cmd_fill(db, root, a):
     limit, wdir = max_parallel(root), cfg(root, "WORKTREE_DIR", ".worktrees")
     busy = db.execute(f"SELECT count(*) FROM pool WHERE state IN ({','.join('?' * len(SLOT_STATES))})", SLOT_STATES).fetchone()[0]
@@ -188,6 +221,7 @@ def cmd_fill(db, root, a):
                     continue
         port = r["port"] or free_port(db, root)
         os.makedirs(os.path.join(path, ".agent-team"), exist_ok=True)
+        copy_local_files(root, path)
         open(os.path.join(path, ".agent-team", "e2e_port"), "w").write(f"{port}\n")
         db.execute("UPDATE pool SET state='RUNNING', worktree=?, branch=?, port=?, started_at=COALESCE(started_at, ?), note=NULL WHERE label=?",
                    (os.path.relpath(path, root), br, port, int(time.time()), r["label"]))
@@ -290,6 +324,12 @@ def cmd_wait(db, root, a):
     """Lead chờ: trả về khi có agent DONE mới, có chỗ trống + task READY, có agent treo, hoặc hết --max giây."""
     hang = int(cfg(root, "HANG_MINUTES", "10")) * 60
     start = int(time.time())
+    if has_remote(root):  # develop có commit mới (người khác merge) → đồng bộ trước khi merge task tiếp
+        fetch(root)
+        code, n = git(root, "rev-list", "--count", f"HEAD..{base_ref(root)}")
+        if not code and n.strip() not in ("", "0"):
+            print(f"CÓ VIỆC:\n{base_ref(root)} có {n.strip()} commit mới → pool.py sync (đọc lại file đổi)")
+            sys.exit(0)
     while True:
         rows = db.execute("SELECT * FROM pool WHERE state IN ('RUNNING','FIX','GAP') ORDER BY ord").fetchall()
         done, stuck = [], []
@@ -370,6 +410,299 @@ def cmd_resume(db, root, a):
     print("Sau đó: pool.py fill (đủ MAX_PARALLEL) → pool.py wait")
 
 
+# ---------- team: nhận module, đồng bộ develop, kiểm bàn giao (v0.29) ----------
+APP_MD = "docs/product/APP.md"
+DEP_REASON_RE = re.compile(r"(M-(?:\d+|E2E))\s*(?:→|->)\s*(M-\d+)\s*\((contract|code)\)\s*:\s*\S")
+ENV_USE_RES = [  # chỉ key bắt buộc: có giá trị mặc định trong code (env('X', 'mặc định')) thì không tính
+    re.compile(r"\benv\(\s*['\"]([A-Z][A-Z0-9_]+)['\"]\s*\)"),                                # Laravel env('X')
+    re.compile(r"\bENV(?:\[\s*['\"]([A-Z][A-Z0-9_]+)['\"]\s*\]|\.fetch\(\s*['\"]([A-Z][A-Z0-9_]+)['\"]\s*\))"),  # Rails
+    re.compile(r"process\.env\.([A-Z][A-Z0-9_]+)"),                                               # Node
+    re.compile(r"import\.meta\.env\.([A-Z][A-Z0-9_]+)"),                                          # Vite
+    re.compile(r"os\.(?:getenv|environ\.get)\(\s*['\"]([A-Z][A-Z0-9_]+)['\"]\s*\)|os\.environ\[\s*['\"]([A-Z][A-Z0-9_]+)['\"]"),  # Python
+    re.compile(r"os\.Getenv\(\s*\"([A-Z][A-Z0-9_]+)\""),                                         # Go
+]
+ENV_BUILTIN = {"NODE_ENV", "PATH", "HOME", "CI", "PORT", "DEV", "PROD", "MODE", "SSR", "BASE_URL", "VIEWPORTS",
+               "EVIDENCE_DIR", "TASK_ID", "APP_ENV", "APP_DEBUG"}
+
+
+def base_ref(root):
+    return f"origin/{cfg(root, 'BASE_BRANCH', 'develop')}"
+
+
+def has_remote(root):
+    code, out = git(root, "remote")
+    return code == 0 and "origin" in out.split()
+
+
+def fetch(root):
+    if has_remote(root):
+        git(root, "fetch", "-q", "origin")
+
+
+def show(root, ref, path):
+    """Nội dung file ở ref (vd origin/develop), '' nếu không có."""
+    code, out = git(root, "show", f"{ref}:{path}") if ref else (1, "")
+    if code:
+        try:
+            return open(os.path.join(root, path), encoding="utf-8").read() if not ref else ""
+        except OSError:
+            return ""
+    return out
+
+
+def exists_at(root, ref, path):
+    if not ref:
+        return os.path.exists(os.path.join(root, path))
+    return git(root, "cat-file", "-e", f"{ref}:{path}")[0] == 0
+
+
+def module_table(text):
+    """[{M, Module, Gồm R, Phụ thuộc, Loại, Task-id, Người chạy, Trạng thái, deps:[...]}] theo tên cột."""
+    head, rows = None, []
+    for line in text.splitlines():
+        c = [x.strip() for x in line.strip().strip("|").split("|")]
+        if c and c[0] == "M" and "Module" in c:
+            head = c
+            continue
+        if head and len(c) >= 2 and re.match(r"^M-(\d+|E2E)$", c[0]):
+            r = dict(zip(head, c + [""] * (len(head) - len(c))))
+            dep = r.get("Phụ thuộc", "")
+            r["deps"] = ["*"] if re.search(r"tất cả|mọi module", dep, re.I) else re.findall(r"M-\d+", dep)
+            rows.append(r)
+        elif head and not line.strip().startswith("|"):
+            head = None if rows else head
+    return rows
+
+
+def dep_reasons(text):
+    return {(a, b): kind for a, b, kind in DEP_REASON_RE.findall(text)}
+
+
+def contract_path(m):
+    return f"docs/product/contracts/{m}.md"
+
+
+def mod_branch_suffix(m):
+    return "m" + m.split("-")[1].lower()
+
+
+def taken_remote(root, m, me):
+    """Branch module của người khác trên remote: agent/YYYYMMDD-<dev>-m<n> (kết thúc đúng -m<n>)."""
+    code, out = git(root, "branch", "-r", "--list", "origin/agent/*")
+    suf = "-" + mod_branch_suffix(m)
+    hits = [b.strip() for b in out.splitlines() if b.strip().endswith(suf)]
+    return [b for b in hits if not (me and f"-{me}-" in b)]
+
+
+def classify(root, ref, me):
+    """(nhận được, chờ phụ thuộc, đã có người nhận, xong) theo APP.md ở ref."""
+    text = show(root, ref, APP_MD)
+    rows, reasons = module_table(text), dep_reasons(text)
+    done = {r["M"] for r in rows if r.get("Trạng thái", "").upper().startswith("DONE")}
+    ok, wait, taken = [], [], []
+    for r in rows:
+        m, st = r["M"], r.get("Trạng thái", "").upper()
+        if m in done:
+            continue
+        who = r.get("Người chạy", "").strip()
+        others = taken_remote(root, m, me) if ref else []
+        if (who and who != me and (st.startswith("DESIGN") or st.startswith("DOING"))) or others:
+            taken.append((m, who or ", ".join(o.split("/")[-1] for o in others)))
+            continue
+        deps = [x for x in rows if x["M"] != m] if r["deps"] == ["*"] else [x for x in rows if x["M"] in r["deps"]]
+        miss = []
+        for d in deps:
+            if d["M"] in done:
+                continue
+            if reasons.get((m, d["M"])) == "contract" and exists_at(root, ref, contract_path(d["M"])):
+                continue
+            miss.append(d["M"])
+        (wait if miss else ok).append((m, r.get("Module", ""), miss))
+    return ok, wait, taken, sorted(done)
+
+
+def cmd_claimable(db, root, a):
+    fetch(root)
+    ref = base_ref(root) if has_remote(root) else ""
+    ok, wait, taken, done = classify(root, ref, cfg(root, "DEV_ID", ""))
+    print(f"Theo {ref or 'thư mục hiện tại'} · xong {len(done)}")
+    for m, title, _ in ok:
+        print(f"  🟢 {m:<6} {title[:40]}  → pool.py claim {m}")
+    for m, title, miss in wait:
+        print(f"  ⏳ {m:<6} {title[:40]}  chờ {', '.join(miss)}")
+    for m, who in taken:
+        print(f"  👤 {m:<6} đang được nhận: {who}")
+
+
+def set_row(text, m, **vals):
+    """Sửa ô theo tên cột ở dòng module m (giữ nguyên dòng khác)."""
+    out, head = [], None
+    for line in text.splitlines():
+        c = [x.strip() for x in line.strip().strip("|").split("|")]
+        if c and c[0] == "M" and "Module" in c:
+            head = c
+        elif head and c and c[0] == m and line.strip().startswith("|"):
+            c += [""] * (len(head) - len(c))
+            for k, v in vals.items():
+                if k in head:
+                    c[head.index(k)] = v
+            line = "| " + " | ".join(c) + " |"
+        out.append(line)
+    return "\n".join(out) + ("\n" if text.endswith("\n") else "")
+
+
+def cmd_claim(db, root, a):
+    """Một người nhận 1 module (team, Phase C): branch từ develop mới nhất, ghi Người chạy, push ngay để người khác thấy."""
+    me, m = cfg(root, "DEV_ID", ""), a.module
+    busy = db.execute("SELECT count(*) FROM pool WHERE state NOT IN ('DONE')").fetchone()[0]
+    if busy:
+        die(f"máy này còn {busy} task chưa merge (pool.py status): xong module đang làm (PR) rồi mới nhận module khác")
+    if not me:
+        die("chưa có DEV_ID trong .claude/agent-team.local.config (tên viết tắt của bạn)")
+    if not has_remote(root) or cfg(root, "PUSH", "1") == "0":
+        die("nhận module theo team cần remote + PUSH=1 (người khác thấy branch đã nhận). Làm một mình: APP_BUILD=auto")
+    code, out = git(root, "diff", "--name-only", "HEAD")
+    dirty = [l for l in out.splitlines() if l and l != ".claude/agent-team.config"]
+    if dirty:
+        die("thư mục chính còn thay đổi chưa commit: " + ", ".join(dirty[:5]))
+    fetch(root)
+    ref = base_ref(root)
+    ok, wait, taken, done = classify(root, ref, me)
+    if m in done:
+        die(f"{m} đã DONE trên {ref}")
+    for t, who in taken:
+        if t == m:
+            die(f"{m} đã có người nhận: {who}")
+    for t, _, miss in wait:
+        if t == m:
+            die(f"{m} chưa nhận được, chờ {', '.join(miss)} xong trên {ref}. Nhận được ngay: " + (", ".join(x[0] for x in ok) or "không có"))
+    if m not in [x[0] for x in ok]:
+        die(f"không thấy {m} trong bảng Module ở {ref}")
+    tid = f"{time.strftime('%Y%m%d')}-{me}-{mod_branch_suffix(m)}"
+    br = f"agent/{tid}"
+    code, out = git(root, "switch", "-c", br, ref)
+    if code:
+        die(f"không tạo được branch {br}: {out[:200]}")
+    p = os.path.join(root, APP_MD)
+    text = open(p, encoding="utf-8").read()
+    open(p, "w", encoding="utf-8").write(set_row(text, m, **{"Người chạy": me, "Trạng thái": "DESIGN", "Task-id": tid}))
+    git(root, "add", APP_MD)
+    code, out = git(root, "commit", "-m", f"[lead] {tid}: nhận {m}")
+    if code:
+        die(f"commit lỗi: {out[:200]}")
+    code, out = git(root, "push", "-u", "origin", br)
+    if code:
+        die(f"push lỗi (có thể người khác vừa nhận): {out[:200]}")
+    db.execute("INSERT OR IGNORE INTO pool_modules(module, ord) VALUES(?, 0)", (m,))
+    db.execute("UPDATE pool_modules SET state='DESIGN' WHERE module=?", (m,))
+    db.commit()
+    print(f"✅ Đã nhận {m} · branch {br} (đã push) · task-id {tid}\n"
+          f"Tiếp: thiết kế {m} theo Loại (app.md Phase C) → chia task → pool.py add → module {m} --state SPLIT → fill / wait\n"
+          f"Xong: pool.py sync → integration test → PR vào {ref.split('/', 1)[1]} (người review merge), rồi dừng")
+
+
+def cmd_sync(db, root, a):
+    """Đồng bộ develop vào branch hiện tại: merge, báo file docs đã đổi để đọc lại; conflict → --abort, báo file."""
+    if not has_remote(root):
+        print("Không có remote: bỏ qua")
+        return
+    if db.execute("SELECT 1 FROM pool WHERE state='MERGING'").fetchone():
+        die("đang merge task (MERGING): merge-end trước")
+    code, out = git(root, "diff", "--name-only", "HEAD")
+    if [l for l in out.splitlines() if l and l != ".claude/agent-team.config"]:
+        die("thư mục chính còn thay đổi chưa commit")
+    fetch(root)
+    ref = base_ref(root)
+    code, n = git(root, "rev-list", "--count", f"HEAD..{ref}")
+    if code or n.strip() == "0":
+        print(f"Đã mới nhất so với {ref}")
+        return
+    _, docs = git(root, "diff", "--name-only", f"HEAD...{ref}", "--", "docs/")
+    _, code_files = git(root, "diff", "--name-only", f"HEAD...{ref}", "--", ".", ":!docs")
+    _, br = git(root, "rev-parse", "--abbrev-ref", "HEAD")
+    code, out = git(root, "merge", "--no-ff", "-m", f"[lead] {br.replace('agent/', '')}: đồng bộ {ref}", ref)
+    if code:
+        _, files = git(root, "diff", "--name-only", "--diff-filter=U")
+        git(root, "merge", "--abort")
+        print(f"✗ CONFLICT khi đồng bộ {ref}: {files or out[:200]}\nĐã --abort. Không tự gộp code người khác: báo user file conflict.")
+        sys.exit(2)
+    print(f"✅ Đã đồng bộ {n.strip()} commit từ {ref}")
+    if docs:
+        print("Đọc lại (KB / tài liệu đổi): " + ", ".join(docs.splitlines()[:15]))
+        if any(re.search(r"contracts/|APP\.md|business-rules|roles-and-permissions|domain-model|decisions/", f) for f in docs.splitlines()):
+            print("⚠ Có contract / quy tắc / quyền / ADR đổi: kiểm module đang làm có dùng không → có thì GAP, dừng task liên quan")
+    if code_files:
+        print(f"{len(code_files.splitlines())} file code đổi → `graphify update .` (nếu dùng); task đang chạy merge lại sẽ chạy IT trên code mới")
+
+
+def env_keys_used(root):
+    paths = " ".join(cfg(root, k, "") for k in ("BE_PATHS", "FE_PATHS")).split() or ["."]
+    used = set()
+    for base in paths:
+        top = os.path.join(root, base)
+        walk = [(os.path.dirname(top), [], [os.path.basename(top)])] if os.path.isfile(top) else os.walk(top)
+        for d, dirs, files in walk:
+            dirs[:] = [x for x in dirs if x not in ("node_modules", "vendor", ".git", "storage", "tmp", "dist", "build", "public")]
+            for f in files:
+                if not f.endswith((".php", ".rb", ".js", ".ts", ".tsx", ".jsx", ".vue", ".py", ".go", ".yml", ".yaml")):
+                    continue
+                try:
+                    t = open(os.path.join(d, f), encoding="utf-8", errors="ignore").read()
+                except OSError:
+                    continue
+                for r in ENV_USE_RES:
+                    for m in r.findall(t):
+                        used.update([m] if isinstance(m, str) else [x for x in m if x])
+    return used - ENV_BUILTIN
+
+
+def cmd_handoff(db, root, a):
+    """Kiểm bàn giao cuối Phase B: đủ thì team mới nhận module (Phase C)."""
+    text = show(root, "", APP_MD)
+    rows, reasons, res = module_table(text), dep_reasons(text), []
+
+    def item(ok, name, detail=""):
+        res.append(ok)
+        print(f"{'✅' if ok else '❌'} {name}" + (f": {detail}" if detail else ""))
+
+    gc = os.path.join(root, ".claude", "agent-team", "gap-check.py")
+    if os.path.isfile(gc):
+        r = subprocess.run([sys.executable, gc], cwd=root, capture_output=True, text=True)
+        item(r.returncode == 0, "gap-check (tài liệu app đủ, SPEC mới)", "" if r.returncode == 0 else r.stdout.strip().splitlines()[-1][:120] if r.stdout.strip() else "lỗi")
+    else:
+        item(False, "gap-check", "thiếu .claude/agent-team/gap-check.py")
+    bad = [r["M"] for r in rows if not r.get("Loại") or not r.get("Gồm R")]
+    item(bool(rows) and not bad, "bảng Module có Loại + Gồm R", ", ".join(bad))
+    nore = [f"{r['M']}→{d}" for r in rows for d in r["deps"] if d != "*" and (r["M"], d) not in reasons]
+    item(not nore, "mỗi phụ thuộc có lý do (mục `## Lý do phụ thuộc`: `- M-5 → M-1 (contract|code): ...`)", ", ".join(nore[:8]))
+    heavy = [r["M"] for r in rows if (r.get("Loại", "").split() or [""])[0].upper() in ("NẶNG", "LỚN")]
+    noc = [m for m in heavy if not os.path.isfile(os.path.join(root, contract_path(m)))]
+    item(not noc, "contract module NẶNG (docs/product/contracts/M-n.md)", ", ".join(noc))
+    m0 = next((r for r in rows if r["M"] == "M-0"), None)
+    m0_ok = bool(m0) and m0.get("Trạng thái", "").upper().startswith("DONE")
+    if m0_ok and m0.get("Task-id"):
+        tt = show(root, "", f"docs/agent-tasks/{m0['Task-id']}/TASK.md")
+        for k in ("Kết quả test", "E2E"):
+            m = re.search(rf"(?m)^[\s>*-]*{k}\s*:\s*(\S+)", tt)
+            if not m or m.group(1).upper().strip("`*") != "PASS":
+                m0_ok = False
+    item(m0_ok, "M-0 DONE, test + E2E PASS (TASK.md của M-0)")
+    ex = show(root, "", ".env.example")
+    have = set(re.findall(r"(?m)^\s*([A-Z][A-Z0-9_]*)\s*=", ex))
+    miss = sorted(env_keys_used(root) - have)
+    item(bool(ex) and not miss, ".env.example đủ key code đang dùng", ("thiếu: " + ", ".join(miss[:10])) if miss else ("không có .env.example" if not ex else ""))
+    item(bool(cfg(root, "SEED_CMD", "")), "SEED_CMD (DB mới + dữ liệu mẫu cho test / E2E, máy nào cũng chạy được)", "chưa ghi trong config")
+    readme = show(root, "", "README.md")
+    item(bool(re.search(r"(?mi)^#+\s*Chạy dự án lần đầu", readme)), "README có mục \"Chạy dự án lần đầu\" (cài, .env, docker, seed, test)")
+    ok, wait, taken, done = classify(root, "", cfg(root, "DEV_ID", ""))
+    print(f"Nhận được ngay sau bàn giao: {', '.join(x[0] for x in ok) or 'không có (xem lại phụ thuộc)'}")
+    if wait:
+        print("Chờ: " + "; ".join(f"{m} ← {', '.join(x)}" for m, _, x in wait[:8]))
+    if not all(res):
+        sys.exit(1)
+    print("BÀN GIAO ĐỦ: commit, push, PR vào nhánh gốc; báo team danh sách module nhận được")
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="pool.py", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sp = p.add_subparsers(dest="cmd", required=True)
@@ -384,6 +717,11 @@ def main(argv=None):
     mb.add_argument("label")
     me = sp.add_parser("merge-end")
     me.add_argument("label"), me.add_argument("result", choices=["pass", "fail"]), me.add_argument("--note")
+    sp.add_parser("claimable", help="module nhận được ngay / chờ phụ thuộc / đã có người nhận (theo origin/BASE_BRANCH)")
+    cl = sp.add_parser("claim", help="nhận 1 module (team): branch từ develop, ghi Người chạy, push")
+    cl.add_argument("module")
+    sp.add_parser("sync", help="đồng bộ develop vào branch hiện tại, báo file cần đọc lại")
+    sp.add_parser("handoff", help="kiểm bàn giao cuối Phase B")
     w = sp.add_parser("wait")
     w.add_argument("--interval", type=int, default=30), w.add_argument("--max", type=int, default=540)
     a = p.parse_args(argv)

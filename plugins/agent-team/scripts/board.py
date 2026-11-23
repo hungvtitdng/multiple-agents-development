@@ -992,13 +992,14 @@ def current_run(db, task, root=None):
 
 
 def hang_minutes(root):
-    try:
-        for line in open(os.path.join(root, ".claude", "agent-team.config"), encoding="utf-8", errors="ignore"):
-            m = re.match(r"^\s*HANG_MINUTES=\s*['\"]?(\d+)", line)
-            if m:
-                return int(m.group(1))
-    except OSError:
-        pass
+    for name in ("agent-team.local.config", "agent-team.config"):  # local (riêng mỗi dev) trước
+        try:
+            for line in open(os.path.join(root, ".claude", name), encoding="utf-8", errors="ignore"):
+                m = re.match(r"^\s*HANG_MINUTES=\s*['\"]?(\d+)", line)
+                if m:
+                    return int(m.group(1))
+        except OSError:
+            pass
     return 10
 
 

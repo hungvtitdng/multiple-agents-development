@@ -16,10 +16,12 @@ PHASE A (chỉ tài liệu, stage S1-S2)
 A0 Intake → A1 Vấn đề + 12 góc nhìn → A2 Debate (team tự làm rõ) → A3 Nháp trọn app → A3b Mockup mọi màn
 → A4 Săn gap trên nháp + mockup → Debate chốt đề xuất → FORM CUỐI theo hành trình (A. Owner · B. Dev)
 → ⛔ Owner chốt logic → cập nhật mockup + SPEC → A5 Chia module
-PHASE B (code)
-M-0 khung project (task này, S3-S6) → M-1..n → M-E2E: Lead điều phối (thiết kế từng module, task chạy song song
-   trong worktree tối đa MAX_PARALLEL, merge + integration test) trên 1 branch phiên. User không gõ lệnh từng module
+PHASE B nền tảng (máy này)       M-0 khung project + contract module NẶNG + seeder + README chạy lần đầu → pool.py handoff
+PHASE C build module             APP_BUILD=auto: bạn điều phối hết trên 1 branch phiên (task song song trong worktree)
+                                 APP_BUILD=manual: DỪNG sau B (push, PR); mỗi người `/agent-team:task M-n` nhận 1 module
+PHASE D tích hợp                 M-E2E khi mọi module DONE: E2E mọi luồng × mọi VIEWPORTS, báo cáo cuối app
 ```
+Điểm dừng: A→B owner duyệt · B→C `pool.py handoff` đủ (+ manual: PR merge vào nhánh gốc) · C→D mọi module DONE · D xong: M-E2E PASS.
 - **Người chạy lệnh thường là dev, không phải owner.** Không hỏi dev câu nghiệp vụ. Mỗi câu trong `docs/product/questions.md` có cột `Ai trả lời`:
   | Ai trả lời | Gồm | Cách hỏi |
   |---|---|---|
@@ -142,11 +144,20 @@ Rồi bạn:
 Xong: chạy `.claude/agent-team/gap-check.py --spec`, sửa hết `THIEU` → `- Gap-check: PASS` trong `APP.md`. `docs/product/SPEC.md`: **toàn bộ tài liệu app trong 1 file** (ý tưởng, mục tiêu, stack, yêu cầu, flow, màn + link wireframe, dữ liệu, mặc định, câu hỏi, truy vết B → R → S, link quyết định, module). Sinh tự động, không sửa tay.
 
 ## 9. A5 Chia module
-`solution-architect` đề xuất module (mỗi module gom R-n liền mạch), thứ tự theo phụ thuộc **thật** (module B dùng bảng / API / màn của A; "làm sau cho tiện" không phải phụ thuộc), cột Loại = mức thiết kế `NHẸ` / `VỪA` / `NẶNG` (mục 10.2, `security` được nâng); bạn ghi bảng Module trong `APP.md`. M-0 luôn là khung project: scaffold theo stack, CI, Docker, `.env.example`, lint/format, test chạy được, đăng nhập nếu R có. Cập nhật config: `BE_PATHS`, `FE_PATHS`, `TEST_PATHS`, `LINT_CMD`, `TEST_CMD`... theo stack đã chốt (**FE và BE chung 1 repo** (Inertia, Blade, Next fullstack...) → `FE_PATHS=""`, dồn đường dẫn FE vào `BE_PATHS`: `backend-dev` làm cả FE, không gọi `frontend-dev`); `VIEWPORTS` theo `intake.md` (Responsive CÓ → `"375 768 1280"`, KHÔNG → `"1280"`); `E2E_CMD`, `APP_START_CMD`, `APP_PORT` (M-0 dựng Playwright + khung `e2e/` theo skill `test-automation` mục 1b). Module cuối luôn là **M-E2E**: chạy lại toàn bộ E2E theo mọi luồng "1 ngày của <vai trò>" ở mọi `VIEWPORTS` (regression cả app). Chạy lại `gap-check.py --spec`.
+`solution-architect` đề xuất module (mỗi module gom R-n liền mạch), thứ tự theo phụ thuộc **thật**, mỗi phụ thuộc 1 dòng ở mục `## Lý do phụ thuộc` của `APP.md`: `- M-5 → M-1 (contract): chỉ gọi PermissionService` / `(code): dùng bảng users` (`contract` = chỉ cần contract của module kia, không chờ code → làm song song được) (module B dùng bảng / API / màn của A; "làm sau cho tiện" không phải phụ thuộc), cột Loại = mức thiết kế `NHẸ` / `VỪA` / `NẶNG` (mục 10.2, `security` được nâng); bạn ghi bảng Module trong `APP.md`. M-0 luôn là khung project: scaffold theo stack, CI, Docker, `.env.example`, lint/format, test chạy được, đăng nhập nếu R có. Cập nhật config: `BE_PATHS`, `FE_PATHS`, `TEST_PATHS`, `LINT_CMD`, `TEST_CMD`... theo stack đã chốt (**FE và BE chung 1 repo** (Inertia, Blade, Next fullstack...) → `FE_PATHS=""`, dồn đường dẫn FE vào `BE_PATHS`: `backend-dev` làm cả FE, không gọi `frontend-dev`); `VIEWPORTS` theo `intake.md` (Responsive CÓ → `"375 768 1280"`, KHÔNG → `"1280"`); `E2E_CMD`, `APP_START_CMD`, `APP_PORT` (M-0 dựng Playwright + khung `e2e/` theo skill `test-automation` mục 1b). Module cuối luôn là **M-E2E**: chạy lại toàn bộ E2E theo mọi luồng "1 ngày của <vai trò>" ở mọi `VIEWPORTS` (regression cả app). Chạy lại `gap-check.py --spec`.
 
-## 10. Phase B: build
+## 10. Phase B nền tảng · C build module · D tích hợp
+**Phase B (máy chạy `/agent-team:app`):**
 1. **M-0 trong chính task này:** `echo S3 > .agent-team/stage` (hook chạy `gap-check.py --gate --spec-check`: thiếu gì báo đó). S3-S6 như `task.md` mục 6 (S3 dev scaffold phần code trong vùng mình; S4 `test-executor` dựng + chạy test khung: `TEST_PATHS` của starter như `tests/`, `phpunit.xml`, `e2e/` do test-executor chép, dev không chép; review, đóng).
-2. **M-1..n → M-E2E: bạn điều phối, nhiều task chạy song song** (`task.md` mục 6c, script `pool.py`). 1 phiên = 1 branch `agent/<task-id app>`; mỗi task 1 worktree + branch tạm, xong merge về branch phiên. Không dừng hỏi user, không bảo user gõ lệnh.
+1b. **Contract module NẶNG** (`Loại: NẶNG` / `LỚN`, thường auth / quyền): `solution-architect` + `security` viết `docs/product/contracts/M-<n>.md` (API / service / bảng dữ liệu mà module khác dùng, mã lỗi, quyền). Module phụ thuộc `(contract)` làm song song dựa vào file này.
+1c. **Bàn giao:** M-0 có seeder (`SEED_CMD` trong config: DB mới + dữ liệu mẫu cho test / E2E), `.env.example` đủ key, README mục "Chạy dự án lần đầu" (cài, `.env`, docker, seed, test). `python3 .claude/agent-team/pool.py handoff` phải đủ ✅ (gap-check, Loại + Gồm R, lý do phụ thuộc, contract NẶNG, M-0 test + E2E PASS, `.env.example`, `SEED_CMD`, README) mới sang C. In danh sách module nhận được ngay.
+   - `APP_BUILD=manual` (team): commit + push, báo user mở PR vào nhánh gốc + gửi team danh sách module nhận được ngay. **DỪNG.**
+   - `APP_BUILD=auto` (mặc định, 1 người): sang C ngay.
+
+**Phase C (build module):**
+2. **`APP_BUILD=manual` (team):** mỗi người (máy riêng, `DEV_ID` trong `.claude/agent-team.local.config`) chạy `/agent-team:task M-<n>`: Lead của máy đó `pool.py claim M-<n>` (pull, kiểm phụ thuộc đã `DONE` trên nhánh gốc hoặc chỉ cần contract đã có, kiểm chưa ai nhận, tạo branch `agent/YYYYMMDD-<DEV_ID>-m<n>`, ghi Người chạy, push ngay) → thiết kế module theo Loại → chia task → `pool.py` như dưới, **chỉ module đó** → `pool.py sync` + integration test → PR vào nhánh gốc (người review merge) → báo cáo → **dừng** (không tự nhận module khác). `pool.py claimable`: module nhận được / chờ / đã có người.
+   **`APP_BUILD=auto`:** bạn làm mục 2b cho mọi module, trên 1 branch phiên.
+2b. **Điều phối (cả 2 chế độ): nhiều task chạy song song** (`task.md` mục 6c, script `pool.py`). 1 phiên = 1 branch `agent/<task-id app>`; mỗi task 1 worktree + branch tạm, xong merge về branch phiên. Không dừng hỏi user, không bảo user gõ lệnh.
    ```
    Thiết kế module (mỗi lúc 1, dây chuyền)        Thực thi (tối đa MAX_PARALLEL task cả app)       Merge (lần lượt)
    M-n: debate theo loại → chia task T-k  ──►  task READY → worktree → dev → test → review  ──►  merge --no-commit → IT
@@ -156,9 +167,12 @@ Xong: chạy `.claude/agent-team/gap-check.py --spec`, sửa hết `THIEU` → `
    - **Thiết kế module** (ở thư mục chính, TASK.md riêng của module, chỉ S1-S2, rồi `rm .agent-team/stage`): theo cột "Loại" trong bảng Module: `NHẸ` (CRUD theo khuôn có sẵn) → `solution-architect` viết thiết kế + contract, `test-designer` + `security` duyệt 1 lượt, không debate · `VỪA` → 1 lượt đề xuất + 1 lượt WHY · `NẶNG` (auth / quyền / tiền / dữ liệu nhạy cảm / kiến trúc) → debate đầy đủ (`task.md` mục 4). `security` được nâng loại.
    - **Chia task** (`solution-architect` + `business-analyst`): mỗi T-k ghi vào bảng Task của module (TASK.md thiết kế, mục "Chia task"): mô tả, AC (`AC-n` của R-n), **file / vùng sẽ đụng**, **phụ thuộc theo task** (`M-1/T-1`, không ghi cả module), API contract dùng. Hai task đụng cùng file → gộp hoặc cho phụ thuộc nhau (không chạy song song). Rồi `pool.py add M-n/T-k --task-id <YYYYMMDD-mn-tk> --title ".." --deps ".."` từng task, `pool.py module M-n --state SPLIT`.
    - **Dây chuyền:** vừa SPLIT module này thì thiết kế module kế ngay (contract module trước đã chốt là đủ), không chờ module trước code xong. Hàng đợi task không bao giờ lấy task của module đang thiết kế.
+   - **Team nhiều người:** cột "Người chạy" trong bảng Module = `DEV_ID` (hoặc `git config user.name`) của người đang chạy phiên điều phối module đó. Module `DESIGN` / `DOING` của người khác → bỏ qua, không động vào. Nhận module: ghi tên mình + `DESIGN`, commit + push ngay (người khác pull thấy).
    - **Chỉ dừng khi:** chỉ còn việc chờ owner (GAP cần owner → task / module `BLOCKED`, build form; việc không phụ thuộc vẫn chạy) · mọi việc còn lại BLOCKED · hết bảng Module (M-E2E ✅) · hết quota (user `/agent-team:resume` là chạy tiếp từ `pool.py resume`).
    - AC của task = AC của các R-n trong module (BA chi tiết hoá). Workflow / wireframe lấy từ `docs/product/`, không vẽ lại. Module đi ngược `docs/decisions/` → sửa quyết định trước. Câu nghiệp vụ phát sinh cần owner → Q-n `OWNER` → form. Hook chặn mọi task sang S3 khi `APP.md` chưa `Owner duyệt: APPROVED`.
-3. **Merge cho user:** 1 branch `agent/<task-id app>` (tag `…-m<n>-done` mỗi module). User merge 1 lần, hoặc merge tới tag muốn lấy. Branch tạm của task giữ lại (không xoá branch). `PUSH=1`: push branch phiên + tag sau mỗi module.
+2c. **Đồng bộ nhánh gốc (`pool.py sync`)**, bắt buộc: trước khi chia task, mỗi khi `pool.py wait` báo nhánh gốc có commit mới, trước khi tạo PR. Đọc lại **đúng file docs đã đổi** (script in danh sách), contract / quy tắc / quyền / ADR đổi mà module đang dùng → GAP, dừng task liên quan. Conflict → script `--abort`, báo user file conflict, **không tự gộp code người khác**.
+2d. **Phase D:** khi mọi module trừ M-E2E `DONE` trên nhánh gốc (`pool.py claimable` thấy 🟢 M-E2E): `/agent-team:task M-E2E` (manual) hoặc bạn làm tiếp (auto): chạy toàn bộ E2E mọi luồng "1 ngày của <vai trò>" × mọi `VIEWPORTS`, lỗi tích hợp → task sửa, báo cáo cuối app.
+3. **Merge cho user:** auto: 1 branch `agent/<task-id app>` (tag `…-m<n>-done` mỗi module), user merge 1 lần hoặc tới tag. manual: mỗi module 1 PR vào nhánh gốc, người review merge (agent không bao giờ merge vào nhánh gốc). Branch tạm của task giữ lại (không xoá branch). `PUSH=1`: push branch phiên + tag sau mỗi module.
 4. **Tài liệu app luôn đúng với code:** module đổi yêu cầu / phát sinh GAP → sửa `docs/product/` (task.md mục 7b). Mỗi module xong: cập nhật cột Trạng thái trong `APP.md`, chạy `gap-check.py --spec`. Hook chặn S6 của mọi task khi tài liệu app thiếu hoặc SPEC.md cũ.
 
 ## 11. Thiếu sót phát hiện về sau

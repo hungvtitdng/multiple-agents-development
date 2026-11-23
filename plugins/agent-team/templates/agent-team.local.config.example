@@ -1,0 +1,14 @@
+# Riêng máy này (copy thành .claude/agent-team.local.config, đã gitignore, KHÔNG commit).
+# Key ở đây ghi đè .claude/agent-team.config (config chung của team) cho: pool.py, progress.py, board.py, guard, agent-db-clone.sh.
+# Không ghi password / KEY ở đây: KEY để trong .env.
+
+# Tên viết tắt của bạn: thêm vào task-id (YYYYMMDD-<DEV_ID>-<slug>) và cột "Người chạy" của bảng Module
+DEV_ID=
+# Số task chạy cùng lúc trên máy này (theo quota gói Claude + RAM máy). Trống = config chung / mặc định 8
+MAX_PARALLEL=
+# Cổng E2E đầu tiên cho worktree (đổi nếu 2 người chạy trên cùng 1 máy)
+E2E_PORT_BASE=
+# Phút im lặng coi là agent treo
+HANG_MINUTES=
+# Status line: table | 1
+PROGRESS_LINES=

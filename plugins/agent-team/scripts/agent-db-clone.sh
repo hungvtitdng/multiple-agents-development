@@ -31,6 +31,11 @@ CONFIG="$ROOT/.claude/agent-team.config"
 [ -f "$CONFIG" ] || die "thiếu $CONFIG, chạy /agent-team:init"
 # shellcheck disable=SC1090
 . "$CONFIG"
+# riêng mỗi dev (gitignore): ghi đè config chung, vd E2E_PORT_BASE, HANG_MINUTES
+# shellcheck disable=SC1091
+if [ -f "$ROOT/.claude/agent-team.local.config" ]; then  # chỉ dòng có giá trị (để trống = không ghi đè)
+  . <(grep -E '^[A-Za-z_][A-Za-z0-9_]*=[^[:space:]#]' "$ROOT/.claude/agent-team.local.config")
+fi
 
 COMPOSE_DIR="${COMPOSE_DIR:-$ROOT}"
 case "$COMPOSE_DIR" in /*) ;; *) COMPOSE_DIR="$ROOT/$COMPOSE_DIR" ;; esac

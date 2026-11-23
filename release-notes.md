@@ -1,3 +1,38 @@
+# Release notes - 24/11/2026 (v0.29.0 - 4 phase, team nhận module, đồng bộ develop, kiểm bàn giao)
+
+## Thay đổi
+- **`app.md` 4 phase:** A định nghĩa sản phẩm (owner duyệt) · B nền tảng (M-0 + contract module NẶNG + seeder + README + kiểm bàn giao) · C build module · D tích hợp (M-E2E).
+- **`APP_BUILD`** (config chung): `auto` (mặc định, 1 người chạy hết, như 0.27) · `manual` (team: Lead dừng sau Phase B, push, báo danh sách module nhận được ngay).
+- **`pool.py handoff`:** kiểm bàn giao: gap-check, bảng Module có Loại + Gồm R, mỗi phụ thuộc có lý do (`## Lý do phụ thuộc`: `- M-5 → M-1 (contract|code): ...`), contract `docs/product/contracts/M-n.md` cho module NẶNG / LỚN, M-0 test + E2E PASS, `.env.example` đủ key code dùng **không có giá trị mặc định** (quét `env('X')`, `ENV[]` / `ENV.fetch`, `process.env`, `import.meta.env`, `os.getenv`, `os.Getenv`), `SEED_CMD`, README "Chạy dự án lần đầu".
+- **`pool.py claim M-n`** (team): fetch, kiểm phụ thuộc trên `origin/BASE_BRANCH` (`code` = module kia DONE, `contract` = có file contract → làm song song), kiểm chưa ai nhận (APP.md + branch `origin/agent/*-m<n>`), tạo `agent/YYYYMMDD-<DEV_ID>-m<n>`, ghi Người chạy + DESIGN, commit, **push ngay**. Cần `DEV_ID`, remote, `PUSH=1`; máy còn task chưa merge thì không nhận module khác. `pool.py claimable`: 🟢 nhận được · ⏳ chờ · 👤 đã có người.
+- **`pool.py sync`:** merge `origin/BASE_BRANCH` vào branch hiện tại, in file docs đổi để đọc lại, cảnh báo khi contract / quy tắc / quyền / ADR đổi; conflict → `--abort`, báo file, không tự gộp. `pool.py wait` trả về ngay khi nhánh gốc có commit mới. `app.md`: sync bắt buộc trước khi chia task, khi wait báo, trước khi PR.
+- `/agent-team:task M-n` (task.md mục 0.7): module của app, team thì `claim` trước, xong PR rồi dừng. `resume` nhận biết branch module của team.
+- Mẫu `APP.md`: mục `## Lý do phụ thuộc`. Test team mới (remote = bare repo): 18 case.
+
+## Cần làm thủ công
+- Commit + push, `/plugin marketplace update multiple-agent`, khởi động lại Claude Code.
+- **Key mới trong `.claude/agent-team.config`** (không phải secret): `APP_BUILD=auto|manual`, `SEED_CMD=` (vd `php artisan migrate:fresh --seed`).
+- Team: config chung `APP_BUILD=manual`, `PUSH=1`, `BASE_BRANCH` đúng nhánh gốc; mỗi người `DEV_ID` trong `.claude/agent-team.local.config`. `04.Cay` đang `PUSH=0`, `BASE_BRANCH=master`: chuyển sang team thì đổi `PUSH=1`.
+- App đang chạy: thêm mục `## Lý do phụ thuộc` vào `APP.md` và file contract cho module NẶNG trước khi `pool.py handoff`.
+
+# Release notes - 24/11/2026 (v0.28.0 - dùng cho team)
+
+## Thay đổi
+- **Config riêng mỗi dev `.claude/agent-team.local.config`** (gitignore): ghi đè config chung cho `pool.py`, `progress.py`, `board.py`, guard, `agent-db-clone.sh`. Để trống = không ghi đè. Mẫu: `templates/agent-team.local.config.example` (`DEV_ID`, `MAX_PARALLEL`, `E2E_PORT_BASE`, `HANG_MINUTES`, `PROGRESS_LINES`).
+- **Script plugin không commit nữa:** `init` thêm `.claude/agent-team/*.py`, `*.sh`, `__pycache__/`, `.claude/agent-team.local.config` vào `.gitignore`. Hook `sync.py` chép **đủ mọi script** mỗi phiên (clone mới của người trong team chưa có file nào) và báo khi dự án cũ còn commit script (kèm lệnh gỡ). Template vẫn commit.
+- `pool.py fill`: worktree mới nhận script + config riêng chép từ thư mục chính (worktree chỉ có file đã commit).
+- **`DEV_ID` trong task-id** (`YYYYMMDD-<DEV_ID>-<slug>`): branch không trùng giữa các dev.
+- **Cột "Người chạy"** trong bảng Module (`templates/product/APP.md`); `app.md`: module `DESIGN` / `DOING` của người khác thì không động vào, nhận module thì ghi tên + commit + push ngay.
+- README: mục "Dùng cho team". Test: pool 33, sync 15.
+
+## Cần làm thủ công
+- Commit + push, `/plugin marketplace update multiple-agent`, khởi động lại Claude Code.
+- **File mới (không commit): `.claude/agent-team.local.config`** cho từng máy (copy từ mẫu). Không chứa KEY.
+- Dự án đang commit script (vd `04.Cay`): thêm vào `.gitignore` 4 dòng
+  `.claude/agent-team/*.py` `.claude/agent-team/*.sh` `.claude/agent-team/__pycache__/` `.claude/agent-team.local.config`
+  rồi `git rm -r --cached .claude/agent-team/*.py .claude/agent-team/*.sh .claude/agent-team/__pycache__` và commit 1 lần.
+- Bảng Module của app đang chạy: thêm cột "Người chạy" trước cột "Trạng thái" (Lead tự thêm khi resume nếu bạn bảo).
+
 # Release notes - 24/11/2026 (v0.25.0 → v0.27.0 - Lead điều phối nhiều task song song)
 
 ## Thay đổi

@@ -319,9 +319,30 @@ Checklist bảo mật, quy tắc trả lời ngắn và nguyên tắc code ít n
 ```
 Cập nhật: `/plugin marketplace update multiple-agent`, khởi động lại Claude Code. Không còn cần `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`.
 
+## Dùng cho team (nhiều người cùng 1 dự án)
+```
+Repo dự án (commit, chung)                 Máy mỗi người (không commit)
+.claude/agent-team.config  config chung     .claude/agent-team.local.config  DEV_ID, MAX_PARALLEL, E2E_PORT_BASE...
+.claude/agent-team/templates/               .claude/agent-team/*.py, *.sh    hook sync.py chép mỗi phiên
+.claude/settings.json      statusLine       .agent-team/  .worktrees/  .env
+docs/ (KB, APP.md, LESSONS) qua PR
+```
+1. Mỗi người: `/plugin marketplace add hungvtitdng/multiple-agents-development` → `/plugin install agent-team@multiple-agent`. Cả team cập nhật plugin cùng lúc (cùng version).
+2. Clone dự án → copy `templates/agent-team.local.config.example` của plugin thành `.claude/agent-team.local.config`, điền `DEV_ID` (tên viết tắt), `MAX_PARALLEL` theo quota + máy của mình. Mở Claude Code: hook tự chép script.
+3. **App theo team (`APP_BUILD=manual` trong config chung):**
+   ```
+   Máy A:  /agent-team:app <ý tưởng> → Phase A (owner duyệt) → Phase B (M-0, contract module NẶNG, seeder, README) → pool.py handoff ✅ → PR → DỪNG
+   Mỗi người (sau khi PR merge):  /agent-team:task M-n  → pool.py claim (kiểm phụ thuộc trên develop, chưa ai nhận) → thiết kế → task song song → sync → PR
+   Khi mọi module DONE:  /agent-team:task M-E2E (Phase D)
+   ```
+   `pool.py claimable`: module nhận được ngay / chờ / ai đang nhận. `pool.py sync`: đồng bộ develop (người khác merge), báo file docs cần đọc lại; conflict thì dừng, không tự gộp.
+4. Merge vào develop / main luôn qua PR có người review (agent không push được nhánh chính). KB, LESSONS, quy chuẩn BE / FE cũng qua PR.
+5. Dự án cũ đang commit script `.claude/agent-team/*.py`: đầu phiên hook báo, làm 1 lần: thêm 4 dòng ở `init.md` mục 6 vào `.gitignore`, `git rm -r --cached .claude/agent-team/*.py .claude/agent-team/*.sh .claude/agent-team/__pycache__`, commit.
+6. Máy mỗi người cần: python3, git, docker, Claude Code.
+
 ## Kiểm tra sau khi cài
 
-1. `python3 tests/test_guard.py`, `python3 tests/test_board.py`, `python3 tests/test_gap_check.py`, `python3 tests/test_progress.py`, `python3 tests/test_sync.py`, `python3 tests/test_pool.py` → toàn bộ pass
+1. `python3 tests/test_guard.py`, `python3 tests/test_board.py`, `python3 tests/test_gap_check.py`, `python3 tests/test_progress.py`, `python3 tests/test_sync.py`, `python3 tests/test_pool.py`, `python3 tests/test_team.py` → toàn bộ pass (chạy ở thư mục gốc repo plugin)
 2. Trong project, nhờ Claude gọi subagent `agent-team:business-analyst` ghi 1 file ngoài KB của BA → phải bị guard chặn.
 3. `.claude/agent-team/agent-db-clone.sh up test1` → `verify test1` → `down test1`
 4. Nhờ Claude gọi `agent-team:business-analyst` dùng skill `agent-team:acceptance-criteria`. Agent báo không có tool `Skill` → bản Claude Code chưa cho subagent dùng skill: agent vẫn chạy, chỉ thiếu checklist trong skill.

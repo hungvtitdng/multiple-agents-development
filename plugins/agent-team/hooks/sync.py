@@ -33,10 +33,8 @@ def sync_scripts(plugin, root):
         s, t = os.path.join(src, f), os.path.join(dst, f)
         if not os.path.isfile(s):
             continue
-        # board.py, progress.py luôn có; script khác chỉ cập nhật khi project đã dùng (đã có bản copy)
+        # chép đủ mọi script (không commit: clone mới của người trong team chưa có file nào)
         if os.path.isfile(t) and filecmp.cmp(s, t, shallow=False):
-            continue
-        if not os.path.isfile(t) and f not in ("board.py", "progress.py", "pool.py"):
             continue
         shutil.copyfile(s, t)
         os.chmod(t, 0o755)
@@ -51,6 +49,19 @@ def stale_templates(plugin, root):
         if os.path.isfile(s) and os.path.isfile(t) and not filecmp.cmp(s, t, shallow=False):
             out.append(f)
     return out
+
+
+GENERATED = (".claude/agent-team/*.py", ".claude/agent-team/*.sh", ".claude/agent-team/__pycache__/")
+
+
+def tracked_generated(root):
+    """Script do plugin chép (sync tạo lại mỗi phiên) mà đang bị commit → team mỗi người 1 bản, commit qua lại."""
+    import subprocess
+    try:
+        r = subprocess.run(["git", "-C", root, "ls-files", ".claude/agent-team"], capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return []
+    return [f for f in r.stdout.splitlines() if f.endswith((".py", ".sh", ".pyc")) and "/templates/" not in f]
 
 
 def ensure_status_line(root):
@@ -95,6 +106,11 @@ def main():
     m = ensure_status_line(root)
     if m:
         msgs.append(m)
+    tracked = tracked_generated(root)
+    if tracked:
+        msgs.append(f"{len(tracked)} script plugin đang bị commit (team dùng chung sẽ ghi đè qua lại): thêm vào .gitignore "
+                    + " ".join(GENERATED) + " .claude/agent-team.local.config rồi `git rm -r --cached .claude/agent-team/*.py "
+                    ".claude/agent-team/*.sh .claude/agent-team/__pycache__` (Lead làm, commit 1 lần)")
     if msgs:
         print("[agent-team] " + " · ".join(msgs))
 

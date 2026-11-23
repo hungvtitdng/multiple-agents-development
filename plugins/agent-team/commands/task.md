@@ -13,12 +13,13 @@ Làm đúng playbook dưới đây. **Không hỏi lại user**, team tự bàn 
 ## 0. Chuẩn bị
 1. Đọc `CLAUDE.md` (mục "Agent Team"), `.claude/agent-team.config`, `docs/README.md`. Chưa có config thì dừng, báo user chạy `/agent-team:init`.
 2. `git status` sạch. `git fetch`, tạo branch `agent/<task-id>` từ `origin/<nhánh gốc>` (nhánh gốc = `BASE_BRANCHES` của repo nếu có, không thì `BASE_BRANCH`). Config `PUSH=0` (repo chưa có remote): không `fetch`, tạo branch từ nhánh gốc local. **1 phiên = 1 branch:** task thiết kế module của app làm ngay trên branch phiên (không tạo branch mới); task `ĐÃ CHIA` thì `pool.py fill` tạo worktree + branch tạm (mục 6c).
-   - `<task-id>` = `YYYYMMDD-<slug-ngắn>`.
+   - `<task-id>` = `YYYYMMDD-<slug-ngắn>`; có `DEV_ID` (config riêng `.claude/agent-team.local.config`) → `YYYYMMDD-<DEV_ID>-<slug-ngắn>` (team nhiều người không trùng branch).
    - Nhiều repo (`REPOS`): làm trong từng repo (`git -C ../FrontEnd ...`), chỉ repo task đụng tới; ghi danh sách vào TASK.md. Board và `docs/` nằm ở repo chính.
 3. Tạo `docs/agent-tasks/<task-id>/TASK.md` (từ `.claude/agent-team/templates/TASK.md`) và `board/SUMMARY.md` (từ `SUMMARY.md`). `echo S1 > .agent-team/stage`.
 4. `USE_CODE_GRAPH=1`: chạy `graphify update .` (nhiều repo: `graphify update <repo>` từng repo trong `REPOS`, rồi `graphify merge-graphs <repo>/graphify-out/graph.json ... --out graphify-out/merged-graph.json` ở repo chính). Chưa cài `graphify` → bỏ qua, báo ở cuối.
 5. Task dở dang từ phiên trước → dừng, dùng `/agent-team:resume <task-id>`.
 6. **Task con của module mới** (`$ARGUMENTS` = `docs/product/modules/<tên> T-<n>`, do `/agent-team:module` chia): TASK.md ghi `- Module: docs/product/modules/<tên>`; mục 0 = dòng T-n trong `MODULE.md` + các R-n của nó (chép nguyên văn). AC = AC của các R-n (owner đã duyệt, BA chi tiết hoá, không viết lại); workflow / mockup lấy từ `<thư mục module>/design/` sang `design/` của task. Đổi hành vi đã duyệt → câu OWNER qua form (`owner-form.py --dir=<thư mục module>`), không tự đổi. Task sửa phần cũ: chạy cả test hồi quy ghi ở bảng "Ảnh hưởng ngược". Xong: cập nhật cột Trạng thái của T-n.
+7. **Module của app (`$ARGUMENTS` = `M-<n>`, có `docs/product/APP.md`):** làm theo `app.md` Phase C. `APP_BUILD=manual` (team): bước đầu tiên `python3 .claude/agent-team/pool.py claim M-<n>` (từ chối → báo user lý do + `pool.py claimable`, dừng); xong module → PR, dừng. `M-E2E` = Phase D (chỉ khi mọi module khác DONE trên nhánh gốc).
 
 ## 1. Phân loại task (ghi `- Loại:` + lý do vào TASK.md)
 | Loại | Ví dụ | Workflow | Thành viên |

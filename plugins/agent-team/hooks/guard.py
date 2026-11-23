@@ -743,14 +743,17 @@ def open_whys(root, task):
 
 
 def cfg_value(root, key, default=""):
-    """Giá trị 1 key trong .claude/agent-team.config."""
-    try:
-        for line in open(os.path.join(root, ".claude", "agent-team.config"), encoding="utf-8", errors="ignore"):
-            m = re.match(rf"^\s*{re.escape(key)}=(.*)$", line)
-            if m:
-                return m.group(1).split("#")[0].strip().strip("'\"")
-    except OSError:
-        pass
+    """Giá trị 1 key: .claude/agent-team.local.config (riêng mỗi dev, gitignore) trước, rồi .claude/agent-team.config."""
+    for name in ("agent-team.local.config", "agent-team.config"):
+        try:
+            for line in open(os.path.join(root, ".claude", name), encoding="utf-8", errors="ignore"):
+                m = re.match(rf"^\s*{re.escape(key)}=(.*)$", line)
+                if m:
+                    v = m.group(1).split("#")[0].strip().strip("'\"")
+                    if v or name == "agent-team.config":  # local để trống = không ghi đè
+                        return v
+        except OSError:
+            pass
     return default
 
 

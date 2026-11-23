@@ -36,6 +36,7 @@ Trạng thái nằm trên đĩa nên làm tiếp được. **Chạy tiếp tới
 | `Loại: APP`, stage S1-S2 (Phase A) | Làm tiếp theo `app.md` (plugin). Bước dang dở suy từ `docs/product/`: `APP.md` `Intake` chưa YES → A0 · `coverage.md` còn TODO → A1 · chưa `Phương án chốt` → A2 · chưa có `requirements` → A3 (nháp) · `screens.md` trống → A3b mockup · `Challenger` chưa DONE → A4 · `Debate` chưa DONE → debate chốt câu hỏi · chưa có `QnA-v1.xlsx` → build form cuối · `Owner duyệt` chưa APPROVED → mục 7 · chưa có bảng Module → A5. Câu hỏi đi **form** (A owner, B dev), không `AskUserQuestion` |
 | Có `docs/product/APP.md`, task module | Như `task`; xong thì sang module kế (mục 3) |
 | Task mới nhất đã đóng (S6 xong, không còn stage), bảng Module (`APP.md`) / Task (`MODULE.md`) còn dòng `TODO` / `DOING` | Mở module / task kế theo `app.md` mục 10.2, không báo "đã xong" |
+| Branch hiện tại `agent/YYYYMMDD-<DEV_ID>-m<n>` (team, Phase C) | Làm tiếp module đó (`pool.py resume`), trước tiên `pool.py sync`. Module đã PR xong → báo user, không tự nhận module khác |
 | Có bảng `pool` (điều phối nhiều task) | `python3 .claude/agent-team/pool.py resume`: task RUNNING / FIX / GAP → `cd <worktree>` làm tiếp như bảng này (agent DONE thì không gọi lại); MERGING → chạy lại integration test rồi `merge-end`; module đang DESIGN → làm tiếp debate. Rồi `pool.py fill` cho đủ `MAX_PARALLEL` → vòng điều phối (`task.md` mục 6c) |
 
 Ghi vào TASK.md mục "Phán quyết"/SUMMARY: "Resume từ <bước>" kèm lý do dừng nếu biết (hết quota, lỗi...).
