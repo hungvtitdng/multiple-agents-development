@@ -173,7 +173,7 @@ lặp tới hết việc:
      module ✅ → ở thư mục chính: Trạng thái DONE trong `APP.md`, `gap-check.py --spec`, commit `[lead] <task-id app>: M-n xong`
   5. Dán `$P status` vào chat (1 lần mỗi vòng), quay lại 1.
 ```
-- Mỗi lúc chỉ 1 module thiết kế (`$P module M-n --state DESIGN`); task chỉ được `add` khi module đã `SPLIT`.
+- `$P fill` tự bắt đầu debate module (in `💬 M-n: bắt đầu debate`), tối đa `MAX_DEBATE` cùng lúc, mỗi debate 1 slot của `MAX_PARALLEL`. Task `add` được khi module đang DESIGN, READY sau `$P module M-n --state SPLIT`.
 - Thư mục chính chỉ để thiết kế module + merge: không code ở đây khi đang điều phối. Merge lần lượt, mỗi lần 1 task.
 - Guard / board / status line của task tính theo worktree (đường dẫn file hoặc `cd <worktree> &&` đầu lệnh). Mỗi worktree có `.agent-team/` riêng (stage, board), cổng E2E riêng.
 

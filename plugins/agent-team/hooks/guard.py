@@ -1217,28 +1217,105 @@ def revert(top, rel, pre):
         return False
 
 
+ACT_SQL = """CREATE TABLE IF NOT EXISTS act_writes (path TEXT NOT NULL, role TEXT NOT NULL, at REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS act_bash (id INTEGER PRIMARY KEY AUTOINCREMENT, role TEXT NOT NULL, start REAL NOT NULL, end REAL);"""
+
+
+def act_db(cwd):
+    """board.db của thư mục (chính hoặc worktree): ai ghi file nào, ai đang chạy Bash (để không hoàn tác nhầm khi nhiều agent cùng làm)."""
+    root = find_root(cwd)
+    if not root:
+        return None
+    try:
+        os.makedirs(os.path.join(root, ".agent-team"), exist_ok=True)
+        con = sqlite3.connect(os.path.join(root, ".agent-team", "board.db"), timeout=5)
+        con.executescript(ACT_SQL)
+        return con
+    except sqlite3.Error:
+        return None
+
+
+def act_write(path, role, cwd):
+    con = act_db(cwd)
+    if con:
+        try:
+            full = os.path.realpath(path if os.path.isabs(path) else os.path.join(cwd, path))
+            con.execute("DELETE FROM act_writes WHERE at < ?", (int(time.time()) - 86400,))
+            con.execute("INSERT INTO act_writes VALUES(?,?,?)", (full, role or "lead", time.time()))
+            con.commit()
+        finally:
+            con.close()
+
+
+def act_bash(role, cwd, end=False):
+    con = act_db(cwd)
+    if not con:
+        return
+    try:
+        now, r = time.time(), role or "lead"
+        if end:
+            row = con.execute("SELECT id FROM act_bash WHERE role=? AND end IS NULL ORDER BY id DESC LIMIT 1", (r,)).fetchone()
+            if row:
+                con.execute("UPDATE act_bash SET end=? WHERE id=?", (now, row[0]))
+        else:
+            con.execute("DELETE FROM act_bash WHERE start < ? AND (end IS NOT NULL OR start < ?)", (now - 86400, now - 86400))
+            con.execute("UPDATE act_bash SET end=? WHERE role=? AND end IS NULL", (now, r))  # role bắt đầu lệnh mới = lệnh trước đã xong
+            con.execute("INSERT INTO act_bash(role, start) VALUES(?,?)", (r, now))
+        con.commit()
+    finally:
+        con.close()
+
+
+def others_activity(role, cwd, since):
+    """(file người khác ghi bằng Edit/Write từ `since`, có người khác chạy Bash trùng khoảng này)."""
+    con = act_db(cwd)
+    if not con:
+        return set(), False
+    try:
+        me = role or "lead"
+        files = {r[0] for r in con.execute("SELECT path FROM act_writes WHERE role != ? AND at >= ?", (me, since))}
+        now = time.time()  # Bash mở quá 11 phút (lệnh tối đa 10 phút, PostToolUse không tới khi lỗi) coi như đã xong
+        busy = con.execute("SELECT 1 FROM act_bash WHERE role != ? AND start <= ? AND ((end IS NULL AND start >= ?) OR end > ?) LIMIT 1",
+                           (me, now, now - 660, since)).fetchone() is not None
+        return files, busy
+    finally:
+        con.close()
+
+
 def post_check(data, role, cwd):
+    act_bash(role, cwd, end=True)
     if not watched(role, cwd):
         return
     root = find_root(cwd)
     root = os.path.realpath(root) if root else None
-    bad, stuck = [], []
+    bad, stuck, unsure = [], [], []
     for top in repo_tops(cwd):
         top = os.path.realpath(top)
         sd = snap_dir(top, data)
         try:
             pre = json.load(open(os.path.join(sd, "meta.json")))
+            since = os.path.getmtime(os.path.join(sd, "meta.json"))
         except Exception:
             continue
         pre["_dir"] = sd
+        others, others_bash = others_activity(role, cwd, since)
         for rel, (mt, sz) in dirty_files(top).items():
             if rel in pre and tuple(pre[rel][:2]) == (mt, sz):
                 continue
             rr = os.path.relpath(os.path.join(top, rel), root or top).replace("\\", "/")
             if path_allowed(rr, role, cwd):
                 continue
+            if os.path.realpath(os.path.join(top, rel)) in others:
+                continue  # agent / Lead khác ghi (Edit / Write) trong lúc lệnh này chạy: không phải của role này
+            if others_bash:
+                unsure.append(rr)  # có người khác cũng chạy Bash cùng lúc: không biết ai ghi → không hoàn tác, báo Lead
+                continue
             (bad if revert(top, rel, pre) else stuck).append(rr)
         shutil.rmtree(sd, ignore_errors=True)
+    if unsure and root:
+        with open(os.path.join(root, ".agent-team", "guard.log"), "a", encoding="utf-8") as f:
+            f.write(json.dumps({"t": int(time.time()), "event": "unsure_write", "role": role, "files": unsure[:20]},
+                               ensure_ascii=False) + "\n")
     if bad or stuck:
         msg = f"role '{role}' vừa ghi ngoài vùng của mình."
         if bad:
@@ -1374,8 +1451,12 @@ def main():
         check_owner(path, cwd, role)
         check_docs(path, cwd, role)
 
-    if tool == "Bash" and watched(role, cwd):
-        take_snapshot(data, role, cwd)
+    if tool in ("Edit", "Write", "MultiEdit", "NotebookEdit") and path:
+        act_write(path, role, cwd)
+    if tool == "Bash":
+        act_bash(role, cwd)
+        if watched(role, cwd):
+            take_snapshot(data, role, cwd)
     sys.exit(0)
 
 

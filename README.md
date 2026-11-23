@@ -342,7 +342,7 @@ docs/ (KB, APP.md, LESSONS) qua PR
 
 ## Kiểm tra sau khi cài
 
-1. `python3 tests/test_guard.py`, `python3 tests/test_board.py`, `python3 tests/test_gap_check.py`, `python3 tests/test_progress.py`, `python3 tests/test_sync.py`, `python3 tests/test_pool.py`, `python3 tests/test_team.py` → toàn bộ pass (chạy ở thư mục gốc repo plugin)
+1. `python3 tests/test_guard.py`, `python3 tests/test_board.py`, `python3 tests/test_gap_check.py`, `python3 tests/test_progress.py`, `python3 tests/test_sync.py`, `python3 tests/test_pool.py`, `python3 tests/test_team.py`, `python3 tests/test_slots.py` → toàn bộ pass (chạy ở thư mục gốc repo plugin)
 2. Trong project, nhờ Claude gọi subagent `agent-team:business-analyst` ghi 1 file ngoài KB của BA → phải bị guard chặn.
 3. `.claude/agent-team/agent-db-clone.sh up test1` → `verify test1` → `down test1`
 4. Nhờ Claude gọi `agent-team:business-analyst` dùng skill `agent-team:acceptance-criteria`. Agent báo không có tool `Skill` → bản Claude Code chưa cho subagent dùng skill: agent vẫn chạy, chỉ thiếu checklist trong skill.

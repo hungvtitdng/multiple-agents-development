@@ -393,15 +393,16 @@ def pool_block(root):
         if r["note"] and r["state"] in ("FIX", "GAP", "BLOCKED"):
             st += f" · {short(r['note'], 24)}"
         body.append([r["label"], short(r["title"], 24), short(agents, 26) or "–", st])
+    design = [m["module"] for m in mods if m["state"] == "DESIGN"]
+    body = [[m, "Debate + chia task", "Lead", "💬 Debate"] for m in design] + body  # mỗi debate chiếm 1 slot
     if len(body) > MAX_STEP_ROWS:
         body = body[:MAX_STEP_ROWS - 1] + [["…", f"+{len(body) - MAX_STEP_ROWS + 1} task", "", "⏳"]]
     if done:
         body.insert(0, ["✅", f"{len(done)} task đã merge", "", "✅ Merged"])
-    design = [m["module"] for m in mods if m["state"] == "DESIGN"]
     title = (re.search(r"(?m)^#\s+(.+)$", read(os.path.join(root, "docs", "product", "APP.md"))) or [None, ""])[1].strip()
     head = (f"App {short(title, 30)} · " if title and not title.startswith("<") else "") + \
-        f"Module ✅ {sum(1 for m in mods if m['state'] == 'DONE')}/{len(mods)} · thiết kế: {', '.join(design) or '–'} · " \
-        f"chạy {running}/{cfg(root, 'MAX_PARALLEL', '8')}"
+        f"Module ✅ {sum(1 for m in mods if m['state'] == 'DONE')}/{len(mods)} · " \
+        f"chạy {running + len(design)}/{cfg(root, 'MAX_PARALLEL', '8')} (task {running} · 💬 debate {len(design)}/{cfg(root, 'MAX_DEBATE', '4')})"
     return [head] + (box(["Task", "Việc", "Agent", "Trạng thái"], body) if body else [])
 
 

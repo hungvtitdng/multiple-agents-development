@@ -1,3 +1,29 @@
+# Release notes - 24/11/2026 (v0.29.2 - worktree nhận quyền Claude Code)
+
+## Thay đổi
+- `pool.py fill`: worktree mới nhận thêm `.claude/settings.json` và `.claude/settings.local.json` từ thư mục chính (quyền `permissions.allow`, `statusLine`), khi worktree chưa có (file đã commit thì giữ nguyên). Trước đây file chưa commit thì task chạy trong worktree thiếu quyền, vd `agent-db-clone.sh up` bị Claude Code hỏi lại → task BLOCKED khi không ai duyệt.
+- Test pool: 34.
+
+## Cần làm thủ công
+- Commit + push, `/plugin marketplace update multiple-agent`, khởi động lại Claude Code.
+- Muốn agent tạo DB clone không bị hỏi: thêm vào `.claude/settings.json` của dự án
+  `"permissions": {"allow": ["Bash(.claude/agent-team/agent-db-clone.sh:*)", "Bash(./.claude/agent-team/agent-db-clone.sh:*)", "Bash(bash .claude/agent-team/agent-db-clone.sh:*)"]}`
+  (`04.Cay` đã thêm). Quyền này cho phép script đọc DB thật để tạo bản clone.
+- Worktree đã tạo trước bản này (vd `04.Cay-doi-ten`): chép tay `.claude/settings.json` sang.
+
+ - chia slot task + debate, sửa guard hoàn tác chéo)
+
+## Thay đổi
+- **Chia slot (`pool.py fill`):** `MAX_PARALLEL` (mặc định 8) = task code + debate module. Debate 1 module = 1 slot, tối đa `MAX_DEBATE` (mặc định 4) cùng lúc, module khác chờ. Module đã chia task (SPLIT) chiếm bao nhiêu slot cũng được (không giới hạn / module). Slot trống cấp theo thứ tự bảng Module: task READY, hoặc bắt đầu debate module kế (`fill` in `💬 M-n: bắt đầu debate`). Không dừng task đang chạy để nhường. Bỏ luật "mỗi lúc 1 module thiết kế".
+- **Task READY** kiểm thêm phụ thuộc module trong `APP.md`: `(code)` → module kia DONE · `(contract)` → có `docs/product/contracts/M-n.md`. Module bắt đầu debate khi module phụ thuộc đã chia task (biết contract) hoặc có contract; M-E2E khi mọi module DONE. Task `add` được khi module đang DESIGN, READY sau SPLIT.
+- **Sửa guard hoàn tác chéo:** trước đây file người khác ghi trong lúc 1 agent chạy Bash dài bị tính là của agent đó và bị hoàn tác (vd backend-dev chạy test → bài BA viết docs M-2 bị xoá). Giờ guard ghi lại ai ghi file nào (Edit / Write, cả Lead) và ai đang chạy Bash (bảng `act_writes`, `act_bash` trong board.db): file người khác ghi → không hoàn tác; có agent khác chạy Bash cùng lúc → không biết ai ghi → không hoàn tác, ghi `unsure_write` vào `.agent-team/guard.log`. Edit / Write ngoài vùng vẫn bị chặn trước như cũ.
+- Status line / `pool.py status`: `chạy 6/8 (task 4 · 💬 debate 2/4)`, dòng `💬 Debate` cho mỗi module đang debate, `chờ debate: …`.
+- Test: slots 8 (mới), guard 394 (+4 case nhiều agent cùng thư mục).
+
+## Cần làm thủ công
+- Commit + push, `/plugin marketplace update multiple-agent`, khởi động lại Claude Code.
+- **Key mới (không bắt buộc):** `MAX_DEBATE=4` trong `.claude/agent-team.config` hoặc config riêng. Không phải secret.
+
 # Release notes - 24/11/2026 (v0.29.0 - 4 phase, team nhận module, đồng bộ develop, kiểm bàn giao)
 
 ## Thay đổi

@@ -54,8 +54,10 @@ PROGRESS_LINES=table
 APP_BUILD=auto
 # Tạo DB mới + dữ liệu mẫu cho test / E2E (Phase B bàn giao; máy nào cũng chạy được), vd "php artisan migrate:fresh --seed"
 SEED_CMD=
-# Điều phối nhiều task (App / Module, pool.py): số task chạy cùng lúc cho cả app. Đổi lúc nào cũng được (tự scale)
+# Điều phối (App / Module, pool.py): số slot cho cả app = task code + debate module. Đổi lúc nào cũng được (tự scale)
 MAX_PARALLEL=8
+# Số module debate cùng lúc (mỗi debate 1 slot), module khác chờ
+MAX_DEBATE=4
 # Thư mục worktree của task (tự thêm vào .git/info/exclude)
 WORKTREE_DIR=.worktrees
 # Cổng E2E của worktree: E2E_PORT_BASE, +1, +2... (không đụng nhau khi chạy song song)

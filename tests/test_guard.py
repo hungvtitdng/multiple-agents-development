@@ -190,8 +190,23 @@ sh(pr, "git", "add", "app", "spec")
 sh(pr, "git", "commit", "-qm", "base")
 
 
+def clear_act(repo):
+    """Test gọi Pre mà không có Post (case chỉ kiểm chặn trước) → xoá lệnh Bash 'đang chạy' giả, để Post của case sau không tưởng có agent khác chạy cùng lúc."""
+    import sqlite3 as _s
+    p = os.path.join(repo, ".agent-team", "board.db")
+    if os.path.isfile(p):
+        c = _s.connect(p)
+        try:
+            c.execute("DELETE FROM act_bash")
+            c.commit()
+        except _s.Error:
+            pass
+        c.close()
+
+
 def post_case(desc, role, mutate, exp_code, expect):
     global fail, total
+    clear_act(pr)
     run("Bash", {"command": "bundle exec rspec"}, role, pr, session=desc)
     mutate()
     got = run("Bash", {"command": "bundle exec rspec"}, role, pr, mode="post", session=desc)
@@ -315,6 +330,7 @@ total += len(mcases)
 
 def multi_post(desc, role, rel, text, exp_code, expect):
     global fail, total
+    clear_act(mr)
     run("Bash", {"command": "bundle exec rspec"}, role, mr, session=desc)
     open(os.path.join(mr, rel), "w").write(text)
     got = run("Bash", {"command": "bundle exec rspec"}, role, mr, mode="post", session=desc)
@@ -365,6 +381,7 @@ total += len(scases)
 
 def sib_post(desc, role, path, text, exp_code, expect):
     global fail, total
+    clear_act(api)
     run("Bash", {"command": "bundle exec rspec"}, role, api, session=desc)
     open(path, "w").write(text)
     got = run("Bash", {"command": "bundle exec rspec"}, role, api, mode="post", session=desc)
@@ -983,6 +1000,57 @@ _c = sqlite3.connect(os.path.join(gd, ".agent-team/board.db"))
 _c.execute("CREATE TABLE pool (label TEXT, state TEXT)"); _c.execute("INSERT INTO pool VALUES('M-1/T-2','RUNNING')"); _c.commit(); _c.close()
 check("đang điều phối (pool) → không bắt plan ở thư mục chính", "Agent", {"subagent_type": "backend-dev"}, None, gd, OK)
 total += 2
+
+# ---- v0.29.1: nhiều agent cùng làm 1 thư mục → không hoàn tác chéo ----
+cx = make_repo()
+os.makedirs(os.path.join(cx, ".claude")); os.makedirs(os.path.join(cx, "app")); os.makedirs(os.path.join(cx, "frontend"))
+os.makedirs(os.path.join(cx, "docs/domain")); os.makedirs(os.path.join(cx, "docs/agent-tasks/T-1"))
+open(os.path.join(cx, ".claude/agent-team.config"), "w").write('BE_PATHS="app"\nFE_PATHS="frontend"\n')
+open(os.path.join(cx, "frontend/a.ts"), "w").write("x\n")
+sh(cx, "git", "add", "."), sh(cx, "git", "commit", "-qm", "base")
+BR = {"command": "bundle exec rspec"}
+
+
+def cx_case(desc, during, exp, expect):
+    global fail, total
+    run("Bash", BR, "backend-dev", cx, session=desc)           # backend-dev bắt đầu lệnh dài
+    during()                                                     # việc của người khác trong lúc đó
+    got = run("Bash", BR, "backend-dev", cx, mode="post", session=desc)
+    ok = got == exp and expect()
+    fail += not ok
+    total += 1
+    print(f"{'PASS' if ok else 'FAIL'}  {desc}  (expect {exp}, got {got})")
+
+
+def ba_writes():
+    gp = os.path.join(cx, "docs/domain/glossary.md")
+    run("Write", {"file_path": gp}, "business-analyst", cx, session="ba")
+    open(gp, "w").write("BA viết\n")
+
+
+def lead_writes():
+    tp = os.path.join(cx, "docs/agent-tasks/T-1/TASK.md")
+    run("Write", {"file_path": tp}, None, cx, session="lead")
+    open(tp, "w").write("Lead viết\n")
+
+
+cx_case("BA ghi docs (Write) trong lúc backend-dev chạy Bash: KHÔNG hoàn tác bài BA", ba_writes, OK,
+        lambda: open(os.path.join(cx, "docs/domain/glossary.md")).read() == "BA viết\n")
+cx_case("Lead ghi TASK.md trong lúc backend-dev chạy Bash: KHÔNG hoàn tác", lead_writes, OK,
+        lambda: open(os.path.join(cx, "docs/agent-tasks/T-1/TASK.md")).read() == "Lead viết\n")
+
+
+def fe_bash_writes():
+    run("Bash", {"command": "npx tsc --noEmit"}, "frontend-dev", cx, session="fe")
+    open(os.path.join(cx, "frontend/a.ts"), "w").write("FE sửa\n")
+
+
+cx_case("frontend-dev cũng chạy Bash cùng lúc, file frontend/ đổi: không biết ai ghi → không hoàn tác, ghi guard.log", fe_bash_writes, OK,
+        lambda: open(os.path.join(cx, "frontend/a.ts")).read() == "FE sửa\n"
+        and "unsure_write" in open(os.path.join(cx, ".agent-team/guard.log")).read())
+run("Bash", {"command": "true"}, "frontend-dev", cx, mode="post", session="fe")
+cx_case("không ai khác làm: backend-dev Bash ghi frontend/ vẫn bị hoàn tác", lambda: open(os.path.join(cx, "frontend/a.ts"), "w").write("HACK\n"), B,
+        lambda: open(os.path.join(cx, "frontend/a.ts")).read() == "FE sửa\n")
 
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

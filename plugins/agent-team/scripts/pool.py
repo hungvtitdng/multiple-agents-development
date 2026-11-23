@@ -3,7 +3,7 @@
 
 Dữ liệu: bảng `pool`, `pool_modules` trong .agent-team/board.db của thư mục chính.
 Config (.claude/agent-team.config, đọc lại mỗi lần chạy → đổi là tự scale):
-  MAX_PARALLEL=8  WORKTREE_DIR=.worktrees  E2E_PORT_BASE=4000  INTEGRATION_CMD="..."
+  MAX_PARALLEL=8 (task + debate)  MAX_DEBATE=4  WORKTREE_DIR=.worktrees  E2E_PORT_BASE=4000  INTEGRATION_CMD="..."
 
 Lead:
   module <M-n> [--kind NHẸ|VỪA|NẶNG] [--state DESIGN|SPLIT|DONE] [--title ..]
@@ -98,11 +98,89 @@ def deps_of(r):
     return [x.strip() for x in (r["deps"] or "").split(",") if x.strip()]
 
 
-def is_ready(db, r):
+def is_ready(db, r, root=None):
+    """Task READY: WAIT, task phụ thuộc đã merge, module đã chia task (SPLIT), module phụ thuộc đủ (code: DONE · contract: có file)."""
     if r["state"] != "WAIT":
         return False
     done = {x["label"] for x in db.execute("SELECT label FROM pool WHERE state='DONE'")}
-    return all(d in done for d in deps_of(r))
+    if not all(d in done for d in deps_of(r)):
+        return False
+    if root is None:
+        return True
+    m = db.execute("SELECT state FROM pool_modules WHERE module=?", (r["module"],)).fetchone()
+    if m and m["state"] not in ("SPLIT", "DONE"):
+        return False
+    return module_deps_ok(db, root, r["module"], "code")
+
+
+def max_debate(root):
+    try:
+        return max(1, int(cfg(root, "MAX_DEBATE", "4")))
+    except ValueError:
+        return 4
+
+
+def app_rows(root):
+    text = show(root, "", APP_MD)
+    return module_table(text), dep_reasons(text)
+
+
+def mod_state(db, root, m, rows=None):
+    """Trạng thái module: pool_modules, hoặc DONE theo APP.md."""
+    r = db.execute("SELECT state FROM pool_modules WHERE module=?", (m,)).fetchone()
+    if r and r["state"] == "DONE":
+        return "DONE"
+    for x in rows if rows is not None else app_rows(root)[0]:
+        if x["M"] == m and x.get("Trạng thái", "").upper().startswith("DONE"):
+            return "DONE"
+    return r["state"] if r else "WAIT"
+
+
+def module_deps_ok(db, root, m, need):
+    """need=design: module phụ thuộc đã chia task (biết contract) hoặc có file contract · need=code: DONE hoặc (contract) có file. M-E2E: mọi module DONE."""
+    rows, reasons = app_rows(root)
+    me = next((x for x in rows if x["M"] == m), None)
+    if not me:
+        return True
+    deps = [x["M"] for x in rows if x["M"] != m] if me["deps"] == ["*"] else me["deps"]
+    for d in deps:
+        st = mod_state(db, root, d, rows)
+        if st == "DONE":
+            continue
+        if me["deps"] == ["*"]:
+            return False
+        has_contract = reasons.get((m, d)) == "contract" and os.path.isfile(os.path.join(root, contract_path(d)))
+        if has_contract or (need == "design" and st == "SPLIT"):
+            continue
+        return False
+    return True
+
+
+def plan_fill(db, root):
+    """Chia slot trống theo thứ tự bảng Module: task READY của module đã chia (không giới hạn / module),
+    hoặc bắt đầu debate module kế (1 slot, tối đa MAX_DEBATE debate cùng lúc). Trả (task, module debate, debate chờ)."""
+    limit, maxdeb = max_parallel(root), max_debate(root)
+    tasks = db.execute(f"SELECT count(*) FROM pool WHERE state IN ({','.join('?' * len(SLOT_STATES))})", SLOT_STATES).fetchone()[0]
+    debating = db.execute("SELECT count(*) FROM pool_modules WHERE state='DESIGN'").fetchone()[0]
+    free = limit - tasks - debating
+    rows, _ = app_rows(root)
+    order = [x["M"] for x in rows] + [m["module"] for m in db.execute("SELECT module FROM pool_modules ORDER BY ord")
+                                     if m["module"] not in {x["M"] for x in rows}]
+    start_t, start_d, wait_d = [], [], []
+    for m in order:
+        st = mod_state(db, root, m, rows)
+        if st in ("SPLIT", "DESIGN"):
+            for r in db.execute("SELECT * FROM pool WHERE module=? ORDER BY ord", (m,)):
+                if free > 0 and is_ready(db, r, root):
+                    start_t.append(r)
+                    free -= 1
+        elif st == "WAIT" and rows and m != "M-0" and module_deps_ok(db, root, m, "design"):
+            if debating + len(start_d) >= maxdeb or free <= 0:
+                wait_d.append(m)
+            else:
+                start_d.append(m)
+                free -= 1
+    return start_t, start_d, wait_d
 
 
 def max_parallel(root):
@@ -122,9 +200,9 @@ def cmd_module(db, root, a):
         if v:
             db.execute(f"UPDATE pool_modules SET {k}=? WHERE module=?", (v.upper() if k == "state" else v, a.module))
     if a.state and a.state.upper() == "DESIGN":
-        other = db.execute("SELECT module FROM pool_modules WHERE state='DESIGN' AND module!=?", (a.module,)).fetchone()
-        if other:
-            die(f"{other[0]} đang thiết kế: mỗi lúc chỉ 1 module debate (xong thì `module {other[0]} --state SPLIT`)")
+        others = [x[0] for x in db.execute("SELECT module FROM pool_modules WHERE state='DESIGN' AND module!=?", (a.module,))]
+        if len(others) >= max_debate(root):
+            die(f"đang debate {len(others)} module ({', '.join(others)}) = MAX_DEBATE: chờ 1 module chia task xong (`--state SPLIT`)")
     db.commit()
     m = db.execute("SELECT * FROM pool_modules WHERE module=?", (a.module,)).fetchone()
     print(f"{m['module']} · {m['kind'] or '-'} · {m['state']}")
@@ -135,8 +213,8 @@ def cmd_add(db, root, a):
         die("nhãn task dạng M-<n>/T-<k> (vd M-1/T-2)")
     mod = a.label.split("/")[0]
     m = db.execute("SELECT state FROM pool_modules WHERE module=?", (mod,)).fetchone()
-    if not m or m["state"] not in ("SPLIT", "DONE"):
-        die(f"{mod} chưa chốt thiết kế + chia task (`pool.py module {mod} --state SPLIT` sau debate): không thêm task của module đang debate")
+    if not m or m["state"] not in ("DESIGN", "SPLIT", "DONE"):
+        die(f"{mod} chưa debate (`pool.py fill` hoặc `module {mod} --state DESIGN`): task chỉ thêm khi đang chia task, READY sau `--state SPLIT`")
     if not re.match(r"^[\w.-]+$", a.task_id):
         die("task-id chỉ gồm chữ, số, . _ - (dùng trong commit `[role] task-id: ...`)")
     for d in [x.strip() for x in (a.deps or "").split(",") if x.strip()]:
@@ -171,12 +249,13 @@ def exclude_worktrees(root, wdir):
             f.write(("" if cur.endswith("\n") or not cur else "\n") + line + "\n")
 
 
-LOCAL_FILES = [".claude/agent-team.local.config"]
+LOCAL_FILES = [".claude/agent-team.local.config", ".claude/settings.json", ".claude/settings.local.json"]  # config riêng + quyền / statusLine (có thể chưa commit)
 LOCAL_DIRS = [".claude/agent-team"]  # script plugin chép vào (không commit) → worktree không có, chép từ thư mục chính
 
 
 def copy_local_files(root, path):
-    """Worktree chỉ có file đã commit: chép script agent-team + config riêng của dev từ thư mục chính sang."""
+    """Worktree chỉ có file đã commit: chép script agent-team, config riêng, quyền Claude Code (settings) từ thư mục chính sang.
+    File đã có trong worktree (đã commit) thì giữ nguyên, không ghi đè."""
     import shutil
     for rel in LOCAL_FILES:
         s, t = os.path.join(root, rel), os.path.join(path, rel)
@@ -196,20 +275,29 @@ def copy_local_files(root, path):
 
 def cmd_fill(db, root, a):
     limit, wdir = max_parallel(root), cfg(root, "WORKTREE_DIR", ".worktrees")
-    busy = db.execute(f"SELECT count(*) FROM pool WHERE state IN ({','.join('?' * len(SLOT_STATES))})", SLOT_STATES).fetchone()[0]
     if db.execute("SELECT 1 FROM pool WHERE state='MERGING'").fetchone():
         print("Đang merge (MERGING): xong merge-end rồi fill (worktree mới phải tạo từ branch đã merge)")
         return
-    ready = [r for r in db.execute("SELECT * FROM pool ORDER BY ord") if is_ready(db, r)]
-    free = limit - busy
-    print(f"Đang chạy {busy}/{limit} · READY {len(ready)}")
-    if free <= 0 or not ready:
+    start_t, start_d, wait_d = plan_fill(db, root)
+    busy = db.execute(f"SELECT count(*) FROM pool WHERE state IN ({','.join('?' * len(SLOT_STATES))})", SLOT_STATES).fetchone()[0]
+    deb = [x[0] for x in db.execute("SELECT module FROM pool_modules WHERE state='DESIGN'")]
+    print(f"Đang chạy {busy + len(deb)}/{limit} (task {busy} · debate {len(deb)}/{max_debate(root)})"
+          + (f" · chờ debate: {', '.join(wait_d)}" if wait_d else ""))
+    rows, _ = app_rows(root)
+    for m in start_d:
+        n = db.execute("SELECT count(*) FROM pool_modules").fetchone()[0]
+        idx = next((i for i, x in enumerate(rows) if x["M"] == m), n)
+        db.execute("INSERT OR IGNORE INTO pool_modules(module, ord) VALUES(?,?)", (m, idx + 1))
+        db.execute("UPDATE pool_modules SET state='DESIGN' WHERE module=?", (m,))
+        db.commit()
+        print(f"💬 {m}: bắt đầu debate (1 slot) → TASK.md thiết kế ở thư mục chính, debate theo Loại, chia task → pool.py add → module {m} --state SPLIT")
+    if not start_t:
         return
     code, branch = git(root, "rev-parse", "--abbrev-ref", "HEAD")
     if code or branch in ("HEAD", "main", "master", "develop"):
         die(f"thư mục chính phải đứng ở branch của phiên (agent/<task-id app>), đang là '{branch}'")
     exclude_worktrees(root, wdir)
-    for r in ready[:free]:
+    for r in start_t:
         path = os.path.join(root, wdir, r["task_id"])
         br = f"agent/{r['task_id']}"
         if not os.path.isdir(path):
@@ -343,18 +431,19 @@ def cmd_wait(db, root, a):
                     if now - x["last_seen"] > limit:
                         stuck.append(f"{r['label']}: ⚠ {x['role']} im {(now - x['last_seen']) // 60}p · {x['last_tool'] or ''}")
         busy = len(rows)
-        ready = [r["label"] for r in db.execute("SELECT * FROM pool ORDER BY ord") if is_ready(db, r)]
-        free = max_parallel(root) - busy
+        st_t, st_d, _ = plan_fill(db, root)
+        ready = [r["label"] for r in st_t] + [f"💬 debate {m}" for m in st_d]
+        free = len(ready)
         merge = [r["label"] for r in db.execute("SELECT label FROM pool WHERE state='MERGE_WAIT' ORDER BY ord")]
         if stuck:
             print("CÓ AGENT TREO: TaskStop agent đó rồi gọi lại kèm lý do\n" + "\n".join(stuck))
             sys.exit(3)
         if done or (free > 0 and ready) or (merge and not db.execute("SELECT 1 FROM pool WHERE state='MERGING'").fetchone()):
-            out = done + ([f"Còn {free} chỗ, READY: {', '.join(ready[:free])} → pool.py fill"] if free > 0 and ready else []) + \
+            out = done + ([f"Còn chỗ: {', '.join(ready)} → pool.py fill"] if free > 0 and ready else []) + \
                   ([f"Chờ merge: {', '.join(merge)} → pool.py merge-begin {merge[0]}"] if merge else [])
             print("CÓ VIỆC:\n" + "\n".join(out))
             sys.exit(0)
-        if not rows and not ready and not merge:
+        if not rows and not ready and not merge and not db.execute("SELECT 1 FROM pool_modules WHERE state='DESIGN'").fetchone():
             print("HẾT VIỆC trong pool (thiết kế module tiếp theo hoặc báo cáo cuối)")
             sys.exit(0)
         if time.time() - start >= a.max:
@@ -373,7 +462,7 @@ def status_rows(db, root):
         agents = ", ".join(x["role"] for x in wt_board(root, r) if x["state"] == "RUNNING") if r["state"] in ("RUNNING", "FIX", "GAP") else ""
         st = MARK.get(r["state"], r["state"])
         if r["state"] == "WAIT":
-            st = "🟢 READY" if is_ready(db, r) else "⏳ Chờ " + ",".join(d.split("/")[-1] if d.split("/")[0] == r["module"] else d for d in deps_of(r))
+            st = "🟢 READY" if is_ready(db, r, root) else "⏳ Chờ " + ",".join(d.split("/")[-1] if d.split("/")[0] == r["module"] else d for d in deps_of(r))
         elif r["state"] in ("RUNNING", "FIX", "GAP"):
             stg = wt_stage(root, r)
             st += (f" {stg}" if stg else "") + (f" {(int(time.time()) - r['started_at']) // 60}p" if r["started_at"] else "")
@@ -388,7 +477,10 @@ def cmd_status(db, root, a):
     design = [m["module"] for m in mods if m["state"] == "DESIGN"]
     rows = status_rows(db, root)
     busy = sum(1 for x in rows if x[4] in SLOT_STATES)
-    print(f"Module ✅ {sum(1 for m in mods if m['state'] == 'DONE')}/{len(mods)} · thiết kế: {', '.join(design) or '-'} · chạy {busy}/{max_parallel(root)}")
+    _, _, wait_d = plan_fill(db, root)
+    print(f"Module ✅ {sum(1 for m in mods if m['state'] == 'DONE')}/{len(mods)} · chạy {busy + len(design)}/{max_parallel(root)}"
+          f" (task {busy} · 💬 debate {len(design)}/{max_debate(root)}: {', '.join(design) or '-'}"
+          + (f" · chờ debate: {', '.join(wait_d)}" if wait_d else "") + ")")
     for label, title, agents, st, _ in rows:
         print(f"  {label:<10} {title[:30]:<30} {agents[:24]:<24} {st}")
 
