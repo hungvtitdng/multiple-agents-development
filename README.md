@@ -19,7 +19,7 @@ Plugin cho Claude Code. Đưa 1 task → Lead + BA + Architect + Test Design deb
 │   │   ├── audit.md     ← /agent-team:audit  - audit dự án cũ: cấu trúc, code, bảo mật, KB, skill → duyệt → sửa, lỗi code vào Backlog
 │   │   └── init.md      ← /agent-team:init   - cài cho 1 project, dựng KB
 │   ├── hooks/           ← hooks.json, guard.py (chặn thật), show_post.py, heartbeat.py, sync.py (đầu phiên chép script + status line)
-│   ├── scripts/         ← agent-db-clone.sh, kb-check.py, board.py (board chat SQLite), gap-check.py (App Mode), progress.py (status line: đang ở bước nào, còn bước nào)
+│   ├── scripts/         ← agent-db-clone.sh, kb-check.py, board.py (board chat SQLite), gap-check.py (App Mode), progress.py (status line: đang ở bước nào, còn bước nào), pool.py (điều phối nhiều task song song, mỗi task 1 worktree)
 │   ├── skills/          ← 10 skill chung, agent tự nạp khi cần
 │   ├── catalog/         ← mặc định theo loại app (chung, quản lý nội bộ, đặt lịch) để bù ý owner không nghĩ tới
 │   └── templates/       ← TASK, SUMMARY, POST, CONTEXT, config, mục CLAUDE.md, kb/ (khung docs/), product/ (App Mode)
@@ -321,7 +321,7 @@ Cập nhật: `/plugin marketplace update multiple-agent`, khởi động lại 
 
 ## Kiểm tra sau khi cài
 
-1. `python3 tests/test_guard.py`, `python3 tests/test_board.py`, `python3 tests/test_gap_check.py`, `python3 tests/test_progress.py`, `python3 tests/test_sync.py` → toàn bộ pass
+1. `python3 tests/test_guard.py`, `python3 tests/test_board.py`, `python3 tests/test_gap_check.py`, `python3 tests/test_progress.py`, `python3 tests/test_sync.py`, `python3 tests/test_pool.py` → toàn bộ pass
 2. Trong project, nhờ Claude gọi subagent `agent-team:business-analyst` ghi 1 file ngoài KB của BA → phải bị guard chặn.
 3. `.claude/agent-team/agent-db-clone.sh up test1` → `verify test1` → `down test1`
 4. Nhờ Claude gọi `agent-team:business-analyst` dùng skill `agent-team:acceptance-criteria`. Agent báo không có tool `Skill` → bản Claude Code chưa cho subagent dùng skill: agent vẫn chạy, chỉ thiếu checklist trong skill.

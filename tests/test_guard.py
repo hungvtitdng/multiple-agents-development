@@ -97,7 +97,8 @@ open(os.path.join(repo, "c.rb"), "w").write('key = ENV.fetch("API_KEY")\n')
 sh(repo, "git", "add", ".")
 sh(repo, "git", "commit", "-qm", "ok")
 cases.append(("push sạch từ agent/*", "Bash", {"command": "git push -u origin agent/t1"}, None, repo, OK))
-cases.append(("commit trên agent/*", "Bash", {"command": "git commit -m x"}, "backend-dev", repo, OK))
+cases.append(("agent tự commit bị chặn (v0.25: chỉ Lead commit)", "Bash", {"command": "git commit -m x"}, "backend-dev", repo, B))
+cases.append(("Lead commit trên agent/*", "Bash", {"command": "git commit -m x"}, None, repo, OK))
 
 # Debate board + .agent-team
 proj = tempfile.mkdtemp()
@@ -929,6 +930,58 @@ sh(er, "git", "add", "-f", ".env")
 check("commit khi đang stage .env → chặn", "Bash", {"command": "git commit -m x"}, "backend-dev", er, B)
 sh(er, "git", "commit", "-qm", "leak env")
 check("push commit có .env → chặn", "Bash", {"command": "git push -u origin agent/env"}, None, er, B)
+total += 2
+
+# ---- v0.25-0.27: chỉ Lead dùng git ghi; worktree theo đường dẫn; loại ĐÃ CHIA; pool ----
+gw = [
+    ("agent push bị chặn", "Bash", {"command": "git push -u origin agent/t1"}, "frontend-dev", repo, B),
+    ("agent merge bị chặn", "Bash", {"command": "git merge agent/x"}, "backend-dev", repo, B),
+    ("agent tạo worktree bị chặn", "Bash", {"command": "git worktree add .worktrees/x"}, "backend-dev", repo, B),
+    ("agent git diff / status vẫn được", "Bash", {"command": "git diff --stat && git status"}, "backend-dev", repo, OK),
+    ("agent chạy pool.py bị chặn", "Bash", {"command": "python3 .claude/agent-team/pool.py fill"}, "backend-dev", repo, B),
+    ("Lead chạy pool.py được", "Bash", {"command": "python3 .claude/agent-team/pool.py status"}, None, repo, OK),
+]
+for c in gw:
+    check(*c)
+total += len(gw)
+
+wm = tempfile.mkdtemp()
+for p_ in (wm, os.path.join(wm, ".worktrees", "T2")):
+    os.makedirs(os.path.join(p_, ".claude")); os.makedirs(os.path.join(p_, ".agent-team")); os.makedirs(os.path.join(p_, "app"))
+    open(os.path.join(p_, ".claude/agent-team.config"), "w").write('BE_PATHS="app"\nTEST_PATHS="spec"\n')
+WT = os.path.join(wm, ".worktrees", "T2")
+with open(os.path.join(wm, ".agent-team/stage"), "w") as f:
+    f.write("S2\n")  # thư mục chính đang thiết kế module (chỉ tài liệu)
+with open(os.path.join(WT, ".agent-team/stage"), "w") as f:
+    f.write("S3\n")  # worktree của task đang code
+wc = [
+    ("worktree S3: dev sửa code trong worktree được (theo stage của worktree, không theo thư mục chính S2)",
+     "Edit", {"file_path": os.path.join(WT, "app/x.rb")}, "backend-dev", wm, OK),
+    ("thư mục chính S2: dev sửa code ở thư mục chính bị chặn", "Edit", {"file_path": os.path.join(wm, "app/x.rb")}, "backend-dev", wm, B),
+    ("worktree: `cd <worktree> &&` rồi ghi stage dùng TASK của worktree", "Bash", {"command": f"cd {WT} && ls app"}, "backend-dev", wm, OK),
+]
+for c in wc:
+    check(*c)
+total += len(wc)
+
+gd = tempfile.mkdtemp()
+os.makedirs(os.path.join(gd, ".claude")); os.makedirs(os.path.join(gd, ".agent-team")); os.makedirs(os.path.join(gd, "docs/agent-tasks/T-8"))
+open(os.path.join(gd, ".claude/agent-team.config"), "w").write('BE_PATHS="app"\n')
+TD = os.path.join(gd, "docs/agent-tasks/T-8/TASK.md")
+S3 = {"command": "echo S3 > .agent-team/stage"}
+open(TD, "w").write("- Loại: ĐÃ CHIA (M-1/T-2)\n- Tiêu chí nghiệm thu: AC-1..3\n")
+check("ĐÃ CHIA sang S3 thiếu Thiết kế module + Security → chặn", "Bash", S3, None, gd, B)
+open(TD, "w").write("- Loại: ĐÃ CHIA (M-1/T-2)\n- Tiêu chí nghiệm thu: AC-1..3\n- Thiết kế module: docs/agent-tasks/m1/board/SUMMARY.md\n"
+                    "- Security duyệt solution: APPROVED (module M-1)\n")
+check("ĐÃ CHIA đủ AC + thiết kế module + Security → sang S3 không cần debate", "Bash", S3, None, gd, OK)
+total += 2
+with open(os.path.join(gd, ".agent-team/stage"), "w") as f:
+    f.write("S3\n")
+check("S3 không có plan, không điều phối → gọi agent bị chặn", "Agent", {"subagent_type": "backend-dev"}, None, gd, B)
+import sqlite3
+_c = sqlite3.connect(os.path.join(gd, ".agent-team/board.db"))
+_c.execute("CREATE TABLE pool (label TEXT, state TEXT)"); _c.execute("INSERT INTO pool VALUES('M-1/T-2','RUNNING')"); _c.commit(); _c.close()
+check("đang điều phối (pool) → không bắt plan ở thư mục chính", "Agent", {"subagent_type": "backend-dev"}, None, gd, OK)
 total += 2
 
 print(f"\n{total - fail}/{total} passed")

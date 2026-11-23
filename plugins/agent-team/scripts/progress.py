@@ -5,6 +5,7 @@ import os
 import re
 import sqlite3
 import sys
+import time
 
 STAGES = {
     "S1": ("SCOUT", 0, 15), "S2": ("DEBATE", 15, 35), "S3": ("CODE", 35, 60),
@@ -105,6 +106,19 @@ def first_word(text, name):
     return (field(text, name).split() or [""])[0].upper()
 
 
+def module_dir(text):
+    """`- Module: docs/product/modules/<tên>` → đường dẫn; `N/A (...)`, trống → ''."""
+    m = re.match(r"(docs/\S+)", field(text, "Module"))
+    return m.group(1).strip("/") if m else ""
+
+
+def stage_table(stage):
+    """Bảng ngang S1..S6: ✅ xong / ▶ đang làm / ⏳ chờ (theo .agent-team/stage)."""
+    keys = list(STAGES)
+    i = keys.index(stage)
+    return box([f"{k} {STAGES[k][0].capitalize()}" for k in keys], [["✅" if j < i else "▶" if j == i else "⏳" for j in range(len(keys))]])
+
+
 def table_rows(text, key):
     """Dòng bảng có cột đầu `M-n` / `T-n` (bỏ dòng chưa điền tên)."""
     rows = []
@@ -125,7 +139,7 @@ def read(path):
 def phase_a_steps(root, text):
     """App / Module Phase A: 10 bước cố định, ✅ theo cổng + file có thật."""
     kind = first_word(text, "Loại")
-    d = os.path.join(root, field(text, "Module").strip("/") if kind == "MODULE" else "docs/product")
+    d = os.path.join(root, module_dir(text) if kind == "MODULE" else "docs/product")
     gate = read(os.path.join(d, "MODULE.md" if kind == "MODULE" else "APP.md"))
     files = os.listdir(d) if os.path.isdir(d) else []
     ddir = os.path.join(d, "design")
@@ -158,9 +172,10 @@ def board_steps(root, task):
     try:
         db = sqlite3.connect(f"file:{p}?mode=ro", uri=True, timeout=2)
         try:
-            rows = db.execute("SELECT title, state, role, grp FROM plan_steps WHERE task=? ORDER BY n", (task,)).fetchall()
+            rows = db.execute("SELECT title, state, role, grp, started_at FROM plan_steps WHERE task=? ORDER BY n", (task,)).fetchall()
         except sqlite3.OperationalError:  # board.db của v0.20.0 chưa có cột grp
-            rows = [r + (None,) for r in db.execute("SELECT title, state, role FROM plan_steps WHERE task=? ORDER BY n", (task,))]
+            rows = [r[:3] + (None, r[3]) for r in db.execute(
+                "SELECT title, state, role, started_at FROM plan_steps WHERE task=? ORDER BY n", (task,))]
         db.close()
         return rows
     except sqlite3.Error:
@@ -192,13 +207,13 @@ def steps_summary(steps):
 def as_steps(phase):
     """Phase A: bước đầu chưa xong là bước đang làm."""
     first = next((i for i, (_, ok) in enumerate(phase) if not ok), None)
-    return [(t, "done" if ok else "doing" if i == first else "todo", None, None) for i, (t, ok) in enumerate(phase)]
+    return [(t, "done" if ok else "doing" if i == first else "todo", None, None, None) for i, (t, ok) in enumerate(phase)]
 
 
 def parent_line(root, text):
     """App: x/N module xong · Module: x/N task xong (chỉ khi bảng đã điền)."""
-    if field(text, "Module") and first_word(text, "Loại") != "MODULE":
-        rows, name = table_rows(read(os.path.join(root, field(text, "Module").strip("/"), "MODULE.md")), "T"), "task"
+    if module_dir(text) and first_word(text, "Loại") != "MODULE":
+        rows, name = table_rows(read(os.path.join(root, module_dir(text), "MODULE.md")), "T"), "task"
     else:
         rows, name = table_rows(read(os.path.join(root, "docs", "product", "APP.md")), "M"), "module"
     rows = [r for r in rows if r[1]]
@@ -249,33 +264,198 @@ def progress_line(root):
     return " · ".join(parts)
 
 
-def progress_list(root):
-    """Danh sách đầy đủ để Lead dán vào chat."""
-    st = state(root)
-    if not st or not st[1]:
-        return progress_line(root)
-    stage, task, text, steps, src = st
-    head = [x for x in (parent_line(root, text), f"[{task}] {stage} {src or STAGES[stage][0]}") if x]
-    if not steps:
-        return " · ".join(head) + "\nChưa có danh sách bước (Lead: board.py plan " + task + ' --set "bước 1 @role | ...")'
-    w = max(len(x[0]) for x in steps)
-    wr = max(len(x[2] or "") for x in steps)
+MAX_STEP_ROWS = 8
+MARK = {"done": "✅ Xong", "doing": "▶ Đang làm", "todo": "⏳ Chờ", "skip": "– Bỏ", "blocked": "⛔ Chặn"}
+
+
+def cfg(root, key, default=""):
+    m = re.search(rf"(?m)^\s*{key}=\s*['\"]?([^'\"#\n]*)", read(os.path.join(root, ".claude", "agent-team.config")))
+    return m.group(1).strip() if m else default
+
+
+def dwidth(t):
+    """Độ rộng hiển thị trên terminal: ký tự rộng (✅ ⏳, CJK) = 2, dấu kết hợp = 0."""
+    import unicodedata
+    return sum(0 if unicodedata.combining(c) else 2 if unicodedata.east_asian_width(c) in ("W", "F") else 1 for c in t)
+
+
+def box(headers, rows):
+    """Bảng có khung ┌─┬─┐, căn theo độ rộng hiển thị."""
+    cols = [max(dwidth(x) for x in col) for col in zip(headers, *rows)]
+    line = lambda l, m, r: l + m.join("─" * (w + 2) for w in cols) + r
+    cell = lambda vals: "│" + "│".join(f" {v}{' ' * (w - dwidth(v))} " for v, w in zip(vals, cols)) + "│"
+    return [line("┌", "┬", "┐"), cell(headers), line("├", "┼", "┤")] + [cell(r) for r in rows] + [line("└", "┴", "┘")]
+
+
+def parent_block(root, text, task, cur_step, phase_a=False):
+    """Tầng trên: bảng module của app (APP.md) hoặc task của module (MODULE.md). [] khi bảng chưa điền."""
+    if module_dir(text) and first_word(text, "Loại") != "MODULE":
+        src, key, name = read(os.path.join(root, module_dir(text), "MODULE.md")), "T", "task"
+    elif phase_a:
+        return []  # Phase A của app / module: chưa có danh sách con
+    else:
+        src, key, name = read(os.path.join(root, "docs", "product", "APP.md")), "M", "module"
+    rows = [r for r in table_rows(src, key) if r[1]]
+    if not rows:
+        return []
+    title = (re.search(r"(?m)^#\s+(.+)$", src) or [None, ""])[1].strip()
+    done = [r[-1].upper().startswith("DONE") for r in rows]
+    cur = next((i for i, r in enumerate(rows) if task in r[2:]), None)
+    if cur is None:
+        cur = next((i for i, d in enumerate(done) if not d), None)
+    st = ["done" if d else "doing" if i == cur else "todo" for i, d in enumerate(done)]
+    for i, r in enumerate(rows):
+        if not done[i] and r[-1].upper().startswith("BLOCKED"):
+            st[i] = "blocked"
+    head = f"{'Module' if key == 'T' else 'App'}{' ' + short(title, 40) if title and not title.startswith('<') else ''} · {sum(done)}/{len(rows)} {name} xong"
+    show = [i for i in range(len(rows)) if cur is not None and cur - 1 <= i <= cur + 1] or list(range(min(3, len(rows))))
+    body = [[rows[i][0], short(rows[i][1], 28), MARK[st[i]] + (f" · {cur_step}" if st[i] == "doing" and cur_step else "")] for i in show]
+    before = [st[i] for i in range(len(rows)) if i < show[0]]
+    after = [st[i] for i in range(len(rows)) if i > show[-1]]
+    if before:
+        body.insert(0, ["…", f"+{len(before)} {name}", MARK["done"] if set(before) == {"done"} else "…"])
+    if after:
+        body.append(["…", f"+{len(after)} {name}", MARK["todo"] if set(after) == {"todo"} else "…"])
+    return [head] + box([key, "Module" if key == "M" else "Task", "Trạng thái"], body)
+
+
+def collapse(steps):
+    """[(nhãn số, tiêu đề, role, trạng thái, phút, ∥)], gộp đoạn ✅ đầu / ⏳ cuối khi quá MAX_STEP_ROWS dòng."""
+    now = int(time.time())
     size = {}
     for x in steps:
         size[x[3]] = size.get(x[3], 0) + 1
-    mark = {"done": "✅", "doing": "▶ ", "todo": "○ ", "skip": "– "}
-    lines = [(f"{mark.get(s, '○ ')} {i}. {t.ljust(w)}  {(r or '').ljust(wr)}".rstrip() + ("  ∥" if g is not None and size[g] > 1 else ""))
-             for i, (t, s, r, g) in enumerate(steps, 1)]
-    if any(size[g] > 1 for g in size if g is not None):
-        lines.append("(∥ = chạy song song)")
-    return "\n".join([" · ".join(head)] + lines)
+    rows = [(str(i), t, r or "", s, (now - st) // 60 if s == "doing" and st else None, g is not None and size[g] > 1)
+            for i, (t, s, r, g, st) in enumerate(steps, 1)]
+
+    def merge(a, b, state):
+        names = ", ".join(short(x[1], 14) for x in rows[a:b])
+        return (f"{rows[a][0]}–{rows[b - 1][0]}", short(names, 40), "", state, None, False)
+
+    if len(rows) > MAX_STEP_ROWS:
+        k = next((i for i, x in enumerate(rows) if x[3] != "done"), len(rows))
+        if k > 1:
+            rows = [merge(0, k, "done")] + rows[k:]
+    if len(rows) > MAX_STEP_ROWS:
+        k = len(rows)
+        while k > 0 and rows[k - 1][3] == "todo":
+            k -= 1
+        keep = max(k, MAX_STEP_ROWS - 1)
+        if len(rows) - keep > 1:
+            rows = rows[:keep] + [merge(keep, len(rows), "todo")]
+    return rows
+
+
+POOL_MARK = {"RUNNING": "▶", "GAP": "⛔ GAP", "FIX": "🔧 Sửa", "BLOCKED": "⛔ Chặn",
+             "MERGE_WAIT": "🔀 Chờ merge", "MERGING": "🔀 IT đang chạy", "DONE": "✅ Merged"}
+
+
+def pool_block(root):
+    """Điều phối nhiều task (pool.py): bảng task của cả app. [] khi không dùng pool."""
+    p = os.path.join(root, ".agent-team", "board.db")
+    if not os.path.isfile(p):
+        return []
+    try:
+        db = sqlite3.connect(f"file:{p}?mode=ro", uri=True, timeout=2)
+        db.row_factory = sqlite3.Row
+        rows = db.execute("SELECT * FROM pool ORDER BY ord").fetchall()
+        mods = db.execute("SELECT * FROM pool_modules ORDER BY ord").fetchall()
+        db.close()
+    except sqlite3.Error:
+        return []
+    if not rows and not mods:
+        return []
+    done = {r["label"] for r in rows if r["state"] == "DONE"}
+    now = int(time.time())
+    body, running = [], 0
+    for r in rows:
+        if r["state"] == "DONE":
+            continue
+        agents, st = "", POOL_MARK.get(r["state"], r["state"])
+        deps = [x.strip() for x in (r["deps"] or "").split(",") if x.strip()]
+        if r["state"] == "WAIT":
+            wait = [d for d in deps if d not in done]
+            st = "⏳ Chờ " + ", ".join(wait) if wait else "🟢 READY"
+        elif r["state"] in ("RUNNING", "FIX", "GAP"):
+            running += 1
+            wt = os.path.join(root, r["worktree"] or "")
+            try:
+                c = sqlite3.connect(f"file:{os.path.join(wt, '.agent-team', 'board.db')}?mode=ro", uri=True, timeout=2)
+                agents = ", ".join(x[0] for x in c.execute("SELECT role FROM agent_runs WHERE state='RUNNING'"))
+                c.close()
+            except sqlite3.Error:
+                pass
+            stg = read(os.path.join(wt, ".agent-team", "stage")).strip().upper()
+            st += (f" {STAGES[stg][0].capitalize()}" if stg in STAGES else "") + (f" {(now - r['started_at']) // 60}p" if r["started_at"] else "")
+        if r["note"] and r["state"] in ("FIX", "GAP", "BLOCKED"):
+            st += f" · {short(r['note'], 24)}"
+        body.append([r["label"], short(r["title"], 24), short(agents, 26) or "–", st])
+    if len(body) > MAX_STEP_ROWS:
+        body = body[:MAX_STEP_ROWS - 1] + [["…", f"+{len(body) - MAX_STEP_ROWS + 1} task", "", "⏳"]]
+    if done:
+        body.insert(0, ["✅", f"{len(done)} task đã merge", "", "✅ Merged"])
+    design = [m["module"] for m in mods if m["state"] == "DESIGN"]
+    title = (re.search(r"(?m)^#\s+(.+)$", read(os.path.join(root, "docs", "product", "APP.md"))) or [None, ""])[1].strip()
+    head = (f"App {short(title, 30)} · " if title and not title.startswith("<") else "") + \
+        f"Module ✅ {sum(1 for m in mods if m['state'] == 'DONE')}/{len(mods)} · thiết kế: {', '.join(design) or '–'} · " \
+        f"chạy {running}/{cfg(root, 'MAX_PARALLEL', '8')}"
+    return [head] + (box(["Task", "Việc", "Agent", "Trạng thái"], body) if body else [])
+
+
+def progress_table(root):
+    """Bảng checklist: tầng trên (module / task) + các bước của task đang chạy."""
+    st = state(root)
+    if not st:
+        return "\n".join(pool_block(root))  # giữa 2 lần thiết kế module: chỉ còn bảng điều phối
+    stage, task, text, steps, src = st
+    if not task:
+        return f"{stage} {STAGES[stage][0]}"
+    kind = first_word(text, "Loại")
+    done = sum(1 for x in steps if x[1] == "done")
+    doing = [i + 1 for i, x in enumerate(steps) if x[1] == "doing"]
+    cur = f"bước {'+'.join(map(str, doing))}/{len(steps)}" if doing and steps else ""
+    pool = pool_block(root)
+    out = pool or parent_block(root, text, task, cur, bool(src))
+    label = f"{'App' if kind == 'APP' else 'Module'} · Phase A" if src else f"{stage} {STAGES[stage][0]}"
+    out.append(f"[{task}] {label}" + (f" · {done}/{len(steps)} xong" if steps else ""))
+    if not src:
+        out += stage_table(stage)
+    if not steps:
+        if stage in ("S3", "S4", "S5"):
+            out.append("Chưa có danh sách bước (Lead: board.py plan " + task + ' --set "bước 1 @role ∥ bước 2 @role | ...")')
+    else:
+        rows = collapse(steps)
+        has_role = any(r[2] for r in rows)
+        body = [[n, short(t) + ("  ∥" if par else ""), *([r] if has_role else []),
+                 MARK.get(s, "⏳ Chờ") + (f" {mins}p" if mins is not None else "")] for n, t, r, s, mins, par in rows]
+        out += box(["#", "Bước", *(["Role"] if has_role else []), "Trạng thái"], body)
+    extra = []
+    waiting, whys = board_info(root, task)
+    if waiting:
+        extra.append("chờ post: " + ", ".join(waiting))
+    if not steps:
+        missing = [k for k in gate_for(stage, text) if not field(text, k)]
+        if missing:
+            extra.append("thiếu: " + ", ".join(missing[:3]) + (" …" if len(missing) > 3 else ""))
+    if whys:
+        extra.append(f"WHY mở: {whys}")
+    extra += agent_info(root, task)
+    if extra:
+        out.append(" · ".join(extra))
+    return "\n".join(out)
+
+
+def progress_list(root):
+    """Lead dán vào chat: cùng bảng với status line."""
+    return progress_table(root)
 
 
 def main():
     lst = "--list" in sys.argv[1:]
     root = find_root(os.getcwd() if lst else start_dir())
     if root:
-        print(progress_list(root) if lst else progress_line(root))
+        one = cfg(root, "PROGRESS_LINES", "table") == "1"
+        print(progress_list(root) if lst else progress_line(root) if one else progress_table(root))
 
 
 if __name__ == "__main__":

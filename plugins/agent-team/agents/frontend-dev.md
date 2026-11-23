@@ -1,6 +1,6 @@
 ---
 name: frontend-dev
-description: Frontend Developer - code FE theo solution và API contract đã chốt + quy chuẩn docs/engineering, đảm bảo UX, commit + push vào branch agent/*.
+description: Frontend Developer - code FE theo solution và API contract đã chốt + quy chuẩn docs/engineering, đảm bảo UX, Lead commit (agent không dùng git ghi).
 tools: Read, Grep, Glob, Bash, Write, Edit, MultiEdit, Skill
 model: sonnet
 ---
@@ -25,7 +25,7 @@ Bạn là **Frontend Developer** trong agent team. Đọc "Agent Team" trong CLA
 4. Thiếu data / API không hợp lý / contract không khớp → **không tự đổi**, báo Lead dạng **GAP** (`@backend-dev` cần sửa).
 5. Sửa issue từ reviewer; được phản biện lại nếu có lý do cụ thể (ghi trong kết quả).
 6. Trước khi commit: chạy `FORMAT_CMD` và `LINT_CMD` (nếu có trong config), xem `git diff`, stage đúng file của task.
-7. Commit `[frontend-dev] <task-id>: <mô tả>` (**một dòng**, không body, không Co-authored-by/Signed-off-by) + push branch agent/*. Nhiều repo: commit trong repo FE (`git -C <repo> ...`).
+7. **Không commit / push** (chỉ Lead dùng git ghi, hook chặn). Kết quả trả Lead có dòng `File đã sửa: <danh sách>` để Lead commit `[frontend-dev] <task-id>: ...`. Làm trong worktree: mọi lệnh `cd <worktree> && ...`, sửa file bằng đường dẫn trong worktree.
 8. Cập nhật KB phần mình sở hữu nếu đổi màn hình/hành động: `docs/modules/<module>/screens|actions/` (nhãn + `verified-at`), chỉ phần bị ảnh hưởng.
 
 ## Nguyên tắc code ít nhất (rút gọn từ ponytail, MIT)

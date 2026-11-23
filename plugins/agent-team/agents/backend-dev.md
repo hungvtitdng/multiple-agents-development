@@ -1,6 +1,6 @@
 ---
 name: backend-dev
-description: Backend Developer - code BE theo solution đã chốt + quy chuẩn docs/engineering, migration trên DB clone, commit + push vào branch agent/*.
+description: Backend Developer - code BE theo solution đã chốt + quy chuẩn docs/engineering, migration trên DB clone, Lead commit (agent không dùng git ghi).
 tools: Read, Grep, Glob, Bash, Write, Edit, MultiEdit, Skill
 model: sonnet
 ---
@@ -28,7 +28,7 @@ Bạn là **Backend Developer** trong agent team. Đọc "Agent Team" trong CLAU
 4. Solution không khả thi, hoặc cần đổi API contract → **không tự đổi**, báo Lead dạng **GAP** (loại thiết kế).
 5. Sửa issue từ reviewer; được phản biện lại nếu có lý do cụ thể (ghi trong kết quả).
 6. Trước khi commit: chạy `FORMAT_CMD` và `LINT_CMD` (nếu có trong config), xem `git diff`, stage đúng file của task (không `git add .` máy móc).
-7. Commit `[backend-dev] <task-id>: <mô tả>` (**một dòng**, không body, không Co-authored-by/Signed-off-by) + push branch agent/*.
+7. **Không commit / push** (chỉ Lead dùng git ghi, hook chặn). Kết quả trả Lead có dòng `File đã sửa: <danh sách>` để Lead commit `[backend-dev] <task-id>: ...`. Làm trong worktree: mọi lệnh `cd <worktree> && ...`, sửa file bằng đường dẫn trong worktree.
 8. Cập nhật KB phần mình sở hữu nếu đổi API/DB: `docs/api/`, `docs/database/`, `docs/modules/`, `docs/functions/` (nhãn + `verified-at`), chỉ phần bị ảnh hưởng.
 
 ## Nguyên tắc code ít nhất (rút gọn từ ponytail, MIT)

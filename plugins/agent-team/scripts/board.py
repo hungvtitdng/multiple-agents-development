@@ -1119,12 +1119,59 @@ def cmd_stuck(db, a):
             print(f"  tắt lệnh đang kẹt (terminal khác): pgrep -fl {json.dumps(key)}  →  kill <PID>")
 
 
+def worktree_dir(data):
+    """Thư mục gốc worktree mà tool đang đụng (file_path / `cd <dir> &&`), '' nếu là thư mục chính."""
+    ti, cwd = data.get("tool_input") or {}, data.get("cwd") or os.getcwd()
+    path = ti.get("file_path") or ti.get("notebook_path") or ti.get("path") or ""
+    cand = ""
+    if path:
+        full = path if os.path.isabs(path) else os.path.join(cwd, path)
+        cand = full if os.path.isdir(full) else os.path.dirname(full)
+    else:
+        m = re.match(r"^\s*cd\s+(['\"]?)([^'\"&;|\s]+)\1", ti.get("command") or "")
+        cand = os.path.join(cwd, os.path.expanduser(m.group(2))) if m else ""
+    if not cand:
+        return ""
+    d, main = os.path.abspath(cand), None
+    cur = os.path.abspath(cwd)
+    while True:
+        if os.path.isfile(os.path.join(cur, ".claude", "agent-team.config")):
+            main = cur
+            break
+        if os.path.dirname(cur) == cur:
+            break
+        cur = os.path.dirname(cur)
+    while True:
+        if os.path.isfile(os.path.join(d, ".claude", "agent-team.config")):
+            return d if d != main else ""
+        if os.path.dirname(d) == d:
+            return ""
+        d = os.path.dirname(d)
+
+
+def pool_busy(root):
+    p = os.path.join(root, ".agent-team", "board.db")
+    if not os.path.isfile(p):
+        return False
+    try:
+        con = sqlite3.connect(f"file:{p}?mode=ro", uri=True, timeout=5)
+        n = con.execute("SELECT count(*) FROM pool WHERE state != 'DONE'").fetchone()[0]
+        con.close()
+        return n > 0
+    except sqlite3.Error:
+        return False
+
+
 def heartbeat(event, data):
     """Hook gọi: Pre / Post (mọi tool) và SubagentStop. Chỉ ghi cho subagent (có agent_type). Không bao giờ chặn."""
     role = norm_role(data.get("agent_type") or "")
     if not role:
         return
     os.chdir(data.get("cwd") or os.getcwd())
+    main_root = find_root()
+    wt = worktree_dir(data)  # agent làm trong worktree của task: ghi vào board.db của worktree đó
+    if wt:
+        os.chdir(wt)
     root = find_root()
     if not os.path.isfile(os.path.join(root, ".claude", "agent-team.config")):
         return
@@ -1137,6 +1184,8 @@ def heartbeat(event, data):
     db = connect()
     run = current_run(db, task, root)
     if event == "stop":
+        if not wt and pool_busy(main_root):  # SubagentStop không có đường dẫn: điều phối nhiều task thì Lead tự cập nhật
+            return
         row = run_row(db, task, role, run)
         if not row or row["state"] != "DONE":  # đã `done` thì bước đã ✅ lúc đó, không ✅ thêm bước khác
             finish_step(db, task, role)

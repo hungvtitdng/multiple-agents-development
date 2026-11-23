@@ -50,7 +50,7 @@ TRAILER_RE = re.compile(r"(?i)signed-off-by|co-authored-by|reviewed-by|generated
 STAGE_WRITE_RE = re.compile(r">+\s*['\"]?\S*\.agent-team/stage")
 STAGE_VALUE_RE = re.compile(r"(?:echo|printf)\s+(?:-\w+\s+)*['\"]?(S[1-6])\b")
 # Điều kiện (đọc từ TASK.md) trước khi Lead sang giai đoạn mới
-GATE_CLASS = {"NHỎ", "VỪA", "LỚN", "APP", "MODULE"}
+GATE_CLASS = {"NHỎ", "VỪA", "LỚN", "APP", "MODULE", "ĐÃ"}
 MODULE_DOC_RE = re.compile(r"^docs/product/modules/[\w.-]+/")  # module mới: cùng chủ sở hữu file như docs/product/
 TEST_FILE_RE = re.compile(r"(^|/)(__tests__|__mocks__)/|(_spec|_test)\.\w+$|\.(spec|test)\.\w+$|(^|/)test_[^/]+\.py$")
 STAGE_ZONES = {"S1": set(), "S2": set(), "S3": {"be", "fe"}, "S4": {"test"}}
@@ -267,7 +267,10 @@ def check_commit_msg(args):
         block("commit message phải một dòng `[role] task-id: mô tả`, không body, không Co-authored-by/Signed-off-by")
 
 
-def check_git(cmd, cwd):
+LEAD_GIT = {"commit", "push", "merge", "rebase", "cherry-pick", "revert", "am", "pull", "tag", "worktree"}
+
+
+def check_git(cmd, cwd, role=None):
     hook_cwd = cwd
     cur = cwd
     for tk in parse(cmd):
@@ -277,6 +280,8 @@ def check_git(cmd, cwd):
         if "git" not in tk or first_cmd(tk) in READ_ONLY_FIRST - {"git"}:
             continue
         cwd, sub, args = git_target(tk[tk.index("git"):], cur)
+        if role and sub in LEAD_GIT:
+            block(f"git {sub}: chỉ Lead làm (agent sửa file xong báo danh sách file, Lead commit theo role)")
         _, branch = git(cwd, "rev-parse", "--abbrev-ref", "HEAD")
 
         if sub == "push":
@@ -677,12 +682,19 @@ def gate_missing(stage, text):
     miss = []
     if stage == "S3":
         if first("Loại") not in GATE_CLASS:
-            miss.append("Loại (NHỎ/VỪA/LỚN/APP/MODULE)")
+            miss.append("Loại (NHỎ/VỪA/LỚN/ĐÃ CHIA/APP/MODULE)")
         elif first("Loại") == "MODULE":
             miss.append("task MODULE chỉ làm tài liệu, không có code: code ở các task con (/agent-team:task <thư mục module> T-<n>)")
         elif first("Loại") == "NHỎ":
             if not f("Tiêu chí nghiệm thu"):
                 miss.append("Tiêu chí nghiệm thu")
+        elif first("Loại") == "ĐÃ":  # ĐÃ CHIA: kế thừa thiết kế module, không debate lại
+            if not f("Tiêu chí nghiệm thu"):
+                miss.append("Tiêu chí nghiệm thu (AC của task, từ bảng task của module)")
+            if not f("Thiết kế module"):
+                miss.append("Thiết kế module (đường dẫn phương án + API contract đã chốt)")
+            if first("Security duyệt solution") not in ("APPROVED", "N/A"):
+                miss.append("Security duyệt solution: APPROVED (chép từ thiết kế module)")
         else:
             if not f("Phương án chốt"):
                 miss.append("Phương án chốt")
@@ -1233,6 +1245,39 @@ def post_check(data, role, cwd):
         block(msg + " Post lên board và @chủ vùng sửa.")
 
 
+def effective_cwd(tool, ti, cwd):
+    """Worktree của task (WORKTREE_DIR): tính gốc repo theo file được sửa / `cd <dir> &&` đầu lệnh, không theo cwd của phiên."""
+    cand = ""
+    path = ti.get("file_path") or ti.get("notebook_path") or ti.get("path") or ""
+    if tool in ("Read", "Edit", "Write", "MultiEdit", "NotebookEdit", "Grep", "Glob") and path:
+        full = path if os.path.isabs(path) else os.path.join(cwd, path)
+        cand = full if os.path.isdir(full) else os.path.dirname(full)
+    elif tool == "Bash":
+        segs = parse(ti.get("command", "") or "")
+        if segs and segs[0] and segs[0][0] == "cd" and len(segs[0]) > 1:
+            cand = os.path.join(cwd, os.path.expanduser(segs[0][1]))
+    if cand:
+        r = find_root(cand)
+        if r and r != find_root(cwd):
+            return r
+    return cwd
+
+
+def pool_active(cwd):
+    """Phiên chính đang điều phối nhiều task (bảng pool có task chưa DONE)."""
+    root = find_root(cwd)
+    p = os.path.join(root, ".agent-team", "board.db") if root else ""
+    if not p or not os.path.isfile(p):
+        return False
+    try:
+        con = sqlite3.connect(f"file:{p}?mode=ro", uri=True, timeout=5)
+        n = con.execute("SELECT count(*) FROM pool WHERE state NOT IN ('DONE')").fetchone()[0]
+        con.close()
+        return n > 0
+    except sqlite3.Error:
+        return False
+
+
 def touches_hidden(text):
     return bool(HIDDEN_RE.search(text or ""))
 
@@ -1249,6 +1294,7 @@ def main():
     ti = data.get("tool_input") or {}
     cwd = data.get("cwd") or os.getcwd()
     role = norm_role(data)
+    cwd = effective_cwd(tool, ti, cwd)
 
     debug_log("post" if POST else "pre", data, role, cwd)
     if POST:
@@ -1256,7 +1302,8 @@ def main():
         sys.exit(0)
 
     if tool in ("Agent", "Task") and not role:
-        check_plan(ti, cwd)
+        if not pool_active(cwd):  # điều phối nhiều task: danh sách bước nằm trong từng worktree
+            check_plan(ti, cwd)
         sys.exit(0)
 
     path = ti.get("file_path") or ti.get("notebook_path") or ti.get("path") or ""
@@ -1283,6 +1330,8 @@ def main():
         if board_segments(cmd.split("\n", 1)[0]):
             cmd = strip_heredocs(cmd)
         check_board(cmd, role)
+        if role and re.search(r"\bpool\.py\b", cmd):
+            block("pool.py (điều phối task, worktree, merge) chỉ Lead dùng")
         check_forever(cmd)
         if role and any(first_cmd(tk) in PERM_CMDS for tk in parse(cmd)):
             block("không được đổi quyền file (chmod/chown...), nhờ Lead")
@@ -1300,7 +1349,7 @@ def main():
         check_secret_tokens(cmd)
         check_env_dump(cmd)
         check_db(cmd)
-        check_git(cmd, cwd)
+        check_git(cmd, cwd, role)
         check_rm(cmd)
         if role in READONLY_ROLES:
             check_readonly_bash(cmd, role)

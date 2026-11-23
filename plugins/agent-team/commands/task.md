@@ -12,7 +12,7 @@ Làm đúng playbook dưới đây. **Không hỏi lại user**, team tự bàn 
 
 ## 0. Chuẩn bị
 1. Đọc `CLAUDE.md` (mục "Agent Team"), `.claude/agent-team.config`, `docs/README.md`. Chưa có config thì dừng, báo user chạy `/agent-team:init`.
-2. `git status` sạch. `git fetch`, tạo branch `agent/<task-id>` từ `origin/<nhánh gốc>` (nhánh gốc = `BASE_BRANCHES` của repo nếu có, không thì `BASE_BRANCH`). Config `PUSH=0` (repo chưa có remote): không `fetch`, tạo branch từ nhánh gốc local, hoặc từ "Branch gốc" ghi trong `docs/product/APP.md` khi là module của App Mode.
+2. `git status` sạch. `git fetch`, tạo branch `agent/<task-id>` từ `origin/<nhánh gốc>` (nhánh gốc = `BASE_BRANCHES` của repo nếu có, không thì `BASE_BRANCH`). Config `PUSH=0` (repo chưa có remote): không `fetch`, tạo branch từ nhánh gốc local. **1 phiên = 1 branch:** task thiết kế module của app làm ngay trên branch phiên (không tạo branch mới); task `ĐÃ CHIA` thì `pool.py fill` tạo worktree + branch tạm (mục 6c).
    - `<task-id>` = `YYYYMMDD-<slug-ngắn>`.
    - Nhiều repo (`REPOS`): làm trong từng repo (`git -C ../FrontEnd ...`), chỉ repo task đụng tới; ghi danh sách vào TASK.md. Board và `docs/` nằm ở repo chính.
 3. Tạo `docs/agent-tasks/<task-id>/TASK.md` (từ `.claude/agent-team/templates/TASK.md`) và `board/SUMMARY.md` (từ `SUMMARY.md`). `echo S1 > .agent-team/stage`.
@@ -26,6 +26,7 @@ Làm đúng playbook dưới đây. **Không hỏi lại user**, team tự bàn 
 | NHỎ | bug 1 chỗ, sửa text, nghiệp vụ rõ | **Fast Track** (mục 7) | Dev, test, Code Reviewer, Security (không cần challenger) |
 | VỪA | thêm field, API nhỏ, 1 service | Standard | + Scout, debate: Architect, Test Design, BA (nếu nghiệp vụ chưa rõ) |
 | LỚN | feature mới, đổi DB lớn, nhiều service, phân quyền | Full | Standard + tách `solution-architect` và `technical-architect`, chia task |
+| ĐÃ CHIA | task con đã chia từ thiết kế module (`pool.py`), có AC + file sẽ đụng + phụ thuộc | **Bỏ S1-S2** (không debate lại): kế thừa phương án + contract của module. Thiếu / sai → GAP (mục 7b), đổi contract → quay về module | Dev, test-executor, Code Reviewer, Security. LỚN: thêm 1 lượt thiết kế chi tiết ngắn (SA + dev) trong phạm vi task |
 - **Đầu vào là ý tưởng cả app** (chưa có code, cần nhiều module) → dừng, dùng `/agent-team:app <ý tưởng>`. Đang có `docs/product/APP.md`: task là 1 module, lấy AC từ các `R-n` của module, thiết kế từ `docs/product/`; hook chặn sang S3 khi owner chưa duyệt (`Owner duyệt: APPROVED`).
 - **Security luôn có mặt.** Chạm auth, phân quyền, secrets, dữ liệu nhạy cảm → luôn duyệt cả solution.
 - Ghi lý do gọi hoặc bỏ từng role. Role bị bỏ thì Lead vẫn bảo đảm yêu cầu đủ rõ, test phù hợp, rủi ro được kiểm soát.
@@ -152,6 +153,29 @@ Hook chặn theo giai đoạn: S1-S2 chỉ tài liệu, S3 chỉ code, S4 chỉ 
 
 Sang S5 hook kiểm `Kết quả test`, `Lint/format`, `Gap còn mở: 0` và `E2E` (PASS có ảnh đủ mọi `VIEWPORTS`, hoặc N/A khi không có UI). Sang S6 hook kiểm `Code review`, `Security review`, `Cập nhật KB`, `Bài học` (đều đọc từ TASK.md); `Cập nhật KB: YES` thì hook **kiểm thật** có file KB trong `docs/` đổi so với nhánh gốc (không tính `agent-tasks/`, `testing/`, `LESSONS.md`, `SPEC.md`), không có thì chặn; có App Mode thì hook chạy thêm `gap-check.py --gate --spec-check` (tài liệu app đủ và SPEC.md khớp). Chỉ ghi `APPROVED`/`PASS` khi thật sự đạt; challenger, reviewer, security chưa APPROVED thì làm tiếp vòng sửa.
 
+## 6c. Điều phối nhiều task song song (`pool.py`, App / Module)
+`P="python3 .claude/agent-team/pool.py"`. Bạn (Lead, thư mục chính, branch phiên) giữ bảng `pool`; mỗi task `ĐÃ CHIA` chạy trong worktree riêng. Config: `MAX_PARALLEL` (đổi lúc nào cũng được: tăng → `fill` mở thêm ngay; giảm → task đang chạy vẫn chạy, chỉ không mở mới), `WORKTREE_DIR`, `E2E_PORT_BASE`, `INTEGRATION_CMD`.
+```
+lặp tới hết việc:
+  1. $P fill                → mở worktree cho task READY tới đủ MAX_PARALLEL (in worktree, branch, cổng E2E)
+     mỗi task mới: TASK.md trong worktree (`- Loại: ĐÃ CHIA`, `- Thiết kế module: <đường dẫn>`, `- Security duyệt solution:` chép từ module,
+     `- Tiêu chí nghiệm thu:` AC của task) → `cd <worktree> && echo S3 > .agent-team/stage` → `cd <worktree> && board.py plan ...`
+     → gọi agent (nền), prompt ghi rõ: "làm trong <worktree>, mọi lệnh `cd <worktree> && ...`, sửa file bằng đường dẫn trong worktree"
+  2. $P wait                → exit 0 có việc (agent DONE / còn chỗ + READY / có task chờ merge) · 3 agent treo · 4 chờ tiếp
+  3. agent DONE → bạn commit trong worktree theo role (`cd <worktree> && git add <file của role> && git commit -m "[role] <task-id>: ..."`)
+     → bước kế của task (dev → test-executor S4 → code-reviewer ∥ security S5) → S5 APPROVED + điền `Cập nhật KB`, `Bài học` trong TASK.md
+     của worktree + commit → `$P set <M-n/T-k> MERGE_WAIT` (task ĐÃ CHIA không `echo S6` trong worktree: merge là bước đóng)
+     GAP → `$P set <task> GAP --note ..` + debate nhỏ (mục 7b), task khác chạy tiếp. Đổi contract → dừng các task dùng contract đó.
+  4. $P merge-begin <task>  → merge --no-commit vào branch phiên (conflict → --abort, task FIX)
+     chạy INTEGRATION_CMD (mặc định TEST_CMD + `agent-db-clone.sh e2e` toàn bộ, ở thư mục chính)
+     $P merge-end <task> pass|fail → pass: commit merge, xoá worktree, ✅ (module đủ ✅ → tag) · fail: --abort, task FIX
+     module ✅ → ở thư mục chính: Trạng thái DONE trong `APP.md`, `gap-check.py --spec`, commit `[lead] <task-id app>: M-n xong`
+  5. Dán `$P status` vào chat (1 lần mỗi vòng), quay lại 1.
+```
+- Mỗi lúc chỉ 1 module thiết kế (`$P module M-n --state DESIGN`); task chỉ được `add` khi module đã `SPLIT`.
+- Thư mục chính chỉ để thiết kế module + merge: không code ở đây khi đang điều phối. Merge lần lượt, mỗi lần 1 task.
+- Guard / board / status line của task tính theo worktree (đường dẫn file hoặc `cd <worktree> &&` đầu lệnh). Mỗi worktree có `.agent-team/` riêng (stage, board), cổng E2E riêng.
+
 ## 6b. Mock: FE / view dựng trước, BE nối sau
 Chỉ BE phải chờ migration. FE / view bắt đầu ngay khi có **API contract** (FE tách) hoặc **data shape** (BE render view).
 
@@ -208,11 +232,13 @@ Dev/test-executor thiếu thông tin thì dừng đúng phần đó và trả **
 Lỗi thuộc sản phẩm của người khác → ghi vào kết quả giao lại cho đúng chủ, không sửa hộ.
 
 ## 9. Git
-- Commit sau mỗi giai đoạn, **một dòng** `[<role>] <task-id>: <mô tả>`. Không body, không Co-authored-by/Signed-off-by (hook chặn). Board và `docs/` commit cùng repo chính.
+- **Chỉ bạn (Lead) dùng git ghi** (commit, push, merge, tag, worktree); agent bị hook chặn. Agent DONE → bạn commit file của role đó: `git add <file trong vùng role>` (không `git add .`), commit **một dòng** `[<role>] <task-id>: <mô tả>`. Không body, không Co-authored-by/Signed-off-by (hook chặn). Board và `docs/` commit cùng repo chính.
 - Push: `git push -u origin agent/<task-id>` (`PUSH=0`: không push, báo user branch nằm ở máy). Nhiều repo: commit/push trong từng repo (`git -C ../FrontEnd push -u origin agent/<task-id>`), mỗi repo chỉ commit file của repo đó.
 - Không push/merge vào main/develop, không force push, không rewrite lịch sử, không tạo PR, không xoá branch. Hook chặn commit / push có secret, `.env*`, key, dump DB. `.env*` được xem / sửa, không in giá trị KEY ra chat / board.
 
 ## 10. Báo cáo cho user (cuối cùng)
+**Task thuộc app / module** (`M-<n>` của `docs/product/APP.md`, hoặc TASK.md có `- Module:`): đóng xong **không dừng**. Báo 3-5 dòng rồi tự chạy module / task con kế theo bảng (`app.md` mục 10.2) tới hết hoặc tới điểm dừng. Báo cáo đầy đủ dưới đây chỉ ở cuối cùng.
+
 Dòng đầu: kết quả + link branch (mỗi repo một branch). Dòng 2: đường dẫn `REPORT.html` (gửi client: giả định tô đỏ đầu trang, client chọn Đúng/Sai rồi bấm Copy câu trả lời) và `REPORT.md`. Danh sách tối đa 5 mục mỗi nhóm:
 - TASK.md, KB đã cập nhật (file nào)
 - Phương án chốt + 1 dòng lý do (nếu gộp: ý nào từ đâu)

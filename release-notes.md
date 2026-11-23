@@ -1,3 +1,77 @@
+# Release notes - 24/11/2026 (v0.25.0 → v0.27.0 - Lead điều phối nhiều task song song)
+
+## Thay đổi
+- **1 phiên = 1 branch** (`agent/<task-id app>`). Task chạy song song mỗi task 1 git worktree + branch tạm `agent/<task-id>`, xong merge về branch phiên. Module đủ task ✅ → tag `<app>-m<n>-done`. User merge branch phiên 1 lần (hoặc tới tag). Bảng Module: cột "Branch gốc" → "Tag".
+- **Chỉ Lead dùng git ghi** (commit / push / merge / tag / worktree / rebase...): hook chặn agent. Agent trả `File đã sửa: ...`, Lead commit theo role `[role] <task-id>: ...` (tránh 2 agent tranh `.git/index.lock`, commit lẫn file).
+- **Loại task `ĐÃ CHIA`**: task con chia từ thiết kế module, bỏ S1-S2 (không debate lại), kế thừa phương án + contract. Hook cho sang S3 khi có `Tiêu chí nghiệm thu`, `Thiết kế module`, `Security duyệt solution`. Chỗ chưa rõ → GAP, đổi contract → quay về module.
+- **Thiết kế module theo loại** (cột Loại trong bảng Module): `NHẸ` (SA viết + duyệt, không debate) / `VỪA` (1 đề xuất + 1 lượt WHY) / `NẶNG` (debate đầy đủ). SA ghi phụ thuộc **thật**, chia task với phụ thuộc **theo task**.
+- **Script mới `pool.py`** (bảng `pool`, `pool_modules` trong board.db): `module` (mỗi lúc 1 module DESIGN; task chỉ add khi module SPLIT), `add`, `fill` (mở worktree cho task READY tới đủ `MAX_PARALLEL`, cổng E2E riêng, `.worktrees` vào `.git/info/exclude`), `set`, `merge-begin` (merge --no-commit; conflict → --abort, FIX), `merge-end pass|fail` (pass: commit merge 1 dòng `[lead]`, xoá worktree, tag khi module đủ; fail: --abort, FIX), `wait` (exit 0 có việc / 3 treo / 4 chờ tiếp), `status`, `resume`.
+- **`MAX_PARALLEL` tự scale:** `fill` / `wait` đọc lại config mỗi lần. Tăng → mở thêm ngay; giảm → task đang chạy chạy tiếp, không mở mới. Đổi config không chặn merge.
+- **Guard / heartbeat theo worktree:** gốc repo tính theo đường dẫn file hoặc `cd <worktree> &&` đầu lệnh → stage, vùng ghi, board, nhịp tim của đúng worktree. Đang điều phối thì không bắt `plan` ở thư mục chính, SubagentStop không ✅ nhầm bước.
+- `agent-db-clone.sh e2e`: cổng lấy từ `.agent-team/e2e_port` của worktree (do `pool.py` cấp).
+- Status line: bảng điều phối `Task | Việc | Agent | Trạng thái` (▶ đang chạy + giai đoạn + phút, 🟢 READY, ⏳ Chờ <task>, 🔀 Chờ merge / IT đang chạy, 🔧 Sửa, ⛔), dòng tổng `Module ✅ x/N · thiết kế: M-k · chạy a/MAX`.
+- `resume`: đọc `pool.py resume` → làm tiếp task dở trong worktree, merge dở, rồi `fill`. Hook `sync.py` chép cả `pool.py`.
+- Test: pool 30 (mới), guard 390, board 97, progress 30.
+
+## Cần làm thủ công
+- Commit + push, `/plugin marketplace update multiple-agent`, khởi động lại Claude Code (hook `sync.py` tự chép `board.py`, `progress.py`, `pool.py`; `agent-db-clone.sh` chép tay nếu project đã có bản cũ: hook chỉ chép khi khác bản, nên cũng tự chép).
+- **Key mới trong `.claude/agent-team.config`** (không phải secret): `MAX_PARALLEL=8` (mặc định khi không ghi), `WORKTREE_DIR=.worktrees`, `E2E_PORT_BASE=4000`, `INTEGRATION_CMD=` (trống = TEST_CMD + E2E toàn bộ).
+- App đang chạy (`04.Cay`): branch M-1 đã chứa trọn M-0 → dùng `agent/20261123-m1-dang-nhap-quyen` làm branch phiên; gắn tag M-0: `git tag 20261120-app-cay-ca-phe-m0-done agent/20261120-app-cay-ca-phe`.
+- Mỗi task song song dùng 1 DB clone + 1 container E2E: `MAX_PARALLEL` theo RAM máy và quota token.
+
+# Release notes - 23/11/2026 (v0.24.0 - status line dạng bảng có khung)
+
+## Thay đổi
+- `progress.py` (status line + `--list`): 3 bảng có khung `┌─┬─┐`, căn cột theo độ rộng hiển thị thật (✅ ⏳ = 2 ô, tiếng Việt có dấu = 1 ô):
+  - Bảng module của app / task của module: `M | Module | Trạng thái` (module trước / đang làm `· bước k/N` / sau, phần còn lại gộp `+N module`). Module `BLOCKED` hiện ⛔ Chặn.
+  - Bảng giai đoạn nằm ngang S1 Scout … S6 Đóng: ✅ / ▶ / ⏳.
+  - Bảng bước (khi có `board.py plan`, hoặc 10 bước Phase A): `# | Bước | Role | Trạng thái`, ∥ song song.
+  - Dòng cuối: chờ post, thiếu, WHY mở, ⚠ agent im lâu.
+- `PROGRESS_LINES=1` vẫn về 1 dòng. Test progress: 30 case.
+
+## Cần làm thủ công
+- Commit + push, `/plugin marketplace update multiple-agent`, khởi động lại Claude Code (hook `sync.py` tự chép `progress.py`).
+
+# Release notes - 23/11/2026 (v0.23.1 - status line có giai đoạn ở S1-S2, sửa tầng App)
+
+## Thay đổi
+- `progress.py`: task thường luôn có dòng giai đoạn `S1 Scout ✅  S2 Debate ▶  S3 Code ⏳ ...` (theo `.agent-team/stage`), nên S1-S2 (chưa có danh sách bước) vẫn thấy đang ở đâu. "Chưa có danh sách bước" chỉ nhắc ở S3-S5.
+- Sửa: TASK.md ghi `- Module: N/A (...)` bị coi là thư mục module → mất tầng `App · x/N module xong`. Giờ chỉ nhận giá trị bắt đầu bằng `docs/`.
+- Test progress: 28 case.
+
+## Cần làm thủ công
+- Commit + push để plugin cập nhật, rồi `/plugin marketplace update multiple-agent` + khởi động lại Claude Code (hook `sync.py` tự chép `progress.py` mới sang project).
+
+# Release notes - 23/11/2026 (v0.23.0 - Lead tự điều phối module / task con tới hết)
+
+## Thay đổi
+- **App Phase B (`app.md` mục 10.2):** Lead tự chạy nối tiếp M-0 → M-1..n → M-E2E trong cùng phiên, mỗi module task-id + branch riêng (từ branch module trước). Không dừng hỏi "chạy module tiếp không?", không bắt user gõ `/agent-team:task` từng module.
+- **Chỉ dừng khi:** GAP cần owner hoặc BLOCKED kỹ thuật mà mọi module còn lại đều phụ thuộc (module BLOCKED thì chạy tiếp module không phụ thuộc), hết bảng Module, hoặc hết quota / lỗi phiên.
+- **Module (`module.md` mục 5):** đóng task MODULE xong tự chạy T-1 → T-n như trên.
+- **`resume`:** chạy tiếp tới khi xong hết việc; task đang dở đã đóng mà bảng còn `TODO` / `DOING` thì tự mở module / task kế.
+- `task.md` mục 10: task thuộc app / module đóng xong báo 3-5 dòng rồi chạy tiếp; báo cáo đầy đủ chỉ ở cuối.
+- Bảng Module (`templates/product/APP.md`): Trạng thái `TODO` / `DOING` / `DONE` / `BLOCKED (<lý do>)`.
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update multiple-agent`, khởi động lại Claude Code.
+- App đang chạy (vd `04.Cay`): `/agent-team:resume` là Lead chạy tiếp M-1 → … → M-E2E.
+- Không có KEY env mới.
+
+# Release notes - 23/11/2026 (v0.22.0 - status line dạng bảng checklist)
+
+## Thay đổi
+- **Status line mặc định là bảng** (`progress.py`), cùng bảng với `progress.py --list` Lead dán vào chat:
+  - Tầng trên (khi bảng đã điền): module của app (`APP.md`) hoặc task của module (`MODULE.md`), số đã xong, module / task đang làm `── bước k/N`.
+  - Dưới: `# | Bước | Role | Trạng thái` với ✅ Xong / ▶ Đang làm <phút> / ⏳ Chờ, `∥` bước chạy song song. Quá 8 dòng: gộp đoạn ✅ đầu và ⏳ cuối.
+  - App / Module Phase A: 10 bước cố định cùng kiểu bảng.
+  - Dòng cuối: chờ post, WHY mở, ⚠ agent im lâu.
+- Số phút "Đang làm" lấy từ `started_at` trong `board.db`, không ước lượng.
+- Test progress: 26 case.
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update multiple-agent`, khởi động lại Claude Code (hook `sync.py` tự chép `progress.py` mới sang project).
+- **Key mới (không bắt buộc) trong `.claude/agent-team.config`:** `PROGRESS_LINES=table` (mặc định) | `1`. Status line chỉ hiện 1 dòng đầu của bảng → đặt `PROGRESS_LINES=1`. Không phải secret.
+
 # Release notes - 23/11/2026 (v0.21.1 - .env được xem / sửa, chỉ cấm commit)
 
 ## Thay đổi

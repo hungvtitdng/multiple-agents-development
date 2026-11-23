@@ -17,7 +17,8 @@ A0 Intake → A1 Vấn đề + 12 góc nhìn → A2 Debate (team tự làm rõ) 
 → A4 Săn gap trên nháp + mockup → Debate chốt đề xuất → FORM CUỐI theo hành trình (A. Owner · B. Dev)
 → ⛔ Owner chốt logic → cập nhật mockup + SPEC → A5 Chia module
 PHASE B (code)
-M-0 khung project (task này, S3-S6) → M-1..n: mỗi module 1 /agent-team:task → M-E2E
+M-0 khung project (task này, S3-S6) → M-1..n → M-E2E: Lead điều phối (thiết kế từng module, task chạy song song
+   trong worktree tối đa MAX_PARALLEL, merge + integration test) trên 1 branch phiên. User không gõ lệnh từng module
 ```
 - **Người chạy lệnh thường là dev, không phải owner.** Không hỏi dev câu nghiệp vụ. Mỗi câu trong `docs/product/questions.md` có cột `Ai trả lời`:
   | Ai trả lời | Gồm | Cách hỏi |
@@ -141,16 +142,23 @@ Rồi bạn:
 Xong: chạy `.claude/agent-team/gap-check.py --spec`, sửa hết `THIEU` → `- Gap-check: PASS` trong `APP.md`. `docs/product/SPEC.md`: **toàn bộ tài liệu app trong 1 file** (ý tưởng, mục tiêu, stack, yêu cầu, flow, màn + link wireframe, dữ liệu, mặc định, câu hỏi, truy vết B → R → S, link quyết định, module). Sinh tự động, không sửa tay.
 
 ## 9. A5 Chia module
-`solution-architect` đề xuất module (mỗi module gom R-n liền mạch, ≤ 1 task LỚN), thứ tự theo phụ thuộc; bạn ghi bảng Module trong `APP.md`. M-0 luôn là khung project: scaffold theo stack, CI, Docker, `.env.example`, lint/format, test chạy được, đăng nhập nếu R có. Cập nhật config: `BE_PATHS`, `FE_PATHS`, `TEST_PATHS`, `LINT_CMD`, `TEST_CMD`... theo stack đã chốt (**FE và BE chung 1 repo** (Inertia, Blade, Next fullstack...) → `FE_PATHS=""`, dồn đường dẫn FE vào `BE_PATHS`: `backend-dev` làm cả FE, không gọi `frontend-dev`); `VIEWPORTS` theo `intake.md` (Responsive CÓ → `"375 768 1280"`, KHÔNG → `"1280"`); `E2E_CMD`, `APP_START_CMD`, `APP_PORT` (M-0 dựng Playwright + khung `e2e/` theo skill `test-automation` mục 1b). Module cuối luôn là **M-E2E**: chạy lại toàn bộ E2E theo mọi luồng "1 ngày của <vai trò>" ở mọi `VIEWPORTS` (regression cả app). Chạy lại `gap-check.py --spec`.
+`solution-architect` đề xuất module (mỗi module gom R-n liền mạch), thứ tự theo phụ thuộc **thật** (module B dùng bảng / API / màn của A; "làm sau cho tiện" không phải phụ thuộc), cột Loại = mức thiết kế `NHẸ` / `VỪA` / `NẶNG` (mục 10.2, `security` được nâng); bạn ghi bảng Module trong `APP.md`. M-0 luôn là khung project: scaffold theo stack, CI, Docker, `.env.example`, lint/format, test chạy được, đăng nhập nếu R có. Cập nhật config: `BE_PATHS`, `FE_PATHS`, `TEST_PATHS`, `LINT_CMD`, `TEST_CMD`... theo stack đã chốt (**FE và BE chung 1 repo** (Inertia, Blade, Next fullstack...) → `FE_PATHS=""`, dồn đường dẫn FE vào `BE_PATHS`: `backend-dev` làm cả FE, không gọi `frontend-dev`); `VIEWPORTS` theo `intake.md` (Responsive CÓ → `"375 768 1280"`, KHÔNG → `"1280"`); `E2E_CMD`, `APP_START_CMD`, `APP_PORT` (M-0 dựng Playwright + khung `e2e/` theo skill `test-automation` mục 1b). Module cuối luôn là **M-E2E**: chạy lại toàn bộ E2E theo mọi luồng "1 ngày của <vai trò>" ở mọi `VIEWPORTS` (regression cả app). Chạy lại `gap-check.py --spec`.
 
 ## 10. Phase B: build
 1. **M-0 trong chính task này:** `echo S3 > .agent-team/stage` (hook chạy `gap-check.py --gate --spec-check`: thiếu gì báo đó). S3-S6 như `task.md` mục 6 (S3 dev scaffold phần code trong vùng mình; S4 `test-executor` dựng + chạy test khung: `TEST_PATHS` của starter như `tests/`, `phpunit.xml`, `e2e/` do test-executor chép, dev không chép; review, đóng).
-2. **M-1..n:** mỗi module 1 lệnh `/agent-team:task M-<n>: <tên module> (docs/product/APP.md)`, **lần lượt**, đúng thứ tự bảng Module (hook đọc TASK.md mới nhất nên không chạy song song).
-   - AC của task = AC của các R-n trong module (BA chi tiết hoá). Workflow / wireframe của task: BA, ui-designer lấy phần liên quan từ `docs/product/` sang `design/` của task, không vẽ lại từ đầu.
-   - Module đi ngược `docs/decisions/` → sửa quyết định trước (Architect; đổi hành vi nghiệp vụ → hỏi owner qua form), không lặng lẽ làm khác.
-   - Câu nghiệp vụ phát sinh khi code (GAP) mà cần owner → ghi Q-n `OWNER` có đề xuất → form → `import`, không hỏi dev.
-   - Hook chặn mọi task sang S3 khi `APP.md` chưa `Owner duyệt: APPROVED`.
-3. `PUSH=0`: module sau tạo branch từ branch module trước (ghi cột "Branch gốc"), báo user merge theo thứ tự.
+2. **M-1..n → M-E2E: bạn điều phối, nhiều task chạy song song** (`task.md` mục 6c, script `pool.py`). 1 phiên = 1 branch `agent/<task-id app>`; mỗi task 1 worktree + branch tạm, xong merge về branch phiên. Không dừng hỏi user, không bảo user gõ lệnh.
+   ```
+   Thiết kế module (mỗi lúc 1, dây chuyền)        Thực thi (tối đa MAX_PARALLEL task cả app)       Merge (lần lượt)
+   M-n: debate theo loại → chia task T-k  ──►  task READY → worktree → dev → test → review  ──►  merge --no-commit → IT
+        pool.py module M-n --state DESIGN        pool.py fill / wait                              PASS: ✅ · FAIL / conflict: FIX
+        → pool.py add (mỗi T-k) → --state SPLIT   (task chờ phụ thuộc chưa merge thì không lấy)     module đủ ✅ → tag m<n>-done
+   ```
+   - **Thiết kế module** (ở thư mục chính, TASK.md riêng của module, chỉ S1-S2, rồi `rm .agent-team/stage`): theo cột "Loại" trong bảng Module: `NHẸ` (CRUD theo khuôn có sẵn) → `solution-architect` viết thiết kế + contract, `test-designer` + `security` duyệt 1 lượt, không debate · `VỪA` → 1 lượt đề xuất + 1 lượt WHY · `NẶNG` (auth / quyền / tiền / dữ liệu nhạy cảm / kiến trúc) → debate đầy đủ (`task.md` mục 4). `security` được nâng loại.
+   - **Chia task** (`solution-architect` + `business-analyst`): mỗi T-k ghi vào bảng Task của module (TASK.md thiết kế, mục "Chia task"): mô tả, AC (`AC-n` của R-n), **file / vùng sẽ đụng**, **phụ thuộc theo task** (`M-1/T-1`, không ghi cả module), API contract dùng. Hai task đụng cùng file → gộp hoặc cho phụ thuộc nhau (không chạy song song). Rồi `pool.py add M-n/T-k --task-id <YYYYMMDD-mn-tk> --title ".." --deps ".."` từng task, `pool.py module M-n --state SPLIT`.
+   - **Dây chuyền:** vừa SPLIT module này thì thiết kế module kế ngay (contract module trước đã chốt là đủ), không chờ module trước code xong. Hàng đợi task không bao giờ lấy task của module đang thiết kế.
+   - **Chỉ dừng khi:** chỉ còn việc chờ owner (GAP cần owner → task / module `BLOCKED`, build form; việc không phụ thuộc vẫn chạy) · mọi việc còn lại BLOCKED · hết bảng Module (M-E2E ✅) · hết quota (user `/agent-team:resume` là chạy tiếp từ `pool.py resume`).
+   - AC của task = AC của các R-n trong module (BA chi tiết hoá). Workflow / wireframe lấy từ `docs/product/`, không vẽ lại. Module đi ngược `docs/decisions/` → sửa quyết định trước. Câu nghiệp vụ phát sinh cần owner → Q-n `OWNER` → form. Hook chặn mọi task sang S3 khi `APP.md` chưa `Owner duyệt: APPROVED`.
+3. **Merge cho user:** 1 branch `agent/<task-id app>` (tag `…-m<n>-done` mỗi module). User merge 1 lần, hoặc merge tới tag muốn lấy. Branch tạm của task giữ lại (không xoá branch). `PUSH=1`: push branch phiên + tag sau mỗi module.
 4. **Tài liệu app luôn đúng với code:** module đổi yêu cầu / phát sinh GAP → sửa `docs/product/` (task.md mục 7b). Mỗi module xong: cập nhật cột Trạng thái trong `APP.md`, chạy `gap-check.py --spec`. Hook chặn S6 của mọi task khi tài liệu app thiếu hoặc SPEC.md cũ.
 
 ## 11. Thiếu sót phát hiện về sau
@@ -159,5 +167,6 @@ Xong: chạy `.claude/agent-team/gap-check.py --spec`, sửa hết `THIEU` → `
 ## 12. Báo cáo
 - **Mỗi lượt form:** dòng đầu "Gửi file `docs/product/QnA-v<n>.xlsx`: owner điền mục A, dev điền mục B" + số câu mỗi mục (số câu CAO). Việc tiếp theo: nhận file trả lời rồi `/agent-team:resume <task-id> <file>`.
 - **Cuối Phase A:** dòng đầu "Owner đã chốt logic" (hoặc còn chờ gì). Kèm: đường dẫn `docs/product/SPEC.md`, số yêu cầu, số luồng, số màn, danh sách module + thứ tự, các `GIẢ ĐỊNH` mức THẤP.
-- **Sau mỗi module:** như `task.md` mục 10, thêm "Module tiếp theo: M-<n>".
-- Cuối cùng: đúng 1 việc user làm tiếp (≤ 2 phút).
+- **Trong lúc điều phối:** mỗi lần `pool.py wait` trả về, dán `pool.py status` (hoặc `progress.py --list`) vào chat 1 lần, rồi **chạy tiếp luôn**, không chờ user.
+- **Cuối app** (hết bảng Module hoặc dừng ở điểm dừng): bảng module (Trạng thái, tag, lý do BLOCKED), branch phiên để merge.
+- Cuối cùng: đúng 1 việc user làm tiếp (≤ 2 phút); đang chạy tiếp thì ghi "chưa cần làm gì".

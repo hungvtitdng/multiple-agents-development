@@ -278,6 +278,25 @@ check("board.py done: tự ✅ bước ▶ của role", "✅ 1. Quét KB" in hru
 hb("stop", "test-designer")
 check("SubagentStop (chưa done): tự ✅ bước ▶ của role", "✅ 2. Thiết kế test" in hrun("plan", "H1")[1])
 
+import sqlite3 as _sql3
+# ---- v0.26: agent làm trong worktree → nhịp tim ghi vào board.db của worktree ----
+WTD = os.path.join(hp, ".worktrees", "W1")
+os.makedirs(os.path.join(WTD, ".claude")); os.makedirs(os.path.join(WTD, "docs", "agent-tasks", "W1"))
+open(os.path.join(WTD, ".claude", "agent-team.config"), "w").write("X=1\n")
+open(os.path.join(WTD, "docs", "agent-tasks", "W1", "TASK.md"), "w").write("x")
+hb("pre", "frontend-dev", tool="Edit", ti={"file_path": os.path.join(WTD, "app", "a.tsx")})
+_w = _sql3.connect(os.path.join(WTD, ".agent-team", "board.db")) if os.path.isfile(os.path.join(WTD, ".agent-team", "board.db")) else None
+check("Edit file trong worktree → agent_runs ở board.db của worktree", _w is not None and
+      _w.execute("SELECT count(*) FROM agent_runs WHERE task='W1' AND role='frontend-dev'").fetchone()[0] == 1)
+hb("pre", "frontend-dev", ti={"command": f"cd {WTD} && npm test"})
+check("`cd <worktree> &&` cũng ghi vào worktree", _w.execute("SELECT last_tool FROM agent_runs WHERE task='W1'").fetchone()[0].startswith("Bash: cd"))
+_m = _sql3.connect(os.path.join(hp, ".agent-team", "board.db"))
+_m.execute("CREATE TABLE IF NOT EXISTS pool (label TEXT, state TEXT)"); _m.execute("INSERT INTO pool VALUES('M-1/T-1','RUNNING')"); _m.commit()
+hrun("plan", "H1", "--set", "Màn hình @frontend-dev"); hrun("step", "H1", "1", "start")
+hb("stop", "frontend-dev", tool="", ti={})
+check("SubagentStop không đường dẫn + đang điều phối: không ✅ nhầm bước ở thư mục chính", "▶" in hrun("plan", "H1")[1])
+_m.execute("DELETE FROM pool"); _m.commit(); _m.close(); _w.close()
+
 # ---- v0.21.0: ∥ song song, tự ▶ / ✅ ----
 Q = "20261123-par"
 code, out = run("plan", Q, "--set", "Auth BE @backend-dev ∥ Trang auth FE @frontend-dev | Test @test-executor")

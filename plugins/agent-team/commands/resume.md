@@ -1,12 +1,12 @@
 ---
-description: Làm tiếp task dang dở (hết quota, lỗi, đóng phiên) - đọc TASK.md, stage, board rồi tiếp tục đúng bước, không tạo task mới.
+description: Làm tiếp việc dang dở (hết quota, lỗi, đóng phiên) - đọc TASK.md, stage, board rồi tiếp tục đúng bước; app / module thì chạy nối tiếp các module / task con còn lại tới hết.
 argument-hint: <task-id> [file form đã trả lời .xlsx/.csv] (bỏ trống = task mới nhất)
 model: opus
 ---
 
 Bạn là **Team Lead**. Làm tiếp task: $ARGUMENTS
 
-Trạng thái nằm trên đĩa nên làm tiếp được. Không hỏi user (task `APP`: mọi câu đi form, mục A owner, mục B dev; xem mục 2), không tạo task-id hoặc branch mới.
+Trạng thái nằm trên đĩa nên làm tiếp được. **Chạy tiếp tới khi xong hết việc**, không chỉ task đang dở: task thuộc app / module đóng xong thì tự mở task kế theo bảng (mục 3). Không hỏi user (task `APP`: mọi câu đi form, mục A owner, mục B dev; xem mục 2), không tạo lại task-id hoặc branch của task đang dở (task kế của app / module thì tạo mới như mục 3).
 
 ## 1. Khôi phục trạng thái
 1. Đọc `CLAUDE.md`, `.claude/agent-team.config`. Chưa có thì báo user chạy `/agent-team:init`. Đầu phiên hook `sync.py` tự chép script plugin mới sang `.claude/agent-team/` và thêm status line; có dòng `[agent-team] ...` thì báo lại user 1 dòng.
@@ -34,11 +34,15 @@ Trạng thái nằm trên đĩa nên làm tiếp được. Không hỏi user (ta
 | `Loại: APP`, `BLOCKED (chờ owner, form lượt n)` | Có đường dẫn file trả lời trong `$ARGUMENTS` → `.claude/agent-team/owner-form.py import <file>`, báo số OK / góp ý / không / để trống, rồi làm tiếp theo `app.md` mục 0b. Chưa có file → báo user vẫn đang chờ owner / dev (đường dẫn `docs/product/QnA-v<n>.xlsx`), làm phần không phụ thuộc (A2) |
 | `Loại: MODULE` | Như dòng APP ở trên nhưng mọi lệnh `owner-form.py` / `gap-check.py` thêm `--dir=<Module trong TASK.md>`; làm tiếp theo `/agent-team:module` |
 | `Loại: APP`, stage S1-S2 (Phase A) | Làm tiếp theo `app.md` (plugin). Bước dang dở suy từ `docs/product/`: `APP.md` `Intake` chưa YES → A0 · `coverage.md` còn TODO → A1 · chưa `Phương án chốt` → A2 · chưa có `requirements` → A3 (nháp) · `screens.md` trống → A3b mockup · `Challenger` chưa DONE → A4 · `Debate` chưa DONE → debate chốt câu hỏi · chưa có `QnA-v1.xlsx` → build form cuối · `Owner duyệt` chưa APPROVED → mục 7 · chưa có bảng Module → A5. Câu hỏi đi **form** (A owner, B dev), không `AskUserQuestion` |
-| Có `docs/product/APP.md`, task module | Như `run`; module tiếp theo xem cột Trạng thái của bảng Module trong `APP.md` |
+| Có `docs/product/APP.md`, task module | Như `task`; xong thì sang module kế (mục 3) |
+| Task mới nhất đã đóng (S6 xong, không còn stage), bảng Module (`APP.md`) / Task (`MODULE.md`) còn dòng `TODO` / `DOING` | Mở module / task kế theo `app.md` mục 10.2, không báo "đã xong" |
+| Có bảng `pool` (điều phối nhiều task) | `python3 .claude/agent-team/pool.py resume`: task RUNNING / FIX / GAP → `cd <worktree>` làm tiếp như bảng này (agent DONE thì không gọi lại); MERGING → chạy lại integration test rồi `merge-end`; module đang DESIGN → làm tiếp debate. Rồi `pool.py fill` cho đủ `MAX_PARALLEL` → vòng điều phối (`task.md` mục 6c) |
 
 Ghi vào TASK.md mục "Phán quyết"/SUMMARY: "Resume từ <bước>" kèm lý do dừng nếu biết (hết quota, lỗi...).
 
 ## 3. Tiếp tục
 Làm đúng playbook của `/agent-team:task` từ bước vừa xác định (mục 4-10): subagent chạy song song, giới hạn debate 3 lượt và 3 vòng sửa/issue, không hỏi user, Security bắt buộc, commit một dòng. Không làm lại bước đã xong và đã có bằng chứng (commit, file board, test pass).
 
-Báo cáo ngắn: đang resume từ bước nào, đã xong gì, còn gì; cuối là đúng 1 việc user làm tiếp (≤ 2 phút).
+**Không dừng sau khi xong task đang dở:** task thuộc app (`docs/product/APP.md` có bảng Module) hoặc module (`- Module:` trong TASK.md) → tự tạo task cho module / task con kế tiếp và làm tiếp, theo `app.md` mục 10.2 (tạo task-id + branch theo `task.md` mục 0-1, ghi bảng). Chỉ dừng ở điểm dừng trong `app.md` mục 10.2.
+
+Báo cáo ngắn: đang resume từ bước nào, đã xong gì, còn gì; cuối là đúng 1 việc user làm tiếp (≤ 2 phút), hoặc "chưa cần làm gì" khi đang chạy tiếp.

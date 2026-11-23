@@ -48,6 +48,16 @@ LESSONS_PATH=docs/LESSONS.md
 # Agent im lặng (không dùng tool) quá số phút này thì coi là treo: board.py wait / status / status line báo ⚠.
 # Lệnh có `timeout N` thì ngưỡng theo N. Việc chạy lâu mà vẫn dùng tool (vẽ nhiều màn) không bị coi là treo.
 HANG_MINUTES=10
+# Status line: table = bảng checklist nhiều dòng (module / task + các bước), 1 = một dòng
+PROGRESS_LINES=table
+# Điều phối nhiều task (App / Module, pool.py): số task chạy cùng lúc cho cả app. Đổi lúc nào cũng được (tự scale)
+MAX_PARALLEL=8
+# Thư mục worktree của task (tự thêm vào .git/info/exclude)
+WORKTREE_DIR=.worktrees
+# Cổng E2E của worktree: E2E_PORT_BASE, +1, +2... (không đụng nhau khi chạy song song)
+E2E_PORT_BASE=4000
+# Chạy sau mỗi lần merge task về branch phiên (trống = TEST_CMD + agent-db-clone.sh e2e toàn bộ)
+INTEGRATION_CMD=
 
 # 1 = dùng code graph Graphify (cài riêng: xem release-notes của plugin; Lead chạy graphify update)
 USE_CODE_GRAPH=1

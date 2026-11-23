@@ -10,9 +10,9 @@
 - Owner duyệt: TODO (APPROVED khi owner trả lời hết form cuối)
 
 ## Module (thứ tự build)
-> Mỗi module là 1 task `/agent-team:task`. Không có remote (`PUSH=0`): branch module sau tạo từ branch module trước, user merge theo thứ tự.
+> **Lead điều phối** M-0 → … → M-E2E trên 1 branch phiên: thiết kế từng module (Loại: `NHẸ` / `VỪA` / `NẶNG`), chia task, task chạy song song (tối đa `MAX_PARALLEL`), merge + integration test, module xong gắn tag. User không gõ lệnh từng module. Phụ thuộc: chỉ ghi phụ thuộc thật. Trạng thái: `TODO` / `DESIGN` / `DOING` / `DONE` / `BLOCKED (<lý do>)`.
 
-| M | Module | Gồm R | Phụ thuộc | Loại | Branch gốc | Task-id | Trạng thái |
+| M | Module | Gồm R | Phụ thuộc | Loại | Tag | Task-id | Trạng thái |
 |---|---|---|---|---|---|---|---|
 | M-0 | Khung project (scaffold, CI, Docker, env, Playwright + e2e/) | | | VỪA | | | TODO |
 | M-1 | | | M-0 | | | | TODO |

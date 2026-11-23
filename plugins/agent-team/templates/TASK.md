@@ -10,7 +10,8 @@
 | Thành viên | (role tham gia; role bỏ qua + lý do) |
 
 ## Điều kiện chuyển giai đoạn (Lead cập nhật, hook kiểm)
-- Loại: TODO (NHỎ / VỪA / LỚN / APP = /agent-team:app, cổng ở docs/product/APP.md / MODULE = /agent-team:module, chỉ tài liệu)
+- Loại: TODO (NHỎ / VỪA / LỚN / ĐÃ CHIA = task con chia từ thiết kế module, chạy trong worktree / APP = /agent-team:app, cổng ở docs/product/APP.md / MODULE = /agent-team:module, chỉ tài liệu)
+- Thiết kế module: N/A (ĐÃ CHIA: đường dẫn phương án + API contract đã chốt của module)
 - Module: N/A (task con của module mới: docs/product/modules/<tên>; hook chờ Owner duyệt ở MODULE.md)
 - Tiêu chí nghiệm thu: TODO (chỉ cần cho NHỎ, vd AC ngắn do Lead viết)
 - Phương án chốt: TODO (tên/mô tả; VỪA/LỚN)

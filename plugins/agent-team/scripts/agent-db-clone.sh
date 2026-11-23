@@ -175,7 +175,7 @@ e2e_run() {
   # App chạy trong container nối DB clone → (FE trên máy nếu có) → E2E_CMD trên máy, lặp VIEWPORTS
   [ -n "${E2E_CMD:-}" ] || die "thiếu E2E_CMD trong config (vd \"npx playwright test\")"
   [ -n "${APP_START_CMD:-}" ] || die "thiếu APP_START_CMD trong config"
-  local port="${E2E_PORT:-3999}" base evid
+  local port="${E2E_PORT:-$(cat "$ROOT/.agent-team/e2e_port" 2>/dev/null || echo 3999)}" base evid  # worktree: cổng riêng do pool.py cấp
   APP_RUN="agent-e2e-$SAFE" FE_PID=""  # toàn cục: trap EXIT chạy sau khi hàm kết thúc
   clone_envs
   docker rm -f "$APP_RUN" >/dev/null 2>&1 || true

@@ -11,7 +11,7 @@ import shutil
 import sys
 
 STATUS_CMD = "python3 .claude/agent-team/progress.py"
-SCRIPTS = ("board.py", "progress.py", "gap-check.py", "owner-form.py", "kb-check.py", "agent-db-clone.sh")
+SCRIPTS = ("board.py", "progress.py", "pool.py", "gap-check.py", "owner-form.py", "kb-check.py", "agent-db-clone.sh")
 TEMPLATES = ("TASK.md", "POST.md", "SUMMARY.md", "CONTEXT.md", "MOCKS.md")
 
 
@@ -36,7 +36,7 @@ def sync_scripts(plugin, root):
         # board.py, progress.py luôn có; script khác chỉ cập nhật khi project đã dùng (đã có bản copy)
         if os.path.isfile(t) and filecmp.cmp(s, t, shallow=False):
             continue
-        if not os.path.isfile(t) and f not in ("board.py", "progress.py"):
+        if not os.path.isfile(t) and f not in ("board.py", "progress.py", "pool.py"):
             continue
         shutil.copyfile(s, t)
         os.chmod(t, 0o755)
