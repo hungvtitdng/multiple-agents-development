@@ -1,3 +1,18 @@
+# Release notes - 24/11/2026 (v0.30.0 - nền dữ liệu M-DB trước, module độc lập)
+
+## Thay đổi
+- **Bảng dữ liệu không thuộc module nào:** mọi bảng trong `docs/database/schema.md` nằm ở module **M-DB** (Phase B, sau M-0): migration + model + quan hệ + enum + factory + seeder + service dùng chung (giao diện + bản tối thiểu). Module mặc định chỉ phụ thuộc `M-DB (code)` → chạy song song. Trước đây bảng đi theo module dùng nó → chuỗi phụ thuộc (vd `04.Cay`: idps ở M-6 nên M-7..M-11 chờ).
+- **`pool.py schema`:** đọc mục `## Bảng` của `SCHEMA_DOC` (tên trong backtick ở cột đầu), tìm migration (`Schema::create`, `create_table`, `CREATE TABLE`, `createTable`, `op.create_table`, tên file `create_<bảng>_table`) trong `MIGRATION_PATHS` (hoặc thư mục migration thường gặp). Thiếu → exit 1 + danh sách.
+- **`pool.py fill`:** thiếu migration → `⛔ Nền dữ liệu chưa đủ` và chỉ chạy M-0 / M-DB, module khác không debate / không mở task.
+- **`merge-begin`:** task (không phải M-DB) có migration mới **đổi / xoá** bảng chung (dropColumn, renameColumn, ->change(), Schema::drop, remove_column, change_column, DROP / ALTER TABLE … DROP / RENAME / MODIFY…) → chặn, bảo GAP; Lead duyệt rồi `merge-begin --allow-schema-change`. Thêm cột / bảng mới thì không chặn.
+- `handoff`: thêm "mọi bảng trong schema có migration" + "M-DB DONE". Bảng Module, nhãn task, `## Lý do phụ thuộc` nhận `M-DB`.
+- Mẫu `APP.md`: dòng M-DB; config `SCHEMA_DOC`. Test schema 8 (mới).
+
+## Cần làm thủ công
+- Commit + push, `/plugin marketplace update multiple-agent`, khởi động lại Claude Code.
+- **Key mới (không bắt buộc):** `SCHEMA_DOC=docs/database/schema.md`. Không phải secret.
+- **`04.Cay`:** `pool.py schema` hiện báo thiếu 7 bảng (staff_imports, competency_groups, idps, idp_goals, evidence_files, idp_approvals, idp_histories) → sau khi cài bản này, `fill` chỉ chạy M-0 / M-DB. Lead phải thêm dòng **M-DB** vào bảng Module (sau M-1), đổi Phụ thuộc M-3..M-12 → M-DB, bỏ phần tạo bảng khỏi task M-3. Task đang chạy không bị dừng.
+
 # Release notes - 24/11/2026 (v0.29.2 - worktree nhận quyền Claude Code)
 
 ## Thay đổi

@@ -13,6 +13,8 @@ Lead:
   merge-begin <M-n/T-k>    merge --no-commit vào branch phiên; conflict → --abort, FIX
   merge-end <M-n/T-k> pass|fail [--note ".."]   pass: commit + xoá worktree + DONE; fail: --abort, FIX
   wait [--interval 30] [--max 540]   exit 0 có việc (kể cả develop có commit mới) · 3 agent treo · 4 hết giờ chờ
+Nền dữ liệu:
+  schema          bảng trong SCHEMA_DOC (mặc định docs/database/schema.md, mục `## Bảng`) đã có migration chưa
 Team (Phase B / C):
   handoff         kiểm bàn giao cuối Phase B
   claimable       module nhận được ngay / chờ / đã có người nhận
@@ -38,7 +40,7 @@ CREATE TABLE IF NOT EXISTS pool_modules (
 """
 SLOT_STATES = ("RUNNING", "FIX", "GAP")  # chiếm chỗ (worktree đang làm)
 STATES = ("WAIT", "RUNNING", "GAP", "FIX", "BLOCKED", "MERGE_WAIT", "MERGING", "DONE")
-LABEL_RE = re.compile(r"^M-(\d+|E2E)/T-\d+$")
+LABEL_RE = re.compile(r"^M-(\d+|E2E|DB)/T-\d+$")
 
 
 def die(msg, code=1):
@@ -167,8 +169,11 @@ def plan_fill(db, root):
     order = [x["M"] for x in rows] + [m["module"] for m in db.execute("SELECT module FROM pool_modules ORDER BY ord")
                                      if m["module"] not in {x["M"] for x in rows}]
     start_t, start_d, wait_d = [], [], []
+    miss = missing_tables(root)  # thiếu migration → chỉ M-0 / M-DB chạy, module khác chờ nền dữ liệu
     for m in order:
         st = mod_state(db, root, m, rows)
+        if miss and m not in ("M-0", "M-DB"):
+            continue
         if st in ("SPLIT", "DESIGN"):
             for r in db.execute("SELECT * FROM pool WHERE module=? ORDER BY ord", (m,)):
                 if free > 0 and is_ready(db, r, root):
@@ -219,7 +224,7 @@ def cmd_add(db, root, a):
         die("task-id chỉ gồm chữ, số, . _ - (dùng trong commit `[role] task-id: ...`)")
     for d in [x.strip() for x in (a.deps or "").split(",") if x.strip()]:
         if not LABEL_RE.match(d):
-            die(f"phụ thuộc '{d}' phải dạng M-<n>/T-<k>")
+            die(f"phụ thuộc '{d}' phải dạng M-<n>/T-<k> (hoặc M-DB/T-<k>)")
     n = db.execute("SELECT count(*) FROM pool").fetchone()[0]
     db.execute("INSERT OR REPLACE INTO pool(label, task_id, module, title, deps, ord) VALUES(?,?,?,?,?,COALESCE((SELECT ord FROM pool WHERE label=?),?))",
                (a.label, a.task_id, mod, a.title, a.deps or "", a.label, n + 1))
@@ -279,6 +284,10 @@ def cmd_fill(db, root, a):
         print("Đang merge (MERGING): xong merge-end rồi fill (worktree mới phải tạo từ branch đã merge)")
         return
     start_t, start_d, wait_d = plan_fill(db, root)
+    miss = missing_tables(root)
+    if miss:
+        print(f"⛔ Nền dữ liệu chưa đủ: {len(miss)} bảng trong schema chưa có migration ({', '.join(miss[:8])}"
+              f"{' …' if len(miss) > 8 else ''}) → chỉ chạy M-0 / M-DB, module khác chờ (pool.py schema)")
     busy = db.execute(f"SELECT count(*) FROM pool WHERE state IN ({','.join('?' * len(SLOT_STATES))})", SLOT_STATES).fetchone()[0]
     deb = [x[0] for x in db.execute("SELECT module FROM pool_modules WHERE state='DESIGN'")]
     print(f"Đang chạy {busy + len(deb)}/{limit} (task {busy} · debate {len(deb)}/{max_debate(root)})"
@@ -335,6 +344,10 @@ def cmd_merge_begin(db, root, a):
     cur = db.execute("SELECT label FROM pool WHERE state='MERGING'").fetchone()
     if cur:
         die(f"{cur[0]} đang merge: merge lần lượt (merge-end trước)")
+    changes = schema_changes(root, r["branch"]) if r["module"] != "M-DB" else []
+    if changes and not getattr(a, "allow_schema_change", False):
+        die("task đổi / xoá bảng chung (M-DB): " + "; ".join(changes[:5]) + ". Module chỉ được thêm cột / bảng mới. "
+            "Cần đổi thật → GAP, Lead duyệt + báo module dùng bảng đó, rồi merge-begin --allow-schema-change")
     code, out = git(root, "diff", "--name-only", "HEAD")
     dirty = [l for l in out.splitlines() if l and l != ".claude/agent-team.config"]  # đổi MAX_PARALLEL không chặn merge
     if dirty:
@@ -504,7 +517,7 @@ def cmd_resume(db, root, a):
 
 # ---------- team: nhận module, đồng bộ develop, kiểm bàn giao (v0.29) ----------
 APP_MD = "docs/product/APP.md"
-DEP_REASON_RE = re.compile(r"(M-(?:\d+|E2E))\s*(?:→|->)\s*(M-\d+)\s*\((contract|code)\)\s*:\s*\S")
+DEP_REASON_RE = re.compile(r"(M-(?:\d+|E2E|DB))\s*(?:→|->)\s*(M-(?:\d+|DB))\s*\((contract|code)\)\s*:\s*\S")
 ENV_USE_RES = [  # chỉ key bắt buộc: có giá trị mặc định trong code (env('X', 'mặc định')) thì không tính
     re.compile(r"\benv\(\s*['\"]([A-Z][A-Z0-9_]+)['\"]\s*\)"),                                # Laravel env('X')
     re.compile(r"\bENV(?:\[\s*['\"]([A-Z][A-Z0-9_]+)['\"]\s*\]|\.fetch\(\s*['\"]([A-Z][A-Z0-9_]+)['\"]\s*\))"),  # Rails
@@ -556,10 +569,10 @@ def module_table(text):
         if c and c[0] == "M" and "Module" in c:
             head = c
             continue
-        if head and len(c) >= 2 and re.match(r"^M-(\d+|E2E)$", c[0]):
+        if head and len(c) >= 2 and re.match(r"^M-(\d+|E2E|DB)$", c[0]):
             r = dict(zip(head, c + [""] * (len(head) - len(c))))
             dep = r.get("Phụ thuộc", "")
-            r["deps"] = ["*"] if re.search(r"tất cả|mọi module", dep, re.I) else re.findall(r"M-\d+", dep)
+            r["deps"] = ["*"] if re.search(r"tất cả|mọi module", dep, re.I) else re.findall(r"M-(?:\d+|DB)\b", dep)
             rows.append(r)
         elif head and not line.strip().startswith("|"):
             head = None if rows else head
@@ -770,6 +783,14 @@ def cmd_handoff(db, root, a):
     heavy = [r["M"] for r in rows if (r.get("Loại", "").split() or [""])[0].upper() in ("NẶNG", "LỚN")]
     noc = [m for m in heavy if not os.path.isfile(os.path.join(root, contract_path(m)))]
     item(not noc, "contract module NẶNG (docs/product/contracts/M-n.md)", ", ".join(noc))
+    tabs = schema_tables(root)
+    if tabs:
+        miss = missing_tables(root)
+        item(not miss, f"nền dữ liệu: mọi bảng trong schema ({len(tabs)}) có migration (M-DB)", ("thiếu: " + ", ".join(miss[:10])) if miss else "")
+        mdb = next((r for r in rows if r["M"] == "M-DB"), None)
+        item(bool(mdb) and mdb.get("Trạng thái", "").upper().startswith("DONE"), "M-DB DONE trong bảng Module")
+    else:
+        item(False, f"schema: không thấy mục `## Bảng` trong {cfg(root, 'SCHEMA_DOC', SCHEMA_DOC_DEFAULT)} (danh sách bảng để kiểm M-DB)")
     m0 = next((r for r in rows if r["M"] == "M-0"), None)
     m0_ok = bool(m0) and m0.get("Trạng thái", "").upper().startswith("DONE")
     if m0_ok and m0.get("Task-id"):
@@ -795,6 +816,104 @@ def cmd_handoff(db, root, a):
     print("BÀN GIAO ĐỦ: commit, push, PR vào nhánh gốc; báo team danh sách module nhận được")
 
 
+# ---------- nền dữ liệu M-DB: mọi bảng trong schema có migration trước Phase C (v0.30) ----------
+SCHEMA_DOC_DEFAULT = "docs/database/schema.md"
+MIGRATION_DIRS_DEFAULT = ["database/migrations", "db/migrate", "migrations", "prisma/migrations", "src/migrations", "alembic/versions"]
+CREATE_RES = [
+    re.compile(r"Schema::create\(\s*['\"]([A-Za-z0-9_]+)['\"]"),            # Laravel
+    re.compile(r"create_table\s*\(?\s*[:'\"]([A-Za-z0-9_]+)"),                # Rails
+    re.compile(r"(?i)CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[`\"]?([A-Za-z0-9_]+)"),  # SQL
+    re.compile(r"createTable\(\s*['\"]([A-Za-z0-9_]+)['\"]"),                 # Knex / TypeORM / Sequelize
+    re.compile(r"op\.create_table\(\s*['\"]([A-Za-z0-9_]+)['\"]"),            # Alembic
+]
+TABLE_REF_RES = [  # bảng mà migration đụng tới
+    re.compile(r"Schema::(?:table|drop|dropIfExists|rename)\(\s*['\"]([A-Za-z0-9_]+)['\"]"),
+    re.compile(r"(?:change_table|drop_table|rename_table|remove_column|rename_column|change_column|remove_columns)\s*\(?\s*[:'\"]([A-Za-z0-9_]+)"),
+    re.compile(r"(?i)(?:ALTER|DROP)\s+TABLE\s+(?:IF\s+EXISTS\s+)?[`\"]?([A-Za-z0-9_]+)"),
+    re.compile(r"(?:alterTable|dropTable|renameTable)\(\s*['\"]([A-Za-z0-9_]+)['\"]"),
+    re.compile(r"op\.(?:alter_column|drop_table|drop_column)\(\s*['\"]([A-Za-z0-9_]+)['\"]"),
+]
+DESTRUCTIVE_RE = re.compile(  # đổi / xoá (thêm cột mới thì được)
+    r"dropColumn|renameColumn|->change\(\)|Schema::(?:drop|dropIfExists|rename)\b|dropForeign|dropIndex|dropUnique"
+    r"|\b(?:remove_column|remove_columns|rename_column|change_column|drop_table|rename_table)\b"
+    r"|(?i:DROP\s+TABLE|ALTER\s+TABLE\s+\S+\s+(?:DROP|RENAME|MODIFY|ALTER\s+COLUMN|CHANGE))"
+    r"|\b(?:dropTable|renameTable|dropColumn|renameColumn)\(|op\.(?:drop_table|drop_column|alter_column)\(")
+
+
+def schema_tables(root):
+    """Tên bảng trong mục `## Bảng` của SCHEMA_DOC (cột đầu, tên trong backtick). [] nếu không có file / mục."""
+    text = show(root, "", cfg(root, "SCHEMA_DOC", SCHEMA_DOC_DEFAULT))
+    m = re.search(r"(?ms)^##\s+Bảng\s*$(.*?)(?=^##\s)", text + "\n## _")
+    out = []
+    for line in (m.group(1) if m else "").splitlines():
+        c = line.strip().strip("|").split("|")
+        if line.strip().startswith("|") and c and "`" in c[0]:
+            out += [t for t in re.findall(r"`([A-Za-z0-9_]+)`", c[0]) if t not in out]
+    return out
+
+
+def migration_dirs_of(root):
+    v = cfg(root, "MIGRATION_PATHS", "")
+    dirs = [x.strip("/") for x in v.split() if x.upper() != "TODO"] if v else []
+    return dirs or [x for x in MIGRATION_DIRS_DEFAULT if os.path.isdir(os.path.join(root, x))]
+
+
+def migrated_tables(root):
+    found = set()
+    for d in migration_dirs_of(root):
+        for dp, _, files in os.walk(os.path.join(root, d)):
+            for f in files:
+                try:
+                    t = open(os.path.join(dp, f), encoding="utf-8", errors="ignore").read()
+                except OSError:
+                    continue
+                for r in CREATE_RES:
+                    found.update(r.findall(t))
+                m = re.search(r"create_([a-z0-9_]+?)_table", f)
+                if m:
+                    found.add(m.group(1))
+    return found
+
+
+def missing_tables(root):
+    tabs = schema_tables(root)
+    if not tabs:
+        return []
+    have = migrated_tables(root)
+    return [t for t in tabs if t not in have]
+
+
+def cmd_schema(db, root, a):
+    tabs = schema_tables(root)
+    if not tabs:
+        print(f"Không thấy mục `## Bảng` trong {cfg(root, 'SCHEMA_DOC', SCHEMA_DOC_DEFAULT)}: bỏ qua kiểm nền dữ liệu")
+        return
+    miss = missing_tables(root)
+    print(f"Schema {len(tabs)} bảng · có migration {len(tabs) - len(miss)} · thiếu {len(miss)}")
+    if miss:
+        print("Thiếu: " + ", ".join(miss) + "\n→ làm M-DB trước (migration + model + quan hệ + enum + factory + seeder), module khác chờ")
+        sys.exit(1)
+    print("✅ Nền dữ liệu đủ: module chỉ phụ thuộc M-DB chạy song song được")
+
+
+def schema_changes(root, branch):
+    """Migration mới trong branch task mà đổi / xoá bảng chung (bảng có trong schema). Thêm cột / bảng mới thì không tính."""
+    tabs = set(schema_tables(root))
+    if not tabs:
+        return []
+    code, files = git(root, "diff", "--name-only", "--diff-filter=A", f"HEAD...{branch}", "--", *migration_dirs_of(root))
+    hits = []
+    for f in files.splitlines() if not code else []:
+        code2, t = git(root, "show", f"{branch}:{f}")
+        if code2:
+            continue
+        if not DESTRUCTIVE_RE.search(t):
+            continue
+        refs = {x for r in TABLE_REF_RES for x in r.findall(t)}
+        hits += [f"{f} → {name}" for name in sorted(refs & tabs)]
+    return hits
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="pool.py", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sp = p.add_subparsers(dest="cmd", required=True)
@@ -806,7 +925,8 @@ def main(argv=None):
     s = sp.add_parser("set")
     s.add_argument("label"), s.add_argument("state"), s.add_argument("--note")
     mb = sp.add_parser("merge-begin")
-    mb.add_argument("label")
+    mb.add_argument("label"), mb.add_argument("--allow-schema-change", action="store_true", help="đã duyệt GAP đổi bảng chung")
+    sp.add_parser("schema", help="bảng trong schema đã có migration chưa (thiếu → chỉ chạy M-0 / M-DB)")
     me = sp.add_parser("merge-end")
     me.add_argument("label"), me.add_argument("result", choices=["pass", "fail"]), me.add_argument("--note")
     sp.add_parser("claimable", help="module nhận được ngay / chờ phụ thuộc / đã có người nhận (theo origin/BASE_BRANCH)")

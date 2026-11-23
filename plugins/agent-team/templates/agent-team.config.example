@@ -54,6 +54,8 @@ PROGRESS_LINES=table
 APP_BUILD=auto
 # Tạo DB mới + dữ liệu mẫu cho test / E2E (Phase B bàn giao; máy nào cũng chạy được), vd "php artisan migrate:fresh --seed"
 SEED_CMD=
+# Tài liệu schema: mục `## Bảng` (tên bảng trong backtick ở cột đầu). pool.py schema / fill kiểm mọi bảng có migration (M-DB)
+SCHEMA_DOC=docs/database/schema.md
 # Điều phối (App / Module, pool.py): số slot cho cả app = task code + debate module. Đổi lúc nào cũng được (tự scale)
 MAX_PARALLEL=8
 # Số module debate cùng lúc (mỗi debate 1 slot), module khác chờ
