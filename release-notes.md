@@ -1,3 +1,14 @@
+# Release notes - 23/11/2026 (v0.19.2 - FE và BE chung 1 repo)
+
+## Thay đổi
+- `app.md` mục 9, `init.md`: FE và BE chung 1 repo → `FE_PATHS=""`, dồn đường dẫn FE vào `BE_PATHS`. `backend-dev` làm cả FE.
+- `task.md` S3: `FE_PATHS` rỗng → không gọi `frontend-dev`.
+- `app.md` mục 10: M-0 file test của starter (`tests/`, `phpunit.xml`, `e2e/`) do `test-executor` dựng ở S4.
+
+## Cần làm thủ công
+- Cập nhật plugin: `/plugin marketplace update multiple-agent`.
+- App đang chạy, FE chung repo: sửa `.claude/agent-team.config` → `FE_PATHS=""`, thêm đường dẫn FE vào `BE_PATHS`.
+
 # Release notes - 22/11/2026 (v0.19.1 - phát hiện và xử lý agent treo)
 
 ## Thay đổi

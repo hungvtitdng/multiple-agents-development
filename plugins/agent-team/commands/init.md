@@ -19,7 +19,7 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
    - **Có mấy repo git?** Tìm repo ở thư mục hiện tại và thư mục con cấp 1 (`.git`). Thư mục hiện tại là repo thì hỏi thêm user có repo khác đi kèm không (vd `../FrontEnd`).
    - **Có code sẵn không?** `git ls-files` có file mã nguồn (rb, py, js/ts, go, java, php, vue...) → dự án có sẵn code.
 2a. **Dự án mới (App Mode):**
-   - Chưa có git → `git init -b main`, `BASE_BRANCH=main`. Chưa có code nên `BE_PATHS`, `FE_PATHS`, `TEST_PATHS`, lệnh test/lint để `TODO`: Architect điền sau khi chốt stack (`/agent-team:app` mục 9).
+   - Chưa có git → `git init -b main`, `BASE_BRANCH=main`. Chưa có code nên `BE_PATHS`, `FE_PATHS`, `TEST_PATHS`, lệnh test/lint để `TODO`: Architect điền sau khi chốt stack (`/agent-team:app` mục 9). FE và BE chung 1 repo → `FE_PATHS=""`, đường dẫn FE nằm trong `BE_PATHS`.
    - Không có remote (`git remote` rỗng) → `PUSH=0` (không fetch/push, branch nằm ở máy). Có remote → `PUSH=1`.
    - Copy `templates/product/project-setup.md` → `docs/product/project-setup.md` (không ghi đè). Báo user: dev điền phiếu này trước khi chạy `/agent-team:app`.
 2b. **Nhiều repo → chọn repo chính** (chỉ hỏi khi ≥ 2 repo, 1 câu hỏi duy nhất bằng AskUserQuestion):
