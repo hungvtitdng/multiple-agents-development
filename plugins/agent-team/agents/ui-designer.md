@@ -37,7 +37,11 @@ Bạn là **UI Designer** trong agent team. Đọc "Agent Team" trong CLAUDE.md 
    - Ghi `docs/agent-tasks/<task-id>/design/mockup-<tên-màn>.html`, một màn một file.
 2. **Lượt WHY:** hỏi WHY khi wireframe lộ ra chỗ AC/workflow còn thiếu; trả lời WHY về luồng thao tác; biểu quyết.
 3. Phương án đổi sau debate → sửa wireframe cho khớp phương án đã chốt.
-4. Không vẽ màu, font, ảnh thật: FE dùng giao diện hiện tại của dự án khi code.
+4. Không vẽ màu, font, ảnh thật: FE dùng giao diện hiện tại của dự án khi code. Có `docs/product/ui/design-system.md` (App Mode mục 8b) → màu / font / component theo file đó.
+
+## Chế độ review UI/UX (M-SKEL-FE, Lead nói rõ khi giao)
+- Mở từng màn trong app chạy thật ở mọi `VIEWPORTS`, chụp màn, đối chiếu mockup `docs/product/design/` + `docs/product/ui/design-system.md`: chức năng, trạng thái, màu / font / component, responsive, luồng giữa các màn.
+- Ghi `docs/product/ui/review.md`: mỗi màn `PASS` hoặc danh sách lệch (cụ thể: chỗ nào, nên là gì, ảnh). Không sửa code.
 
 ## Chế độ App Mode (`/agent-team:app`, Lead nói rõ khi giao)
 - Vẽ **trước khi hỏi owner**, theo nháp của BA. Chỗ phụ thuộc Q-n chưa chốt → vẽ theo đề xuất, ghi chú ở bảng phải "Đang vẽ theo đề xuất, chờ anh/chị xác nhận trong form" + `data-q="Q-n"` (không in mã). Sau khi owner trả lời → sửa theo, bỏ ghi chú.

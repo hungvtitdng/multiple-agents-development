@@ -123,7 +123,7 @@ def table_rows(text, key):
     rows = []
     for line in text.splitlines():
         c = [x.strip() for x in line.strip().strip("|").split("|")]
-        if len(c) > 2 and re.match(rf"^{key}-(\d+|E2E|DB|SKEL)$", c[0]):
+        if len(c) > 2 and re.match(rf"^{key}-(\d+|E2E|DB|SKEL(?:-BE|-FE)?)$", c[0]):
             rows.append(c)
     return rows
 
