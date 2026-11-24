@@ -16,12 +16,16 @@
 |---|---|---|---|---|---|---|---|---|
 | M-0 | Khung project (scaffold, CI, Docker, env, Playwright + e2e/) | | | VỪA | | | | TODO |
 | M-DB | Nền dữ liệu: mọi bảng trong docs/database/schema.md (migration, model, quan hệ, enum, factory, seeder) + service dùng chung | | M-0 | NHẸ | | | | TODO |
-| M-SKEL | Khung file: service theo model + hàm stub, controller, request, route, trang placeholder, bảng hàm / file → module chủ | | M-DB | NHẸ | | | | TODO |
-| M-1 | | | M-SKEL | | | | | TODO |
+| M-SKEL-BE | Khung BE: service theo model + hàm stub, controller trả props theo contract, request, route | | M-DB | NHẸ | | | | TODO |
+| M-SKEL-FE | Khung FE: file chung (layout, component, trang rỗng) → UI thật mọi màn, mock data từ props | | M-DB, M-SKEL-BE | NHẸ | | | | TODO |
+| M-1 | | | M-SKEL-BE, M-SKEL-FE | | | | | TODO |
 | M-E2E | E2E toàn app: mọi luồng "1 ngày của <vai trò>" × mọi VIEWPORTS | tất cả | mọi module | VỪA | | | | TODO |
 
 ## Lý do phụ thuộc
 > Mỗi phụ thuộc trong cột "Phụ thuộc" 1 dòng. `contract` = chỉ cần `docs/product/contracts/M-<n>.md` của module kia (làm song song được) · `code` = cần code của module kia đã merge.
 - M-DB → M-0 (code): migration chạy trên khung project
-- M-SKEL → M-DB (code): hàm stub đọc dữ liệu từ factory / seeder
-- M-1 → M-SKEL (code): điền thân hàm stub của mình trong file có sẵn
+- M-SKEL-BE → M-DB (code): hàm stub đọc dữ liệu từ factory / seeder
+- M-SKEL-FE → M-DB (code): mock data qua props đọc từ dữ liệu mẫu
+- M-SKEL-FE → M-SKEL-BE (contract): props mỗi màn theo contracts/M-SKEL.md, code song song
+- M-1 → M-SKEL-BE (code): điền thân hàm stub của mình trong file có sẵn
+- M-1 → M-SKEL-FE (code): nối dữ liệu thật vào màn có sẵn

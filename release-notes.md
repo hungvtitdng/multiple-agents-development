@@ -1,3 +1,16 @@
+# Release notes - 24/11/2026 (v0.32.0 - UI thật làm 1 lần, task chỉ review UI rồi làm BE)
+
+## Thay đổi
+- App Mode mục 8b: sau khi owner chốt logic, `ui-designer` viết `docs/product/ui/design-system.md` (màu, font, component, trạng thái, `VIEWPORTS`).
+- M-SKEL tách 2 module chạy song song: **M-SKEL-BE** (service theo model + hàm stub, controller trả props theo contract) và **M-SKEL-FE** (T-1 tạo file chung: layout, component, trang rỗng, type props → T-2..T-n N `frontend-dev` song song làm UI thật theo nhóm màn, mock data từ props). Client xem mockup, không cần app chạy.
+- M-SKEL-FE có task cuối **review UI/UX**: `ui-designer` mở từng màn ở mọi `VIEWPORTS`, đối chiếu mockup + design system → `docs/product/ui/review.md`; lệch → FE sửa, tối đa 2 vòng; M-SKEL-FE chỉ DONE khi review PASS (bản UI client sẽ xem).
+- M-SKEL-FE theo `FE_PATHS`: chung repo (Inertia / Blade) → props từ controller stub, song song với BE theo contract; FE tách riêng (SPA) → tự mock theo contract, không phụ thuộc BE, M-E2E grep mock phải rỗng.
+- `pool.py` / `progress.py` nhận `M-SKEL-BE`, `M-SKEL-FE`; cổng chặn mở việc mới tới khi mọi `M-SKEL*` DONE.
+- Task có UI trong app đã có UI thật: `ui-designer` không vẽ lại, review màn trong code với AC → `design/ui-review.md`. `Đủ` → chỉ làm BE, không gọi `frontend-dev`; thiếu → chỉ vẽ phần thiếu.
+
+## Cần làm thủ công
+- Commit + push, `/plugin marketplace update multiple-agent`, `/restart`.
+
 # Release notes - 24/11/2026 (v0.31.3 - M-SKEL chưa xong thì không mở việc mới)
 
 ## Thay đổi

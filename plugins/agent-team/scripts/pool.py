@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS pool_modules (
 """
 SLOT_STATES = ("RUNNING", "FIX", "GAP")  # chiếm chỗ (worktree đang làm)
 STATES = ("WAIT", "RUNNING", "GAP", "FIX", "BLOCKED", "MERGE_WAIT", "MERGING", "DONE")
-LABEL_RE = re.compile(r"^M-(\d+|E2E|DB|SKEL)/T-\d+$")
+LABEL_RE = re.compile(r"^M-(\d+|E2E|DB|SKEL(?:-BE|-FE)?)/T-\d+$")
 
 
 def die(msg, code=1):
@@ -193,12 +193,12 @@ def plan_fill(db, root):
     start_t, start_d, wait_d = [], [], []
     miss = missing_tables(root)  # thiếu migration → chỉ M-0 / M-DB chạy, module khác chờ nền dữ liệu
     mdb_open = any(x["M"] == "M-DB" for x in rows) and mod_state(db, root, "M-DB", rows) != "DONE"
-    skel_open = any(x["M"] == "M-SKEL" for x in rows) and mod_state(db, root, "M-SKEL", rows) != "DONE"
+    skel_open = any(x["M"].startswith("M-SKEL") and mod_state(db, root, x["M"], rows) != "DONE" for x in rows)
     for m in order:
         st = mod_state(db, root, m, rows)
         if (miss or mdb_open) and m not in ("M-0", "M-DB"):
             continue
-        if skel_open and m not in ("M-0", "M-DB", "M-SKEL"):
+        if skel_open and m not in ("M-0", "M-DB") and not m.startswith("M-SKEL"):
             continue
         if st in ("SPLIT", "DESIGN"):
             for r in db.execute("SELECT * FROM pool WHERE module=? ORDER BY ord", (m,)):
@@ -314,8 +314,8 @@ def cmd_fill(db, root, a):
     start_t, start_d, wait_d = plan_fill(db, root)
     miss = missing_tables(root)
     skel = app_rows(root)[0]
-    if any(x["M"] == "M-SKEL" for x in skel) and mod_state(db, root, "M-SKEL", skel) != "DONE":
-        print("⛔ M-SKEL chưa DONE → không mở task / debate mới (tránh conflict file khung), task đang chạy vẫn chạy tiếp")
+    if any(x["M"].startswith("M-SKEL") and mod_state(db, root, x["M"], skel) != "DONE" for x in skel):
+        print("⛔ M-SKEL (BE / FE) chưa DONE → không mở task / debate mới (tránh conflict file khung), task đang chạy vẫn chạy tiếp")
     if miss:
         print(f"⛔ Nền dữ liệu chưa đủ: {len(miss)} bảng trong schema chưa có migration ({', '.join(miss[:8])}"
               f"{' …' if len(miss) > 8 else ''}) → chỉ chạy M-0 / M-DB, module khác chờ (pool.py schema)")
@@ -550,7 +550,7 @@ def cmd_resume(db, root, a):
 
 # ---------- team: nhận module, đồng bộ develop, kiểm bàn giao (v0.29) ----------
 APP_MD = "docs/product/APP.md"
-DEP_REASON_RE = re.compile(r"(M-(?:\d+|E2E|DB|SKEL))\s*(?:→|->)\s*(M-(?:\d+|DB|SKEL))\s*\((contract|code)\)\s*:\s*\S")
+DEP_REASON_RE = re.compile(r"(M-(?:\d+|E2E|DB|SKEL(?:-BE|-FE)?))\s*(?:→|->)\s*(M-(?:\d+|DB|SKEL(?:-BE|-FE)?))\s*\((contract|code)\)\s*:\s*\S")
 ENV_USE_RES = [  # chỉ key bắt buộc: có giá trị mặc định trong code (env('X', 'mặc định')) thì không tính
     re.compile(r"\benv\(\s*['\"]([A-Z][A-Z0-9_]+)['\"]\s*\)"),                                # Laravel env('X')
     re.compile(r"\bENV(?:\[\s*['\"]([A-Z][A-Z0-9_]+)['\"]\s*\]|\.fetch\(\s*['\"]([A-Z][A-Z0-9_]+)['\"]\s*\))"),  # Rails
@@ -602,10 +602,10 @@ def module_table(text):
         if c and c[0] == "M" and "Module" in c:
             head = c
             continue
-        if head and len(c) >= 2 and re.match(r"^M-(\d+|E2E|DB|SKEL)$", c[0]):
+        if head and len(c) >= 2 and re.match(r"^M-(\d+|E2E|DB|SKEL(?:-BE|-FE)?)$", c[0]):
             r = dict(zip(head, c + [""] * (len(head) - len(c))))
             dep = r.get("Phụ thuộc", "")
-            r["deps"] = ["*"] if re.search(r"tất cả|mọi module", dep, re.I) else re.findall(r"M-(?:\d+|DB|SKEL)\b", dep)
+            r["deps"] = ["*"] if re.search(r"tất cả|mọi module", dep, re.I) else re.findall(r"M-(?:\d+|DB|SKEL(?:-BE|-FE)?)\b", dep)
             rows.append(r)
         elif head and not line.strip().startswith("|"):
             head = None if rows else head
