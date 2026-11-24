@@ -1,3 +1,12 @@
+# Release notes - 24/11/2026 (v0.35.0 - M-SKEL-FE chạy ít container)
+
+## Thay đổi
+- Task M-SKEL-FE không tạo DB clone, không chạy app: lint + build + `TEST_CMD` bằng container tạm.
+- Review UI/UX: 1 container app trên nhánh phiên sau khi mọi màn đã merge, seed trước, chụp mọi màn × `VIEWPORTS`.
+
+## Cần làm thủ công
+- Commit + push, `/plugin` update `multiple-agent`, `/exit` rồi `claude -c`.
+
 # Release notes - 24/11/2026 (v0.34.0 - Demo client theo nhánh, debate song song khi M-SKEL chạy)
 
 ## Thay đổi
