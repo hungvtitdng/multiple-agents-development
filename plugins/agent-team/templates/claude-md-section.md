@@ -9,7 +9,7 @@ Project dùng plugin `agent-team`. Chạy task: `/agent-team:task <task>`. Modul
 - Migration/test DB: chỉ qua `.claude/agent-team/agent-db-clone.sh` (DB clone, không đụng DB hiện tại). File migration **chỉ sinh** bằng `agent-db-clone.sh generate` (generator trong container), không tự tạo/đổi tên (guard chặn).
 - Báo cáo mỗi task: `docs/agent-tasks/<task-id>/REPORT.html` (gửi client) + `REPORT.md` (`board.py report`).
 - Giao diện phải dùng được ở mọi chiều rộng trong `VIEWPORTS` (config). Task có UI: E2E Playwright bằng `agent-db-clone.sh e2e <task-id>`, ảnh bằng chứng mỗi chiều rộng ở `docs/testing/evidence/<task-id>/` (hook kiểm trước S5).
-- Thiết kế mỗi task: `docs/agent-tasks/<task-id>/design/`: `workflow.md`, `state.md` (BA), `sequence.md` (Architect), `mockup-<màn>.html` (ui-designer, **wireframe đen trắng đủ chức năng + trạng thái**). FE code đủ chức năng của wireframe nhưng dùng màu, font, component của dự án.
+- Thiết kế mỗi task: `docs/agent-tasks/<task-id>/design/`: `workflow.md`, `state.md` (BA), `sequence.md` (Architect), `mockup-<màn>.html` (ui-designer, **mockup design full theo design system, đủ chức năng + trạng thái**). FE code đủ chức năng của wireframe nhưng dùng màu, font, component của dự án.
 
 ### Quy chuẩn chung (mọi agent)
 - Mỗi task 1 branch `agent/<task-id>`. Tự commit + push. Không push/merge vào main/develop, không force push, không rewrite lịch sử.

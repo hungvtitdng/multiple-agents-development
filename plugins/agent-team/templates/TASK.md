@@ -16,7 +16,7 @@
 - Tiêu chí nghiệm thu: TODO (chỉ cần cho NHỎ, vd AC ngắn do Lead viết)
 - Phương án chốt: TODO (tên/mô tả; VỪA/LỚN)
 - Workflow: TODO (YES = có design/workflow.md / N/A)
-- UI mockup: TODO (YES = có design/mockup-<màn>.html đen trắng / N/A nếu task không có UI)
+- UI mockup: TODO (YES = có design/mockup-<màn>.html design full / N/A nếu task không có UI)
 - Security duyệt solution: TODO (APPROVED / N/A)
 - Kết quả test: TODO (PASS / FAIL)
 - Lint/format: TODO (PASS / N/A)

@@ -1,3 +1,30 @@
+# Release notes - 24/11/2026 (v0.38.0 - Mockup design full, component dùng lại mọi stack)
+
+## Thay đổi
+- Mockup không còn đen trắng: **design full** theo design system, HTML + Tailwind (offline `assets/tailwind.js`) + Web Components (`components/*.js`), dữ liệu mẫu `data/*.js`. Gửi nguyên thư mục `docs/product/design/` cho client, mở bằng double-click.
+- 5 quy ước component (1 component 1 file, props là thuộc tính chữ trùng contract, template chỉ in biến / if / lặp, data tách riêng, không thư viện khác) → chuyển sang Blade / React / Vue / ERB... chỉ đổi cú pháp.
+- App Mode: A3a design system nháp **trước** mockup; A3b 1 `ui-designer` làm component + màn chuẩn mỗi loại khung trang, N `ui-designer` song song làm các màn còn lại; owner duyệt cả logic lẫn giao diện.
+- M-SKEL-FE: chuyển mockup sang code, không tự thiết kế; review chụp app và mockup cùng màn × cùng viewport để so.
+- `board.py report` nhúng được mockup có `components/*.js`, `assets/*.js`.
+- Skill mới `agent-team:ui`: luật design (tránh dấu hiệu UI do AI làm, thang khoảng cách / chữ, ≤ 1 CTA, đủ trạng thái, chữ trên UI), chế độ `admin` bố cục kiểu Ant Design (sidebar 252, topbar + nút tài khoản có Đăng xuất, breadcrumb có Quay lại, thẻ số liệu, thanh lọc, thẻ bảng, header chi tiết có tab, form trong drawer, token + tone trạng thái), chế độ `app`, quy trình kế hoạch → màn chuẩn → tự chụp ảnh chấm. `ui-designer`, `frontend-dev` bắt buộc dùng.
+- Skill `ui`: thao tác trong bảng dùng nút icon nét (outline, không tô đặc) + tooltip, không nút chữ; > 3 thao tác gom vào `⋯`; **xoá ở mọi nơi bắt buộc xác nhận** (popconfirm / modal, nói rõ xoá gì + hệ quả, focus ở Huỷ).
+- Skill `ui` thêm: bảng (chọn nhiều + thao tác hàng loạt, cột cố định, cắt chữ + tooltip, sort mặc định, giữ lọc / trang trong URL), lọc trên điện thoại (drawer), rỗng do lọc; hành vi chung (hỏi khi rời form chưa lưu, toast, ô nhập đúng kiểu, nút đang xử lý, validate, ẩn nút theo quyền / trạng thái, định dạng ngày / số / rỗng, phím tắt, tiêu đề tab, trang 403 / 404 / 500).
+- Status line: bảng `✅ Done (n)` gọn thành danh sách `M-0, M-1, M-DB, …` tự xuống dòng (task xong của module đang làm ghi `M-5/T-1`).
+- Status line: bảng `✅ Done` cao hơn bảng trái không còn bị dồn sang trái (dòng trống bên trái giữ chỗ bằng ký tự ẩn).
+- Status line tự ẩn task đã đóng (S6 có `Bài học` + mọi bước xong); `rm .agent-team/stage` cuối S6 ghi rõ là bắt buộc.
+
+## Cần làm thủ công
+- Commit + push, `/plugin` update `multiple-agent`, `/exit` rồi `claude -c`.
+- App đang làm dở (04.Cay): không bắt buộc làm lại mockup.
+
+# Release notes - 24/11/2026 (v0.37.0 - Dọn process sau khi merge)
+
+## Thay đổi
+- `pool.py merge-end pass` tự dọn task: xoá container `agent-clone-<task>` / `agent-e2e-<task>`, kill process còn chạy trong worktree; Lead TaskStop agent + shell nền của task.
+
+## Cần làm thủ công
+- Commit + push, `/plugin` update `multiple-agent`, `/exit` rồi `claude -c`.
+
 # Release notes - 24/11/2026 (v0.36.0 - Task khung M-SKEL chạy nhanh)
 
 ## Thay đổi

@@ -18,7 +18,7 @@
 | `flows.md` | BA | Luồng `F-n`: sơ đồ + bảng bước có cột "Nếu lỗi" |
 | `data.md` | BA | Dữ liệu × CRUD, vòng đời trạng thái |
 | `screens.md` | ui-designer | Màn `S-n` × vai trò × flow × file mockup |
-| `design/mockup-*.html` | ui-designer | Wireframe đen trắng cấp app |
+| `design/mockup-*.html` | ui-designer | Mockup design full cấp app (HTML + Tailwind + `components/*.js`) |
 | `SPEC.md` | Lead (sinh bằng `gap-check.py --spec`) | **Toàn bộ tài liệu app trong 1 file**, không sửa tay. Hook chặn S6 khi SPEC cũ hơn tài liệu |
 
 Kiến trúc, stack, quyết định: ghi vào KB sẵn có (`tech-stack.md`, `architecture.md`, `decisions/`, Architect). Quyền: `roles-and-permissions.md` (BA).

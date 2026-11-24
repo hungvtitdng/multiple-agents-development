@@ -6,6 +6,7 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+import time
 
 POOL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "plugins", "agent-team", "scripts", "pool.py")
 ENV = {k: v for k, v in os.environ.items() if k != "AGENT_TEAM_BOARD_DB"}
@@ -151,7 +152,7 @@ PROG = os.path.join(os.path.dirname(POOL), "progress.py")
 out = subprocess.run([sys.executable, PROG], input="{}", capture_output=True, text=True, cwd=d).stdout
 check("status line: task đang làm bên trái (M-2/T-1 ▶), M-1 xong sang bảng ✅ Done bên phải cùng dòng",
       "Module ✅ 1/2" in out and "chạy 1/3" in out and "✅ Done" in out
-      and re.search(r"│ M-2\s*│ T-1 Nhật ký.*▶.*│ M-1\s*│ 3 task", out) is not None and "│ M-1    │ (3 task)" not in out)
+      and re.search(r"│ M-2\s*│ T-1 Nhật ký.*▶.*│ M-1\s*│", out) is not None and "│ M-1    │ (3 task)" not in out)
 
 cfg("")
 check("config không có MAX_PARALLEL → mặc định 8", "/8" in run("fill")[1])
@@ -176,5 +177,16 @@ check("worktree mới có .claude/settings.json (quyền agent-db-clone) chép t
       "agent-db-clone.sh" in open(os.path.join(w31, ".claude", "settings.json")).read())
 os.remove(LOC)
 
+import importlib.util as _iu
+_sp = _iu.spec_from_file_location("poolmod", POOL); _pm = _iu.module_from_spec(_sp); _sp.loader.exec_module(_pm)
+_wt = os.path.join(d, ".worktrees", "x-t1"); _wt2 = _wt + "0"
+os.makedirs(_wt, exist_ok=True); os.makedirs(_wt2, exist_ok=True)
+_sl = lambda p: subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)", p + "/a"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+_p1, _p2 = _sl(_wt), _sl(_wt2)
+time.sleep(0.3)
+_out = _pm.cleanup_task(d, {"task_id": "x-t1", "worktree": ".worktrees/x-t1"})
+time.sleep(0.3)
+check("merge xong: kill process trong worktree, không đụng worktree tên gần giống", _p1.poll() is not None and _p2.poll() is None and "process" in _out)
+_p2.kill()
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

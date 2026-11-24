@@ -61,8 +61,10 @@ write_task(**{"Lint/format": "PASS", "Kết quả test": "PASS"})
 check("S4 điền 2/4: không còn thanh %", "▓" not in run()[1] and "thiếu: Gap còn mở, E2E" in run()[1])
 
 stage("S6")
+write_task(**{"Code review": "APPROVED", "Security review": "APPROVED", "Cập nhật KB": "YES"})
+check("S6 chưa điền Bài học: còn hiện task", "S6" in run()[1])
 write_task(**{"Code review": "APPROVED", "Security review": "APPROVED", "Cập nhật KB": "YES", "Bài học": "KHÔNG CÓ"})
-check("S6 đủ: không còn thiếu", "thiếu" not in run()[1])
+check("S6 đủ (Bài học + mọi bước xong): status line tự ẩn task cũ", "S6" not in run()[1])
 
 stage("S5")
 db = sqlite3.connect(os.path.join(d, ".agent-team", "board.db"))

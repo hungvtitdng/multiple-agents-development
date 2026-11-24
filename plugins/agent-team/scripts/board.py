@@ -631,7 +631,7 @@ def inline_shared(html_text, ddir):
         p = os.path.join(ddir, name)
         return open(p, encoding="utf-8").read() if os.path.isfile(p) else ""
     html_text = re.sub(r'<link[^>]+href="_wf\.css"[^>]*>', lambda m: f"<style>{body('_wf.css')}</style>", html_text)
-    return re.sub(r'<script[^>]+src="_wf\.js"[^>]*>\s*</script>', lambda m: f"<script>{body('_wf.js')}</script>", html_text)
+    return re.sub(r'<script[^>]+src="((?!https?:|//)[^"]+\.js)"[^>]*>\s*</script>', lambda m: f"<script>{body(m.group(1))}</script>", html_text)
 
 
 def load_design(tdir):
@@ -698,13 +698,13 @@ def render_dashboard(task, ttext, sec, team, msgs, whys, logs, rounds, summaries
     else:
         H.append('<section class="okbox">Không có giả định: mọi điểm chưa rõ đã được xác nhận.</section>')
 
-    # thiết kế: sơ đồ (SVG vẽ sẵn) + mockup đen trắng, client xác nhận
+    # thiết kế: sơ đồ (SVG vẽ sẵn) + mockup, client xác nhận
     design = design or {"diagrams": [], "mockups": []}
     if design["diagrams"] or design["mockups"]:
         vote = lambda key: (f'<div class="vote row"><label><input type="radio" name="{key}" value="Đúng"> Đúng ý</label>'
                             f'<label><input type="radio" name="{key}" value="Sai"> Chưa đúng</label>'
                             '<input type="text" placeholder="Chưa đúng ở đâu, cần thế nào…"></div>')
-        H.append('<section><h2>Thiết kế: workflow và màn hình</h2><p class="muted">Sơ đồ và wireframe đen trắng để thống nhất luồng và chức năng. '
+        H.append('<section><h2>Thiết kế: workflow và màn hình</h2><p class="muted">Sơ đồ và mockup giao diện để thống nhất luồng, chức năng và giao diện. '
                  'Màu sắc, font khi làm thật sẽ theo giao diện hiện tại của dự án. Xác nhận từng mục bên dưới, rồi bấm <b>Copy câu trả lời</b>.</p>')
         for n, (f, title, codes, notes) in enumerate(design["diagrams"], 1):
             body = ""

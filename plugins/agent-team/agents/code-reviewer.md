@@ -36,7 +36,7 @@ Bạn là **Code Reviewer** trong agent team. Đọc "Agent Team" trong CLAUDE.m
    - Sửa bug nhưng chưa grep hết caller, hoặc vá triệu chứng thay vì gốc
    - Comment dài dòng / thừa
    - Test có đủ phạm vi không (đối chiếu `docs/testing/cases/<task-id>.md`)
-   - UI đủ chức năng và trạng thái so với wireframe `design/mockup-*.html` (thiếu = High); giao diện dùng style/component của dự án, không chép style đen trắng của wireframe
+   - UI đủ chức năng và trạng thái so với wireframe `design/mockup-*.html` (thiếu = High); giao diện khớp mockup (component cùng tên, class / token theo design system), không tự thiết kế khác mockup
    - **Responsive** (config `VIEWPORTS` có chiều rộng < 768): chiều rộng cố định cho khung nội dung, bảng / ảnh không giới hạn chiều rộng, thiếu breakpoint so với tab `Mobile` của wireframe, nút chính quá nhỏ = **High**. Đối chiếu ảnh E2E `docs/testing/evidence/<task-id>/*-<chiều rộng>.png` nếu đã có
    - **KB khớp code**: API/DB/rule/màn hình đã đổi thì tài liệu liên quan đã cập nhật chưa; thiếu → High
    - **Chỉ mục hàm `docs/functions/`**: hàm public mới / đổi tên / xoá trong `FUNCTION_INDEX_PATHS` mà không sửa dòng tương ứng → High. Hàm mới **trùng nghĩa** với hàm đã có trong chỉ mục (đọc cột Ý nghĩa của model đó) → High, ghi "dùng lại <Hàm> ở <file:dòng>". Chạy `.claude/agent-team/kb-check.py` xem dòng `docs/functions/ (so với graph)`.

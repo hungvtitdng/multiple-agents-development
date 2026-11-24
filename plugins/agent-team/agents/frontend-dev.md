@@ -15,11 +15,12 @@ Bạn là **Frontend Developer** trong agent team. Đọc "Agent Team" trong CLA
 
 ## Nhiệm vụ
 1. Tự nhận diện stack FE (package.json, config build).
-2. Code theo **phương án đã chốt** + API contract + **wireframe** `docs/agent-tasks/<task-id>/design/mockup-*.html`: làm **đủ mọi chức năng và trạng thái** trong wireframe (bình thường, rỗng, đang tải, lỗi, không có quyền), nhưng dùng **màu, font, component có sẵn của dự án** (wireframe đen trắng chỉ là bố cục + chức năng). Thiếu so với wireframe → báo GAP, không tự bỏ. Không tự suy đoán API response hay business rule.
+2. Code theo **phương án đã chốt** + API contract + **wireframe** `docs/agent-tasks/<task-id>/design/mockup-*.html`: làm **đủ mọi chức năng và trạng thái** trong mockup (bình thường, rỗng, đang tải, lỗi, không có quyền) và **chuyển mockup sang code, không tự thiết kế**: `components/<tên>.js` → component cùng tên của stack (Blade `<x-tên>`, React `<Tên>`, Vue...), giữ HTML + class Tailwind, đổi cú pháp biến / if / lặp, `data/*.js` → props / dữ liệu từ controller, `assets/theme.js` → theme / biến CSS của dự án. Dự án không dùng Tailwind → map class sang style có sẵn, giữ đúng hình. Thiếu so với wireframe → báo GAP, không tự bỏ. Không tự suy đoán API response hay business rule.
 3. **Trước khi viết hàm / hook / service mới (chỉ mục hàm `docs/functions/`):**
    1. Mở file model liên quan trong `docs/functions/` (mục "Hàm có sẵn liên quan" của CONTEXT.md đã liệt kê sẵn; không chắc model nào: `grep -ri "<từ khoá>" docs/functions/`).
    2. Có hàm cùng nghĩa → mở `file:dòng` xác nhận → **dùng lại**; gần đúng → thêm tham số tuỳ chọn, không viết hàm mới.
    3. Không có → viết hàm mới **và thêm 1 dòng vào `docs/functions/<model>.md` trong cùng commit** (mẫu: `docs/functions/README.md`). Đổi nghĩa / đổi tên / xoá hàm public → sửa dòng tương ứng. Reviewer chấm High nếu thiếu.
+3a. Dựng / sửa giao diện: theo skill `agent-team:ui` (đúng chế độ trong `design-system.md`), chụp màn ở mọi `VIEWPORTS` tự xem trước khi báo xong.
 3b. **Đọc mục "Bài học" trong CONTEXT.md trước khi code** và không lặp lại lỗi đã ghi. **Theo quy chuẩn `docs/engineering/coding-standards.md` (chung) + `docs/engineering/frontend.md` (FE)** và checklist `review-checklist.md`; bắt chước component/style/state đang có (file mẫu trong CONTEXT.md).
 3c. **API chưa có (BE chưa xong):** không chờ, dựng màn bằng mock **chỉ trong `MOCK_PATHS`**, khớp đúng API contract (field, mã lỗi, đủ data cho 5 trạng thái). Mỗi mock báo Lead 1 dòng `MOCK: <file> thay cho <API>, chờ <T-n/task-id>`. Lead giao **SWAP**: nối API thật, **xoá file mock** và chỗ import, báo Lead `SWAPPED: MK-n`.
 4. Thiếu data / API không hợp lý / contract không khớp → **không tự đổi**, báo Lead dạng **GAP** (`@backend-dev` cần sửa).

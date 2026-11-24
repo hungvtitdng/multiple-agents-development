@@ -238,7 +238,10 @@ def state(root):
     text = read(path)
     if stage in ("S1", "S2") and first_word(text, "Loại") in ("APP", "MODULE"):
         return stage, task, text, as_steps(phase_a_steps(root, text)), "Phase A"
-    return stage, task, text, board_steps(root, task), ""
+    steps = board_steps(root, task)
+    if stage == "S6" and field(text, "Bài học") and all(s[1] in ("done", "skip") for s in steps):
+        return None
+    return stage, task, text, steps, ""
 
 
 def progress_line(root):
@@ -436,6 +439,21 @@ def task_cells(root, r, design, now):
     return cells, label
 
 
+DONE_WIDTH = 36
+
+
+def wrap_items(items, width):
+    lines, cur = [], ""
+    for it in items:
+        nxt = f"{cur}, {it}" if cur else it
+        if cur and dwidth(nxt) > width:
+            lines.append(cur + ",")
+            cur = it
+        else:
+            cur = nxt
+    return lines + [cur] if cur else lines
+
+
 def row_rank(r):
     return 0 if r[-1].startswith(("▶", "🧪", "🔧", "💬 Debate")) else 1 if r[-1].startswith("🔀") else 2
 
@@ -495,7 +513,7 @@ def pool_block(root, all_rows=False):
         design = mst == "DESIGN"
         debating += design
         if is_done and all(t["state"] == "DONE" for t in tasks) and not all_rows:
-            done.append([m, f"{len(tasks)} task" if tasks else "đã xong"])
+            done.append(m)
             continue
         if is_done and all(t["state"] == "DONE" for t in tasks):
             body.append([m, f"({len(tasks)} task)" if tasks else "(đã xong)"] + ["✅"] * 6 + ["✅ Xong"])
@@ -525,7 +543,7 @@ def pool_block(root, all_rows=False):
         body[first][0] = m
         keep = [x for x in body[first:] if x[-1] != "✅ Merged"]
         if not all_rows and keep and len(keep) < len(tasks):
-            done += [[m if j == 0 else "", x[1]] for j, x in enumerate(x for x in body[first:] if x[-1] == "✅ Merged")]
+            done += [f"{m}/{x[1].split()[0]}" for x in body[first:] if x[-1] == "✅ Merged"]
             body[first:] = [[m] + keep[0][1:]] + [[""] + x[1:] for x in keep[1:]]
         if not all_rows:
             body[first:] = group_waiting(body[first:])
@@ -556,11 +574,9 @@ def pool_block(root, all_rows=False):
     left = box(["Module", "Task"] + POOL_COLS + ["Trạng thái"], body)
     if not done:
         return [head] + left
-    if len(done) > POOL_MAX_ROWS:
-        done = done[:POOL_MAX_ROWS - 1] + [["…", f"+{len(done) - POOL_MAX_ROWS + 1} (pool.py status)"]]
-    right = box(["Module", "✅ Done"], done)
+    right = box([f"✅ Done ({len(done)})"], [[x] for x in wrap_items(done, DONE_WIDTH)])
     w = dwidth(left[0])
-    return [head] + [(a + " " * (w - dwidth(a)) if a else " " * w) + "  " + b for a, b in
+    return [head] + [(a + " " * (w - dwidth(a)) if a else "\u2800" + " " * (w - 1)) + "  " + b for a, b in
                      __import__("itertools").zip_longest(left, right, fillvalue="")]
 
 

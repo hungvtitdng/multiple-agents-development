@@ -412,6 +412,27 @@ def maybe_module_done(db, root, mod):
     print(f"✅ {mod} xong" + (f" · tag {tag}" if not code else f" (không tạo được tag: {out[:120]})") + " · cập nhật Trạng thái DONE trong APP.md")
 
 
+def cleanup_task(root, r):
+    safe = re.sub(r"[^a-z0-9_.-]", "-", r["task_id"].lower())
+    out = []
+    for name in (f"agent-clone-{safe}", f"agent-e2e-{safe}"):
+        try:
+            if subprocess.run(["docker", "rm", "-f", name], capture_output=True, timeout=60).returncode == 0:
+                out.append(name)
+        except (OSError, subprocess.TimeoutExpired):
+            break
+    wt = os.path.join(root, r["worktree"]) if r["worktree"] else ""
+    if wt:
+        ps = subprocess.run(["ps", "-axo", "pid=,command="], capture_output=True, text=True).stdout.splitlines()
+        hit = re.compile(re.escape(wt) + r"(/|\s|$)")
+        pids = [l.split(None, 1)[0] for l in ps if len(l.split(None, 1)) == 2 and hit.search(l.split(None, 1)[1])]
+        pids = [p for p in pids if int(p) not in (os.getpid(), os.getppid())]
+        if pids:
+            subprocess.run(["kill", *pids], capture_output=True)
+            out.append(f"{len(pids)} process trong worktree")
+    return ", ".join(out)
+
+
 def cmd_merge_end(db, root, a):
     r = row(db, a.label)
     if r["state"] != "MERGING":
@@ -425,9 +446,11 @@ def cmd_merge_end(db, root, a):
     code, out = git(root, "commit", "-m", f"[lead] {r['task_id']}: merge {a.label} {r['title']}"[:120])
     if code:
         die(f"commit merge lỗi: {out[:300]}")
+    killed = cleanup_task(root, r)
     if r["worktree"]:
         git(root, "worktree", "remove", "--force", os.path.join(root, r["worktree"]))
     db.execute("UPDATE pool SET state='DONE', ended_at=?, note=NULL WHERE label=?", (int(time.time()), a.label))
+    print(f"🧹 dọn {a.label}: {killed or 'không còn process / container'} · Lead: TaskStop mọi agent + shell nền của task này")
     db.commit()
     print(f"✅ {a.label} merged" + (" (khung, không IT)" if r["module"].startswith("M-SKEL") else " + IT pass") + f" (branch {r['branch']} giữ lại)")
     maybe_module_done(db, root, r["module"])
