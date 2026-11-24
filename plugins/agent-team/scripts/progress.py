@@ -581,6 +581,8 @@ def progress_list(root):
 def main():
     lst = "--list" in sys.argv[1:]
     root = find_root(os.getcwd() if lst else start_dir())
+    while root and find_root(os.path.dirname(root)):
+        root = find_root(os.path.dirname(root))
     if root:
         one = cfg(root, "PROGRESS_LINES", "table") == "1"
         print(progress_list(root) if lst else progress_line(root) if one else progress_table(root))
