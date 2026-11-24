@@ -40,7 +40,7 @@ check("chép đủ mọi script (clone mới của người trong team chưa có
 check("chép xong có quyền chạy", os.access(os.path.join(d, ".claude", "agent-team", "board.py"), os.X_OK))
 check("template đã sửa: chỉ báo, không ghi đè", "POST.md" in out and dst("templates/POST.md") == "tôi đã sửa\n")
 st = json.load(open(os.path.join(d, ".claude", "settings.json")))
-check("chưa có settings.json → tạo với statusLine", st["statusLine"]["command"] == "python3 .claude/agent-team/progress.py")
+check("chưa có settings.json → tạo với statusLine (chạy progress.py của thư mục chính, kể cả khi đứng trong worktree)", "git-common-dir" in st["statusLine"]["command"])
 check("in 1 dòng báo Lead", out.startswith("[agent-team]") and "board.py" in out)
 
 code, out = run(d)

@@ -1,3 +1,14 @@
+# Release notes - 24/11/2026 (v0.31.1 - status line đúng khi Lead đứng trong worktree)
+
+## Thay đổi
+- statusLine chạy `progress.py` của thư mục chính (qua `git rev-parse --git-common-dir`), không chạy bản cũ trong worktree. `sync.py` tự đổi lệnh cũ `python3 .claude/agent-team/progress.py` sang lệnh mới.
+- `progress.py` đứng trong worktree vẫn lấy gốc là thư mục chính: luôn hiện bảng điều phối.
+- `pool.py` / `progress.py` nhận module `M-SKEL` (trước bỏ qua phụ thuộc `M-SKEL (code)`).
+- Bảng điều phối: cột IT riêng; task chờ liền nhau cùng lý do gộp 1 dòng `T-2..T-4 (3 task)`.
+
+## Cần làm thủ công
+- Commit + push, `/plugin marketplace update multiple-agent`, `/restart` (Claude Code đọc lại settings.json).
+
 # Release notes - 24/11/2026 (v0.31.0 - schema trước, M-SKEL khung app, module song song)
 
 ## Thay đổi

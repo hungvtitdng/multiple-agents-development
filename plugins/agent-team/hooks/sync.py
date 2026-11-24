@@ -10,7 +10,8 @@ import os
 import shutil
 import sys
 
-STATUS_CMD = "python3 .claude/agent-team/progress.py"
+STATUS_CMD = 'python3 "$(git rev-parse --path-format=absolute --git-common-dir)/../.claude/agent-team/progress.py"'
+OLD_STATUS_CMDS = ("python3 .claude/agent-team/progress.py",)
 SCRIPTS = ("board.py", "progress.py", "pool.py", "gap-check.py", "owner-form.py", "kb-check.py", "agent-db-clone.sh")
 TEMPLATES = ("TASK.md", "POST.md", "SUMMARY.md", "CONTEXT.md", "MOCKS.md")
 
@@ -75,6 +76,8 @@ def ensure_status_line(root):
         if not isinstance(data, dict):
             return "settings.json không phải object, không sửa"
     cur = data.get("statusLine")
+    if cur and (cur.get("command") if isinstance(cur, dict) else "") in OLD_STATUS_CMDS:
+        cur = None
     if cur:
         return "" if (cur.get("command") if isinstance(cur, dict) else "") == STATUS_CMD else \
             f"statusLine đang là lệnh khác, không ghi đè. Muốn xem bước: đổi thành `{STATUS_CMD}`"
