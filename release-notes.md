@@ -1,3 +1,16 @@
+# Release notes - 24/11/2026 (v0.34.0 - Demo client theo nhánh, debate song song khi M-SKEL chạy)
+
+## Thay đổi
+- 3 mốc demo client: 🚀 1 mockup + form · 🚀 2 nhánh `demo-ui` khi M-SKEL-FE DONE · 🚀 3 nhánh `demo-full` khi M-E2E PASS. Lead `git push origin HEAD:demo-ui` / `HEAD:demo-full` (fast-forward, không force), team không dừng.
+- M-SKEL chưa DONE: module khác vẫn được debate, chỉ chặn task code (`pool.py fill`).
+- Mọi task M-SKEL-FE phải build FE pass trước merge.
+- Hàm stub ghi trả thông báo "Tính năng đang hoàn thiện" thay vì trang lỗi 501.
+- Status line: bảng trái chỉ còn task đang làm / đang chờ; module và task đã xong sang bảng `✅ Done` bên phải; module có task đang chạy (▶ / 🧪 / 🔧 / 💬) lên đầu, rồi tới chờ merge, cuối là đang chờ.
+
+## Cần làm thủ công
+- Staging deploy theo nhánh `demo-ui` / `demo-full`, chạy `SEED_CMD` sau mỗi lần deploy.
+- Commit + push, `/plugin marketplace update multiple-agent`, `/restart`.
+
 # Release notes - 24/11/2026 (v0.33.0 - UI làm thẳng trong code, có màn mẫu + review)
 
 ## Thay đổi

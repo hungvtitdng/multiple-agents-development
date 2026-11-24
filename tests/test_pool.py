@@ -149,8 +149,9 @@ check("resume: liệt kê task đang chạy + worktree", "M-2/T-1: RUNNING" in o
 
 PROG = os.path.join(os.path.dirname(POOL), "progress.py")
 out = subprocess.run([sys.executable, PROG], input="{}", capture_output=True, text=True, cwd=d).stdout
-check("status line: bảng điều phối (Module ✅ 1/2, M-1 xong gộp 1 dòng, M-2/T-1 ▶)", "Module ✅ 1/2" in out and "chạy 1/3" in out
-      and "│ M-1    │ (3 task)" in out and re.search(r"│ M-2\s*│ T-1 Nhật ký.*▶", out) is not None)
+check("status line: task đang làm bên trái (M-2/T-1 ▶), M-1 xong sang bảng ✅ Done bên phải cùng dòng",
+      "Module ✅ 1/2" in out and "chạy 1/3" in out and "✅ Done" in out
+      and re.search(r"│ M-2\s*│ T-1 Nhật ký.*▶.*│ M-1\s*│ 3 task", out) is not None and "│ M-1    │ (3 task)" not in out)
 
 cfg("")
 check("config không có MAX_PARALLEL → mặc định 8", "/8" in run("fill")[1])

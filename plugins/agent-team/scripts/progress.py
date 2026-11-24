@@ -436,6 +436,23 @@ def task_cells(root, r, design, now):
     return cells, label
 
 
+def row_rank(r):
+    return 0 if r[-1].startswith(("▶", "🧪", "🔧", "💬 Debate")) else 1 if r[-1].startswith("🔀") else 2
+
+
+def active_first(body):
+    groups = []
+    for r in body:
+        if r[0] or not groups:
+            groups.append([])
+        groups[-1].append(r)
+    out = []
+    for g in sorted(groups, key=lambda g: min(map(row_rank, g))):
+        g = sorted(g, key=row_rank)
+        out += [[g[0][0] or next(x[0] for x in g if x[0])] + g[0][1:]] + [[""] + x[1:] for x in g[1:]]
+    return out
+
+
 def pool_block(root, all_rows=False):
     """Điều phối nhiều task (pool.py): 1 dòng / task, cột theo giai đoạn + trạng thái chung, gom theo module. [] khi không dùng pool."""
     p = os.path.join(root, ".agent-team", "board.db")
@@ -470,13 +487,16 @@ def pool_block(root, all_rows=False):
     done_lbl = {r["label"] for r in rows if r["state"] == "DONE"}
     now = int(time.time())
     single = not table and len({r["module"] for r in rows} | set(mods)) == 1
-    body, idle, running, debating = [], [], 0, 0
+    body, done, idle, running, debating = [], [], [], 0, 0
     for m in order:
         tasks = [r for r in rows if r["module"] == m]
         mst = mods[m]["state"] if m in mods else ""
         is_done = mst == "DONE" or m in app_done
         design = mst == "DESIGN"
         debating += design
+        if is_done and all(t["state"] == "DONE" for t in tasks) and not all_rows:
+            done.append([m, f"{len(tasks)} task" if tasks else "đã xong"])
+            continue
         if is_done and all(t["state"] == "DONE" for t in tasks):
             body.append([m, f"({len(tasks)} task)" if tasks else "(đã xong)"] + ["✅"] * 6 + ["✅ Xong"])
             continue
@@ -503,11 +523,17 @@ def pool_block(root, all_rows=False):
             body.append(["", short(t["label"].split("/")[-1] + " " + t["title"], 26)] + cells + [label])
         first = len(body) - len(tasks)  # dòng đầu của module: ghi tên module
         body[first][0] = m
+        keep = [x for x in body[first:] if x[-1] != "✅ Merged"]
+        if not all_rows and keep and len(keep) < len(tasks):
+            done += [[m if j == 0 else "", x[1]] for j, x in enumerate(x for x in body[first:] if x[-1] == "✅ Merged")]
+            body[first:] = [[m] + keep[0][1:]] + [[""] + x[1:] for x in keep[1:]]
         if not all_rows:
             body[first:] = group_waiting(body[first:])
         if not all_rows and merged and len(merged) < len(tasks) and len(body) > POOL_MAX_ROWS:  # gọn: task đã merge gộp 1 dòng
             keep = [x for x in body[first:] if x[-1] != "✅ Merged"]
             body[first:] = [[m, f"({len(merged)} task đã merge)"] + ["✅"] * 6 + ["✅ Merged"]] + [[""] + x[1:] for x in keep]
+    if not all_rows:
+        body = active_first(body)
     for group, label in (([x for x in idle if x in wait_d], "⏳ Chờ slot debate"), ([x for x in idle if x not in wait_d], "⏳ Chờ phụ thuộc")):
         if group:
             nm = f"{group[0]}…" if len(group) > 1 else group[0]
@@ -527,7 +553,15 @@ def pool_block(root, all_rows=False):
         m = order[0]
         head = f"{m} {short(names.get(m, ''), 30)} · {len(done_lbl)}/{len(rows)} task xong · chạy {running}/{cfg(root, 'MAX_PARALLEL', '8')}"
         return [head] + box(["Task"] + POOL_COLS + ["Trạng thái"], [x[1:] for x in body])
-    return [head] + box(["Module", "Task"] + POOL_COLS + ["Trạng thái"], body)
+    left = box(["Module", "Task"] + POOL_COLS + ["Trạng thái"], body)
+    if not done:
+        return [head] + left
+    if len(done) > POOL_MAX_ROWS:
+        done = done[:POOL_MAX_ROWS - 1] + [["…", f"+{len(done) - POOL_MAX_ROWS + 1} (pool.py status)"]]
+    right = box(["Module", "✅ Done"], done)
+    w = dwidth(left[0])
+    return [head] + [(a + " " * (w - dwidth(a)) if a else " " * w) + "  " + b for a, b in
+                     __import__("itertools").zip_longest(left, right, fillvalue="")]
 
 
 def progress_table(root):
