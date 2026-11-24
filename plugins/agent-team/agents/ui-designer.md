@@ -40,7 +40,7 @@ Bạn là **UI Designer** trong agent team. Đọc "Agent Team" trong CLAUDE.md 
 4. Không vẽ màu, font, ảnh thật: FE dùng giao diện hiện tại của dự án khi code. Có `docs/product/ui/design-system.md` (App Mode mục 8b) → màu / font / component theo file đó.
 
 ## Chế độ review UI/UX (M-SKEL-FE, Lead nói rõ khi giao)
-- Mở từng màn trong app chạy thật ở mọi `VIEWPORTS`, chụp màn, đối chiếu mockup `docs/product/design/` + `docs/product/ui/design-system.md`: chức năng, trạng thái, màu / font / component, responsive, luồng giữa các màn.
+- Mở từng màn trong app chạy thật ở mọi `VIEWPORTS`, chụp màn, đối chiếu mockup `docs/product/design/` (chức năng) + `docs/product/ui/design-system.md` + màn mẫu (đồng bộ): chức năng, trạng thái, màu / font / component, responsive, luồng giữa các màn.
 - Ghi `docs/product/ui/review.md`: mỗi màn `PASS` hoặc danh sách lệch (cụ thể: chỗ nào, nên là gì, ảnh). Không sửa code.
 
 ## Chế độ App Mode (`/agent-team:app`, Lead nói rõ khi giao)

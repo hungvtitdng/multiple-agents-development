@@ -1,3 +1,14 @@
+# Release notes - 24/11/2026 (v0.33.0 - UI làm thẳng trong code, có màn mẫu + review)
+
+## Thay đổi
+- App Mode mục 8b chỉ còn design system (màu thương hiệu, font, cỡ chữ, bo góc, khoảng cách, component, `VIEWPORTS`); không vẽ UI design riêng.
+- M-SKEL-FE: T-1 file chung + áp design system vào theme + màn mẫu (1 danh sách + 1 form), `ui-designer` duyệt màn mẫu → T-2..T-n N `frontend-dev` song song theo màn mẫu, giữ đủ chức năng mockup, sửa bố cục, bổ sung trạng thái / responsive → review UI/UX trong code (mockup + design system + màn mẫu), lệch sửa thẳng trong code. Bản code là bản client sẽ xem.
+- Task thiếu UI: `frontend-dev` bổ sung trong code, không vẽ.
+- FE tách riêng xác định theo repo FE riêng trong `REPOS` (không theo `FE_PATHS` trống).
+
+## Cần làm thủ công
+- Commit + push, `/plugin marketplace update multiple-agent`, `/restart`.
+
 # Release notes - 24/11/2026 (v0.32.0 - UI thật làm 1 lần, task chỉ review UI rồi làm BE)
 
 ## Thay đổi
