@@ -101,6 +101,16 @@ sh(wt3, "git", "add", "."), sh(wt3, "git", "commit", "-qm", "[backend-dev] m3-t1
 run("set", "M-3/T-1", "MERGE_WAIT")
 code, out = run("merge-begin", "M-3/T-1")
 check("thêm cột vào bảng chung + bảng riêng mới: không chặn", code == 0 and "merge-end" in out)
+run("merge-end", "M-3/T-1", "pass")
+
+app = open(os.path.join(d, "docs/product/APP.md")).read()
+w("docs/product/APP.md", app + "| M-SKEL | Khung file | | M-DB | NHẸ | | | | TODO |\n| M-4 | Tài khoản | R-4 | M-DB | VỪA | | | | TODO |\n")
+sh(d, "git", "add", "."), sh(d, "git", "commit", "-qm", "skel")
+code, out = run("fill")
+check("M-SKEL chưa DONE → không mở debate module khác (M-4 chờ), báo ⛔", "💬 M-4" not in out and "⛔ M-SKEL chưa DONE" in out)
+run("module", "M-SKEL", "--state", "DONE")
+code, out = run("fill")
+check("M-SKEL DONE → M-4 được debate", "💬 M-4" in out and "⛔ M-SKEL" not in out)
 
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

@@ -193,9 +193,12 @@ def plan_fill(db, root):
     start_t, start_d, wait_d = [], [], []
     miss = missing_tables(root)  # thiếu migration → chỉ M-0 / M-DB chạy, module khác chờ nền dữ liệu
     mdb_open = any(x["M"] == "M-DB" for x in rows) and mod_state(db, root, "M-DB", rows) != "DONE"
+    skel_open = any(x["M"] == "M-SKEL" for x in rows) and mod_state(db, root, "M-SKEL", rows) != "DONE"
     for m in order:
         st = mod_state(db, root, m, rows)
         if (miss or mdb_open) and m not in ("M-0", "M-DB"):
+            continue
+        if skel_open and m not in ("M-0", "M-DB", "M-SKEL"):
             continue
         if st in ("SPLIT", "DESIGN"):
             for r in db.execute("SELECT * FROM pool WHERE module=? ORDER BY ord", (m,)):
@@ -310,6 +313,9 @@ def cmd_fill(db, root, a):
         return
     start_t, start_d, wait_d = plan_fill(db, root)
     miss = missing_tables(root)
+    skel = app_rows(root)[0]
+    if any(x["M"] == "M-SKEL" for x in skel) and mod_state(db, root, "M-SKEL", skel) != "DONE":
+        print("⛔ M-SKEL chưa DONE → không mở task / debate mới (tránh conflict file khung), task đang chạy vẫn chạy tiếp")
     if miss:
         print(f"⛔ Nền dữ liệu chưa đủ: {len(miss)} bảng trong schema chưa có migration ({', '.join(miss[:8])}"
               f"{' …' if len(miss) > 8 else ''}) → chỉ chạy M-0 / M-DB, module khác chờ (pool.py schema)")

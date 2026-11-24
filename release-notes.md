@@ -1,3 +1,12 @@
+# Release notes - 24/11/2026 (v0.31.3 - M-SKEL chưa xong thì không mở việc mới)
+
+## Thay đổi
+- `pool.py fill`: M-SKEL chưa `DONE` → không mở task / debate mới (chỉ M-0 / M-DB / M-SKEL), task đang chạy vẫn chạy tiếp.
+- Test: schema 10/10.
+
+## Cần làm thủ công
+- Commit + push, `/plugin marketplace update multiple-agent`, `/restart`.
+
 # Release notes - 24/11/2026 (v0.31.2 - M-SKEL theo model, không theo module)
 
 ## Thay đổi
