@@ -1,3 +1,15 @@
+# Release notes - 24/11/2026 (v0.31.2 - M-SKEL theo model, không theo module)
+
+## Thay đổi
+- M-SKEL chỉ tạo file sẵn đúng quy chuẩn: service theo model (1 model = 1 service), hàm stub có chữ ký + dấu module chủ (vd `#[Stub('M-7')]`), controller, request, route, trang placeholder. Bỏ interface / `Fake*` / service theo module.
+- `contracts/M-SKEL.md`: bảng hàm / file → module chủ; module chỉ sửa thân hàm của mình, hàm mới thêm cuối file.
+- M-E2E: grep dấu stub phải rỗng (thay cho grep `Fake`).
+- M-SKEL không viết test mới, không E2E, không review chéo: chỉ lint + test có sẵn pass rồi merge.
+
+## Cần làm thủ công
+- Commit + push, `/plugin marketplace update multiple-agent`, `/restart`.
+- App đang có M-SKEL theo module: SA làm lại contract M-SKEL theo model.
+
 # Release notes - 24/11/2026 (v0.31.1 - status line đúng khi Lead đứng trong worktree)
 
 ## Thay đổi

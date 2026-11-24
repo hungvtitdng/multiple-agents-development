@@ -16,12 +16,12 @@
 |---|---|---|---|---|---|---|---|---|
 | M-0 | Khung project (scaffold, CI, Docker, env, Playwright + e2e/) | | | VỪA | | | | TODO |
 | M-DB | Nền dữ liệu: mọi bảng trong docs/database/schema.md (migration, model, quan hệ, enum, factory, seeder) + service dùng chung | | M-0 | NHẸ | | | | TODO |
-| M-SKEL | Khung app: route + controller rỗng, interface service có chỗ cắm, Fake*, trang placeholder, contract mọi module, bảng file → module chủ | | M-DB | VỪA | | | | TODO |
+| M-SKEL | Khung file: service theo model + hàm stub, controller, request, route, trang placeholder, bảng hàm / file → module chủ | | M-DB | NHẸ | | | | TODO |
 | M-1 | | | M-SKEL | | | | | TODO |
 | M-E2E | E2E toàn app: mọi luồng "1 ngày của <vai trò>" × mọi VIEWPORTS | tất cả | mọi module | VỪA | | | | TODO |
 
 ## Lý do phụ thuộc
 > Mỗi phụ thuộc trong cột "Phụ thuộc" 1 dòng. `contract` = chỉ cần `docs/product/contracts/M-<n>.md` của module kia (làm song song được) · `code` = cần code của module kia đã merge.
 - M-DB → M-0 (code): migration chạy trên khung project
-- M-SKEL → M-DB (code): Fake* đọc dữ liệu từ factory / seeder
-- M-1 → M-SKEL (code): thay Fake* của mình trong khung có sẵn
+- M-SKEL → M-DB (code): hàm stub đọc dữ liệu từ factory / seeder
+- M-1 → M-SKEL (code): điền thân hàm stub của mình trong file có sẵn
