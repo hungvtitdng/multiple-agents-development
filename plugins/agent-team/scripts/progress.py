@@ -397,7 +397,7 @@ def task_cells(root, r, design, now):
         t0 = mtime(os.path.join(root, ".git", "MERGE_HEAD"))  # git tạo lúc merge --no-commit
         el = clock(now - t0) if t0 else ""
         warn = " ⚠" if t0 and now - t0 > int(cfg(root, "MERGE_WARN_MINUTES", "20") or 20) * 60 else ""
-        return ["✅"] * 4 + [f"🔀 IT {el}".strip()], f"🔀 Đang merge {el}{warn}".strip()
+        return ["✅"] * 4 + [f"🧪 IT {el}".strip()], f"🧪 Integration test {el}{warn}".strip()
     if st == "WAIT":
         return cells, ""
     stg = read(os.path.join(root, r["worktree"] or "", ".agent-team", "stage")).strip().upper() if r["worktree"] else ""
@@ -527,12 +527,12 @@ def progress_table(root):
     out = pool or parent_block(root, text, task, cur, bool(src))
     label = f"{'App' if kind == 'APP' else 'Module'} · Phase A" if src else f"{stage} {STAGES[stage][0]}"
     out.append(f"[{task}] {label}" + (f" · {done}/{len(steps)} xong" if steps else ""))
-    if not src:
+    if not src and not pool:
         out += stage_table(stage)
-    if not steps:
+    if not pool and not steps:
         if stage in ("S3", "S4", "S5"):
             out.append("Chưa có danh sách bước (Lead: board.py plan " + task + ' --set "bước 1 @role ∥ bước 2 @role | ...")')
-    else:
+    elif not pool:
         rows = collapse(steps)
         has_role = any(r[2] for r in rows)
         body = [[n, short(t) + ("  ∥" if par else ""), *([r] if has_role else []),

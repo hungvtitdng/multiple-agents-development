@@ -72,9 +72,10 @@ sh(d, "git", "add", "."), sh(d, "git", "commit", "-qm", "[backend-dev] mdb: tabl
 check("đủ migration → schema ✅ exit 0", run("schema")[0] == 0)
 run("module", "M-DB", "--state", "SPLIT")
 code, out = run("fill")
-check("đủ migration + M-DB đã chia task → M-2, M-3 được debate", "⛔" not in out and "💬 M-2:" in out and "💬 M-3:" in out)
+check("đủ migration nhưng M-DB chưa DONE → M-2, M-3 chờ", "💬 M-2" not in out and "💬 M-3" not in out)
 
 # task M-2 đổi / xoá bảng chung → chặn merge
+run("module", "M-2", "--state", "DESIGN")
 run("add", "M-2/T-1", "--task-id", "m2-t1", "--title", "IDP"), run("module", "M-2", "--state", "SPLIT")
 run("add", "M-DB/T-1", "--task-id", "mdb-t1", "--title", "seed")
 c = __import__("sqlite3").connect(os.path.join(d, ".agent-team", "board.db"))

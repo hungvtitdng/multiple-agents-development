@@ -1,3 +1,16 @@
+# Release notes - 24/11/2026 (v0.31.0 - schema trước, M-SKEL khung app, module song song)
+
+## Thay đổi
+- `pool.py fill`: M-DB chưa `DONE` thì chỉ chạy M-0 / M-DB, module khác (kể cả debate) chờ. M-DB chỉ `DONE` sau khi `MIGRATE_CMD` chạy OK trên DB dev.
+- App Mode thêm **M-SKEL** sau M-DB: route + controller rỗng, interface service có chỗ cắm, `Fake*`, trang placeholder, contract mọi module, bảng file → module chủ. Phụ thuộc giữa module mặc định `(contract)`.
+- M-E2E: grep `Fake` ngoài `TEST_PATHS` phải rỗng trước khi chạy E2E.
+- `MAX_PARALLEL` = số agent user cho phép: Lead mở đủ slot, không hỏi lại.
+- Status line: merge hiện `🧪 Integration test mm:ss`; khi có bảng điều phối thì ẩn bảng S1-S6 + bảng bước (không bị che).
+
+## Cần làm thủ công
+- Commit + push, `/plugin marketplace update multiple-agent`, `/restart` rồi `/agent-team:resume`.
+- App đang chạy dở: thêm M-SKEL cho các module chưa code (prompt cho Lead).
+
 # Release notes - 24/11/2026 (v0.30.2 - thời gian chạy + nhịp tim agent trên status line)
 
 ## Thay đổi

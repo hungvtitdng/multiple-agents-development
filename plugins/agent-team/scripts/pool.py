@@ -192,9 +192,10 @@ def plan_fill(db, root):
                                      if m["module"] not in {x["M"] for x in rows}]
     start_t, start_d, wait_d = [], [], []
     miss = missing_tables(root)  # thiếu migration → chỉ M-0 / M-DB chạy, module khác chờ nền dữ liệu
+    mdb_open = any(x["M"] == "M-DB" for x in rows) and mod_state(db, root, "M-DB", rows) != "DONE"
     for m in order:
         st = mod_state(db, root, m, rows)
-        if miss and m not in ("M-0", "M-DB"):
+        if (miss or mdb_open) and m not in ("M-0", "M-DB"):
             continue
         if st in ("SPLIT", "DESIGN"):
             for r in db.execute("SELECT * FROM pool WHERE module=? ORDER BY ord", (m,)):

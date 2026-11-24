@@ -44,6 +44,6 @@ Ghi vào TASK.md mục "Phán quyết"/SUMMARY: "Resume từ <bước>" kèm lý
 ## 3. Tiếp tục
 Làm đúng playbook của `/agent-team:task` từ bước vừa xác định (mục 4-10): subagent chạy song song, giới hạn debate 3 lượt và 3 vòng sửa/issue, không hỏi user, Security bắt buộc, commit một dòng. Không làm lại bước đã xong và đã có bằng chứng (commit, file board, test pass).
 
-**Không dừng sau khi xong task đang dở:** task thuộc app (`docs/product/APP.md` có bảng Module) hoặc module (`- Module:` trong TASK.md) → tự tạo task cho module / task con kế tiếp và làm tiếp, theo `app.md` mục 10.2 (tạo task-id + branch theo `task.md` mục 0-1, ghi bảng). Chỉ dừng ở điểm dừng trong `app.md` mục 10.2.
+**Không dừng sau khi xong task đang dở:** task thuộc app (`docs/product/APP.md` có bảng Module) hoặc module (`- Module:` trong TASK.md) → tự tạo task cho module / task con kế tiếp và làm tiếp, theo `app.md` mục 10.2 (tạo task-id + branch theo `task.md` mục 0-1, ghi bảng). Chỉ dừng ở điểm dừng trong `app.md` mục 10.2. `MAX_PARALLEL` là số agent user đã cho phép chạy cùng lúc: mở đủ slot, không hỏi lại vì "nhiều agent".
 
 Báo cáo ngắn: đang resume từ bước nào, đã xong gì, còn gì; cuối là đúng 1 việc user làm tiếp (≤ 2 phút), hoặc "chưa cần làm gì" khi đang chạy tiếp.
