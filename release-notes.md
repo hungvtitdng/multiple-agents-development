@@ -1,3 +1,13 @@
+# Release notes - 24/11/2026 (v0.36.0 - Task khung M-SKEL chạy nhanh)
+
+## Thay đổi
+- Task M-SKEL-*: bỏ `code-reviewer`, `security`, `challenger`, review UI từng task; ghi `Code review: N/A`, `Security review: N/A` (hook cho qua). `ui-designer` chỉ review 1 lần ở task cuối.
+- M-SKEL-BE / M-SKEL-FE không test, không IT (chưa có dữ liệu thật): `Kết quả test: N/A` (hook cho qua), dev chỉ chạy `LINT_CMD` (FE thêm build FE).
+- `pool.py merge-begin` của M-SKEL-* tự merge + commit, không chạy IT.
+
+## Cần làm thủ công
+- Commit + push, `/plugin` update `multiple-agent`, `/exit` rồi `claude -c`.
+
 # Release notes - 24/11/2026 (v0.35.0 - M-SKEL-FE chạy ít container)
 
 ## Thay đổi

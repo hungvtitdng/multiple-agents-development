@@ -392,6 +392,9 @@ def cmd_merge_begin(db, root, a):
         sys.exit(2)
     db.execute("UPDATE pool SET state='MERGING' WHERE label=?", (a.label,))
     db.commit()
+    if r["module"].startswith("M-SKEL"):
+        cmd_merge_end(db, root, argparse.Namespace(label=a.label, result="pass", note=None))
+        return
     it = cfg(root, "INTEGRATION_CMD", "") or "TEST_CMD + E2E toàn bộ (agent-db-clone.sh e2e)"
     print(f"Đã merge (chưa commit) {a.label}. Chạy integration test: {it}\nRồi: pool.py merge-end {a.label} pass|fail")
 
@@ -426,7 +429,7 @@ def cmd_merge_end(db, root, a):
         git(root, "worktree", "remove", "--force", os.path.join(root, r["worktree"]))
     db.execute("UPDATE pool SET state='DONE', ended_at=?, note=NULL WHERE label=?", (int(time.time()), a.label))
     db.commit()
-    print(f"✅ {a.label} merged + IT pass (branch {r['branch']} giữ lại)")
+    print(f"✅ {a.label} merged" + (" (khung, không IT)" if r["module"].startswith("M-SKEL") else " + IT pass") + f" (branch {r['branch']} giữ lại)")
     maybe_module_done(db, root, r["module"])
 
 

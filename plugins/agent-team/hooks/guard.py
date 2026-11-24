@@ -705,7 +705,7 @@ def gate_missing(stage, text):
                 if first(k) not in ("YES", "N/A"):
                     miss.append(f"{k}: YES hoặc N/A")
     elif stage == "S5":
-        if first("Kết quả test") != "PASS":
+        if first("Kết quả test") not in (("PASS", "N/A") if "(M-SKEL" in f("Loại").upper() else ("PASS",)):
             miss.append("Kết quả test: PASS")
         if first("Lint/format") not in ("PASS", "N/A"):
             miss.append("Lint/format: PASS hoặc N/A")
@@ -716,9 +716,10 @@ def gate_missing(stage, text):
         elif first("E2E") == "N/A" and first("UI mockup") == "YES":
             miss.append("E2E: task có UI (UI mockup: YES) thì phải PASS, không được N/A")
     elif stage == "S6":
-        if first("Code review") != "APPROVED":
+        ok = ("APPROVED", "N/A") if "(M-SKEL" in f("Loại").upper() else ("APPROVED",)
+        if first("Code review") not in ok:
             miss.append("Code review: APPROVED")
-        if first("Security review") != "APPROVED":
+        if first("Security review") not in ok:
             miss.append("Security review: APPROVED")
         if first("Cập nhật KB") not in ("YES", "KHÔNG"):
             miss.append("Cập nhật KB: YES hoặc KHÔNG CẦN")

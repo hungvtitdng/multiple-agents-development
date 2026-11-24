@@ -512,6 +512,11 @@ gate("S6 thiếu Security review", DONE.replace("- Security review: APPROVED\n",
 gate("S6 thiếu KB", DONE.replace("YES\n- Bài học", "TODO\n- Bài học"), "Bash", S6, None, B)
 gate("S6 thiếu bài học", DONE.replace("- Bài học: YES", "- Bài học: TODO"), "Bash", S6, None, B)
 gate("S6 đủ", DONE, "Bash", S6, None, OK)
+SKEL_NA = "- Code review: N/A\n- Security review: N/A\n- Cập nhật KB: KHÔNG CẦN\n- Bài học: KHÔNG CÓ\n"
+gate("S6 task thường: review N/A bị chặn", SKEL_NA, "Bash", S6, None, B)
+gate("S5 task khung M-SKEL: test N/A được qua", "- Loại: ĐÃ CHIA (M-SKEL-BE/T-1)\n- Kết quả test: N/A\n- Lint/format: PASS\n- Gap còn mở: 0\n- E2E: N/A\n", "Bash", {"command": "echo S5 > .agent-team/stage"}, None, OK)
+gate("S5 task thường: test N/A bị chặn", "- Kết quả test: N/A\n- Lint/format: PASS\n- Gap còn mở: 0\n- E2E: N/A\n", "Bash", {"command": "echo S5 > .agent-team/stage"}, None, B)
+gate("S6 task khung M-SKEL: review N/A được qua", "- Loại: ĐÃ CHIA (M-SKEL-FE/T-2)\n" + SKEL_NA, "Bash", S6, None, OK)
 gate("S6 KB không cần + không có bài học", "- Code review: APPROVED\n- Security review: APPROVED\n- Cập nhật KB: KHÔNG CẦN\n- Bài học: KHÔNG CÓ\n", "Bash", S6, None, OK)
 MOCKS = os.path.join(gp, "docs/agent-tasks/T1/MOCKS.md")
 MOCK_HEAD = "| Mã | File mock | Thay cho | Contract | Chờ task | Trạng thái |\n|---|---|---|---|---|---|\n"

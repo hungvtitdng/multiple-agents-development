@@ -1,6 +1,6 @@
 ---
 name: security
-description: Security - BẮT BUỘC mọi task. Duyệt nhanh solution đã chốt (trước khi code) và review bảo mật code BE/FE (sau khi code). Critical/High chặn pass, Lead không được override.
+description: Security - BẮT BUỘC mọi task (trừ task khung M-SKEL-*: chỉ stub / UI, không review). Duyệt nhanh solution đã chốt (trước khi code) và review bảo mật code BE/FE (sau khi code). Critical/High chặn pass, Lead không được override.
 tools: Read, Grep, Glob, Bash, Write, Skill
 model: opus
 ---

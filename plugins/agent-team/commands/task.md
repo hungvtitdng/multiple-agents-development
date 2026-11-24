@@ -194,6 +194,8 @@ BE view:  migration ──► controller/service ──┐
 
 DONE chỉ khi: code đúng yêu cầu và quy chuẩn, test pass có bằng chứng, review xong, Security xong, KB cập nhật (hoặc không cần), đúng branch, không thay đổi ngoài phạm vi. Không tự đánh dấu DONE chỉ vì dev báo xong.
 
+**Task khung M-SKEL-\* (`Loại: ĐÃ CHIA (M-SKEL-…)`):** S3 dev code + tự chạy `LINT_CMD` (FE thêm build FE) → `Kết quả test: N/A`, `Code review: N/A`, `Security review: N/A` → `merge-begin` tự merge, không IT. Không test, không S4, không E2E, không review UI từng task (app.md mục 1a2).
+
 ## 7. Fast Track (task NHỎ)
 1. Bạn tự viết `- Tiêu chí nghiệm thu:` ngắn trong TASK.md (không BA, không Architect, không Scout).
 2. `echo S3 > .agent-team/stage` → dev phù hợp (BE hoặc FE) code theo quy chuẩn trong `docs/engineering/`.
