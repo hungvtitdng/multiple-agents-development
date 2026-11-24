@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS pool_modules (
 """
 SLOT_STATES = ("RUNNING", "FIX", "GAP")  # chiếm chỗ (worktree đang làm)
 STATES = ("WAIT", "RUNNING", "GAP", "FIX", "BLOCKED", "MERGE_WAIT", "MERGING", "DONE")
-LABEL_RE = re.compile(r"^M-(\d+|E2E|DB)/T-\d+$")
+LABEL_RE = re.compile(r"^M-(\d+|E2E|DB|SKEL)/T-\d+$")
 
 
 def die(msg, code=1):
@@ -544,7 +544,7 @@ def cmd_resume(db, root, a):
 
 # ---------- team: nhận module, đồng bộ develop, kiểm bàn giao (v0.29) ----------
 APP_MD = "docs/product/APP.md"
-DEP_REASON_RE = re.compile(r"(M-(?:\d+|E2E|DB))\s*(?:→|->)\s*(M-(?:\d+|DB))\s*\((contract|code)\)\s*:\s*\S")
+DEP_REASON_RE = re.compile(r"(M-(?:\d+|E2E|DB|SKEL))\s*(?:→|->)\s*(M-(?:\d+|DB|SKEL))\s*\((contract|code)\)\s*:\s*\S")
 ENV_USE_RES = [  # chỉ key bắt buộc: có giá trị mặc định trong code (env('X', 'mặc định')) thì không tính
     re.compile(r"\benv\(\s*['\"]([A-Z][A-Z0-9_]+)['\"]\s*\)"),                                # Laravel env('X')
     re.compile(r"\bENV(?:\[\s*['\"]([A-Z][A-Z0-9_]+)['\"]\s*\]|\.fetch\(\s*['\"]([A-Z][A-Z0-9_]+)['\"]\s*\))"),  # Rails
@@ -596,10 +596,10 @@ def module_table(text):
         if c and c[0] == "M" and "Module" in c:
             head = c
             continue
-        if head and len(c) >= 2 and re.match(r"^M-(\d+|E2E|DB)$", c[0]):
+        if head and len(c) >= 2 and re.match(r"^M-(\d+|E2E|DB|SKEL)$", c[0]):
             r = dict(zip(head, c + [""] * (len(head) - len(c))))
             dep = r.get("Phụ thuộc", "")
-            r["deps"] = ["*"] if re.search(r"tất cả|mọi module", dep, re.I) else re.findall(r"M-(?:\d+|DB)\b", dep)
+            r["deps"] = ["*"] if re.search(r"tất cả|mọi module", dep, re.I) else re.findall(r"M-(?:\d+|DB|SKEL)\b", dep)
             rows.append(r)
         elif head and not line.strip().startswith("|"):
             head = None if rows else head

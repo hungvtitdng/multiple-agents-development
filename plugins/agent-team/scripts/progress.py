@@ -123,7 +123,7 @@ def table_rows(text, key):
     rows = []
     for line in text.splitlines():
         c = [x.strip() for x in line.strip().strip("|").split("|")]
-        if len(c) > 2 and re.match(rf"^{key}-(\d+|E2E|DB)$", c[0]):
+        if len(c) > 2 and re.match(rf"^{key}-(\d+|E2E|DB|SKEL)$", c[0]):
             rows.append(c)
     return rows
 
@@ -349,7 +349,7 @@ def collapse(steps):
     return rows
 
 
-POOL_COLS = ["Debate", "Code", "Test", "Review", "Merge"]
+POOL_COLS = ["Debate", "Code", "Test", "Review", "IT", "Merge"]
 POOL_STAGE_COL = {"S1": 1, "S2": 1, "S3": 1, "S4": 2, "S5": 3, "S6": 3}  # stage của worktree → cột đang làm
 POOL_MAX_ROWS = 16
 
@@ -385,19 +385,34 @@ def agent_pulse(root, wt, hang):
     return (f"⚠ {role}{more} im {idle // 60}p" if idle > limit else f"{role}{more} {idle}s trước")
 
 
+def group_waiting(rows):
+    """Task chờ liền nhau cùng trạng thái gộp 1 dòng: T-2..T-4 (3 task)."""
+    out, keys = [], []
+    for x in rows:
+        if out and x[-1].startswith("⏳") and out[-1][2:] == x[2:]:
+            keys[-1].append(x[1].split(" ")[0])
+            continue
+        out.append(list(x))
+        keys.append([x[1].split(" ")[0]])
+    for x, k in zip(out, keys):
+        if len(k) > 1:
+            x[1] = f"{k[0]}..{k[-1]} ({len(k)} task)"
+    return out
+
+
 def task_cells(root, r, design, now):
-    """5 ô Debate · Code · Test · Review · Merge + trạng thái chung của 1 task trong pool."""
+    """6 ô Debate · Code · Test · Review · IT · Merge + trạng thái chung của 1 task trong pool."""
     st, note = r["state"], (r["note"] or "")
-    cells = ["💬 ▶" if design else "✅"] + ["⏳"] * 4
+    cells = ["💬 ▶" if design else "✅"] + ["⏳"] * 5
     if st == "DONE":
-        return ["✅"] * 5, "✅ Merged"
+        return ["✅"] * 6, "✅ Merged"
     if st == "MERGE_WAIT":
-        return ["✅"] * 4 + ["⏳"], "🔀 Chờ merge"
+        return ["✅"] * 4 + ["⏳", "⏳"], "🔀 Chờ merge"
     if st == "MERGING":
         t0 = mtime(os.path.join(root, ".git", "MERGE_HEAD"))  # git tạo lúc merge --no-commit
         el = clock(now - t0) if t0 else ""
         warn = " ⚠" if t0 and now - t0 > int(cfg(root, "MERGE_WARN_MINUTES", "20") or 20) * 60 else ""
-        return ["✅"] * 4 + [f"🧪 IT {el}".strip()], f"🧪 Integration test {el}{warn}".strip()
+        return ["✅"] * 4 + [f"🧪 ▶ {el}".strip(), "⏳"], f"🧪 Integration test {el}{warn}".strip()
     if st == "WAIT":
         return cells, ""
     stg = read(os.path.join(root, r["worktree"] or "", ".agent-team", "stage")).strip().upper() if r["worktree"] else ""
@@ -408,8 +423,10 @@ def task_cells(root, r, design, now):
     el = f" {clock(now - t0)}" if t0 else ""
     mark = {"RUNNING": "▶" + el, "FIX": "🔧" + el, "GAP": "⛔", "BLOCKED": "⛔"}.get(st, "▶")
     cells[cur] = mark
-    if st == "FIX" and re.match(r"(IT fail|conflict)", note):
+    if st == "FIX" and note.startswith("IT fail"):
         cells[4] = "✗"
+    if st == "FIX" and note.startswith("conflict"):
+        cells[5] = "✗"
     label = {"RUNNING": f"▶ {POOL_COLS[cur]}", "FIX": "🔧 Sửa", "GAP": "⛔ GAP", "BLOCKED": "⛔ Chặn"}.get(st, st)
     if note and st in ("FIX", "GAP", "BLOCKED"):
         label += f" ({short(note.split(':')[0], 12)})"
@@ -461,15 +478,15 @@ def pool_block(root, all_rows=False):
         design = mst == "DESIGN"
         debating += design
         if is_done and all(t["state"] == "DONE" for t in tasks):
-            body.append([m, f"({len(tasks)} task)" if tasks else "(đã xong)"] + ["✅"] * 5 + ["✅ Xong"])
+            body.append([m, f"({len(tasks)} task)" if tasks else "(đã xong)"] + ["✅"] * 6 + ["✅ Xong"])
             continue
         if not tasks:
             if design:
                 dat = mods[m]["design_at"] if "design_at" in mods[m].keys() else None
                 el = f" {clock(now - dat)}" if dat else ""
-                body.append([m, "(chưa chia task)", "💬 ▶" + el] + ["⏳"] * 4 + ["💬 Debate" + el])
+                body.append([m, "(chưa chia task)", "💬 ▶" + el] + ["⏳"] * 5 + ["💬 Debate" + el])
             elif mst == "SPLIT":
-                body.append([m, "(chưa có task)", "✅"] + ["⏳"] * 4 + ["⚠ Chưa add task"])
+                body.append([m, "(chưa có task)", "✅"] + ["⏳"] * 5 + ["⚠ Chưa add task"])
             else:
                 idle.append(m)
             continue
@@ -486,19 +503,21 @@ def pool_block(root, all_rows=False):
             body.append(["", short(t["label"].split("/")[-1] + " " + t["title"], 26)] + cells + [label])
         first = len(body) - len(tasks)  # dòng đầu của module: ghi tên module
         body[first][0] = m
+        if not all_rows:
+            body[first:] = group_waiting(body[first:])
         if not all_rows and merged and len(merged) < len(tasks) and len(body) > POOL_MAX_ROWS:  # gọn: task đã merge gộp 1 dòng
             keep = [x for x in body[first:] if x[-1] != "✅ Merged"]
-            body[first:] = [[m, f"({len(merged)} task đã merge)"] + ["✅"] * 5 + ["✅ Merged"]] + [[""] + x[1:] for x in keep]
+            body[first:] = [[m, f"({len(merged)} task đã merge)"] + ["✅"] * 6 + ["✅ Merged"]] + [[""] + x[1:] for x in keep]
     for group, label in (([x for x in idle if x in wait_d], "⏳ Chờ slot debate"), ([x for x in idle if x not in wait_d], "⏳ Chờ phụ thuộc")):
         if group:
             nm = f"{group[0]}…" if len(group) > 1 else group[0]
             body.append([nm, f"{len(group)} module" if len(group) > 1 else short(names.get(group[0], ""), 26)]
-                        + ["⏳", "", "", "", ""] + [label])
+                        + ["⏳", "", "", "", "", ""] + [label])
     if pdb:
         pdb.close()
     if not all_rows and len(body) > POOL_MAX_ROWS:
         cut = len(body) - POOL_MAX_ROWS + 1
-        body = body[:POOL_MAX_ROWS - 1] + [["…", f"+{cut} dòng (pool.py status)", "", "", "", "", "", ""]]
+        body = body[:POOL_MAX_ROWS - 1] + [["…", f"+{cut} dòng (pool.py status)", "", "", "", "", "", "", ""]]
     title = (re.search(r"(?m)^#\s+(.+)$", app) or [None, ""])[1].strip()
     total_m = len(table) or len(set(order))
     head = (f"App {short(title, 30)} · " if title and not title.startswith("<") else "") + \

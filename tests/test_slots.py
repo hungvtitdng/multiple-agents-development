@@ -91,9 +91,9 @@ check("có contract M-1 → M-8/T-1 READY, M-7/T-1 vẫn chờ code M-1", re.sea
       and re.search(r"M-7\s*│ T-1.*⏳ Chờ M-1", out) is not None)
 
 lines = [l for l in out.splitlines() if l.startswith("│")]
-check("bảng: cột Module · Task · Debate · Code · Test · Review · Merge · Trạng thái, không có dòng tổng",
-      "│ Module │ Task" in out and re.search(r"│ Debate\s*│ Code\s*│ Test\s*│ Review\s*│ Merge\s*│ Trạng thái", out) is not None and "tổng" not in out.lower())
-check("task đang code: ✅ Debate, ▶ mm:ss Code, ⏳ Test/Review/Merge, chưa có agent", re.search(r"T-1 Task 1\s*│ ✅\s*│ ▶ \d\d:\d\d\s*│ ⏳\s*│ ⏳\s*│ ⏳\s*│ ▶ Code · chưa có agent", out) is not None)
+check("bảng: cột Module · Task · Debate · Code · Test · Review · IT · Merge · Trạng thái, không có dòng tổng",
+      "│ Module │ Task" in out and re.search(r"│ Debate\s*│ Code\s*│ Test\s*│ Review\s*│ IT\s*│ Merge\s*│ Trạng thái", out) is not None and "tổng" not in out.lower())
+check("task đang code: ✅ Debate, ▶ mm:ss Code, ⏳ Test/Review/IT/Merge, chưa có agent", re.search(r"T-1 Task 1\s*│ ✅\s*│ ▶ \d\d:\d\d\s*│ ⏳\s*│ ⏳\s*│ ⏳\s*│ ⏳\s*│ ▶ Code · chưa có agent", out) is not None)
 check("module đang debate có thời gian chạy", re.search(r"💬 Debate \d\d:\d\d", out) is not None)
 check("tên module chỉ ở dòng đầu của nhóm", sum(1 for l in lines if re.match(r"│ M-1\s", l)) == 1)
 
