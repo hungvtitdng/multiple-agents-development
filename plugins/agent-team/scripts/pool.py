@@ -395,7 +395,10 @@ def cmd_merge_begin(db, root, a):
     if r["module"].startswith("M-SKEL"):
         cmd_merge_end(db, root, argparse.Namespace(label=a.label, result="pass", note=None))
         return
-    it = cfg(root, "INTEGRATION_CMD", "") or "TEST_CMD + E2E toàn bộ (agent-db-clone.sh e2e)"
+    tag = "@" + r["module"].lower().replace("-", "")
+    it = cfg(root, "INTEGRATION_CMD", "") or (
+        "TEST_CMD + E2E toàn bộ (agent-db-clone.sh e2e)" if r["module"] == "M-E2E"
+        else f"TEST_CMD + E2E của module (agent-db-clone.sh e2e <task> --grep {tag} + spec đã sửa); toàn bộ E2E chỉ ở M-E2E")
     print(f"Đã merge (chưa commit) {a.label}. Chạy integration test: {it}\nRồi: pool.py merge-end {a.label} pass|fail")
 
 

@@ -1,3 +1,17 @@
+# Release notes - 24/11/2026 (v0.39.0 - E2E nhanh hơn)
+
+## Thay đổi
+- Skill `test-automation`: luồng đầy đủ chỉ chạy ở chiều rộng lớn nhất, chiều rộng nhỏ chỉ chạy test `@responsive`; song song theo chiều rộng (`workers` = số chiều rộng, seed / reset tách theo chiều rộng, không xoá bảng dùng chung); đăng nhập 1 lần bằng `storageState` (project `setup`); reset `beforeAll` cho file chỉ đọc; server app phục vụ song song.
+- Mẫu `playwright.config.ts` + `e2e/auth.setup.ts` mới.
+- Ít E2E: `test-designer` chọn tầng rẻ nhất (logic / validate / quyền → test BE, E2E chỉ luồng chính + responsive), case có cột `Tầng`.
+- Chạy đúng phạm vi: spec gắn tag module `@m<n>`; IT khi merge (`pool.py merge-begin`) chỉ `TEST_CMD` + E2E của module, **toàn bộ E2E chỉ ở M-E2E**; sửa lỗi `--last-failed`.
+- Không build FE mỗi lần chạy E2E (build khi file FE đổi).
+
+## Cần làm thủ công
+- `APP_START_CMD` dùng server nhiều luồng (PHP: thêm `PHP_CLI_SERVER_WORKERS=8` trước `php -S`).
+- Dự án đã có E2E (04.Cay): chạy 1 task tăng tốc E2E theo skill (đo thời gian trước / sau).
+- Commit + push, `/plugin` update `multiple-agent`, `/exit` rồi `claude -c`.
+
 # Release notes - 24/11/2026 (v0.38.0 - Mockup design full, component dùng lại mọi stack)
 
 ## Thay đổi

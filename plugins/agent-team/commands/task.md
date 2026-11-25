@@ -168,7 +168,7 @@ lặp tới hết việc:
      của worktree + commit → `$P set <M-n/T-k> MERGE_WAIT` (task ĐÃ CHIA không `echo S6` trong worktree: merge là bước đóng)
      GAP → `$P set <task> GAP --note ..` + debate nhỏ (mục 7b), task khác chạy tiếp. Đổi contract → dừng các task dùng contract đó.
   4. $P merge-begin <task>  → merge --no-commit vào branch phiên (conflict → --abort, task FIX)
-     chạy INTEGRATION_CMD (mặc định TEST_CMD + `agent-db-clone.sh e2e` toàn bộ, ở thư mục chính)
+     chạy INTEGRATION_CMD (mặc định `TEST_CMD` + E2E **của module** `agent-db-clone.sh e2e <task> --grep @m<n>` + spec task đã sửa, ở thư mục chính; **toàn bộ E2E chỉ chạy ở M-E2E** / trước demo)
      $P merge-end <task> pass|fail → pass: commit merge, **dọn** (xoá container `agent-clone-` / `agent-e2e-` của task, kill process còn chạy trong worktree), xoá worktree, ✅ (module đủ ✅ → tag); bạn **TaskStop** ngay mọi agent + shell nền (`run_in_background`) của task đó, không để treo · fail: --abort, task FIX
      module ✅ → ở thư mục chính: Trạng thái DONE trong `APP.md`, `gap-check.py --spec`, commit `[lead] <task-id app>: M-n xong`
   5. Dán `$P status` vào chat (1 lần mỗi vòng), quay lại 1.

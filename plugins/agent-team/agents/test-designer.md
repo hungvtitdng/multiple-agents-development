@@ -33,7 +33,8 @@ Bạn là **Tester - Test Design** trong agent team. Đọc "Agent Team" trong C
 2. **Sau khi solution được chốt:** thiết kế test:
    - Scenario + test case cho **mỗi AC** (ghi `AC-n`), test data, trường hợp biên, negative case, dữ liệu sai/thiếu
    - Authn/authz, test bảo mật Security yêu cầu, regression
-   - Mỗi nhánh trong `design/workflow.md` và mỗi trạng thái trong wireframe `design/mockup-*.html` có ít nhất 1 test case (E2E cho luồng chính)
+   - Mỗi nhánh trong `design/workflow.md` và mỗi trạng thái trong mockup `design/mockup-*.html` có ít nhất 1 test case
+   - **Chọn tầng test rẻ nhất kiểm được:** quy tắc nghiệp vụ, validate, quyền, mã lỗi, biên → test BE (feature / API, nhanh); **E2E chỉ cho luồng chính** người dùng bấm qua nhiều màn + responsive. Không dùng E2E để kiểm điều test BE kiểm được. Mỗi case ghi cột `Tầng` (BE / E2E)
    - Task có UI: E2E chạy ở **mọi chiều rộng** trong config `VIEWPORTS`, kiểm responsive (không cuộn ngang, nút ≥ 44px, menu ☰, bảng) theo skill `test-case-design` mục "Giao diện: trạng thái × chiều rộng"
    - Loại test: unit, integration, API, E2E, validation/boundary, error-handling, performance khi cần
    - Test nào tự động hóa; rollback migration nếu có
