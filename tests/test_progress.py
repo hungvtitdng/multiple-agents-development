@@ -121,6 +121,12 @@ open(APP, "w").write("# App\n- Intake: YES\n- Challenger: TODO\n| M | Module | G
                      "| M-0 | Khung | | | VỪA | | | DONE |\n| M-1 | Auth | | M-0 | | | | TODO |\n| M-E2E | E2E | | | | | | TODO |\n")
 out = runl()
 check("--list có tầng App: 1/3 module xong + module đang làm", out.splitlines()[0].endswith("· 1/3 module xong") and "M-1" in out and "▶ Đang làm" in [l for l in out.splitlines() if "M-1" in l][0])
+app_old = open(APP).read()
+open(APP, "w").write(app_old.replace("| M-E2E | E2E | | | | | | TODO |", "| M-E2E | E2E | | | | | | DOING |"))
+out = runl()
+check("task không thuộc module: ▶ ở module DOING, không gắn bước của task", "▶ Đang làm" in [l for l in out.splitlines() if "M-E2E" in l][0]
+      and "▶" not in [l for l in out.splitlines() if "M-1" in l][0] and "bước" not in [l for l in out.splitlines() if "M-E2E" in l][0])
+open(APP, "w").write(app_old)
 
 # Phase A (APP, S2): 10 bước theo cổng + file
 write_task(**{"Loại": "APP"})

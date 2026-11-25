@@ -308,6 +308,9 @@ def parent_block(root, text, task, cur_step, phase_a=False):
     done = [r[-1].upper().startswith("DONE") for r in rows]
     cur = next((i for i, r in enumerate(rows) if task in r[2:]), None)
     if cur is None:
+        cur_step = ""
+        cur = next((i for i, r in enumerate(rows) if r[-1].upper().startswith("DOING")), None)
+    if cur is None:
         cur = next((i for i, d in enumerate(done) if not d), None)
     st = ["done" if d else "doing" if i == cur else "todo" for i, d in enumerate(done)]
     for i, r in enumerate(rows):

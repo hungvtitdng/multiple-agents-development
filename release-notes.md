@@ -1,3 +1,8 @@
+# Release notes - 25/11/2026 (v0.40.1 - sửa status line gắn nhầm module)
+
+## Sửa
+- Status line / STATUS.md: task không thuộc module nào (vd mockup v2) không còn gắn ▶ + "bước x/y" vào module TODO đầu tiên. ▶ hiện ở module đang `DOING` trong APP.md, không kèm bước.
+
 # Release notes - 25/11/2026 (v0.40.0 - 1 container DB + 1 container app, STATUS.md)
 
 ## Thay đổi
