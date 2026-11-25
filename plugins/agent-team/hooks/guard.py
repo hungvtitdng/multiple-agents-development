@@ -1366,6 +1366,38 @@ def touches_hidden(text):
 POST = len(sys.argv) > 1 and sys.argv[1] == "post"
 
 
+def bind_worktree(data, role, cwd, tool):
+    """Agent đã làm ở 1 worktree thì không được sửa / chạy lệnh ở worktree khác (gắn theo agent_id)."""
+    key = data.get("agent_id")
+    if not role or not key or tool not in ("Edit", "Write", "MultiEdit", "NotebookEdit", "Bash"):
+        return
+    path = (data.get("tool_input") or {}).get("file_path") or (data.get("tool_input") or {}).get("notebook_path") or ""
+    d = os.path.dirname(os.path.join(cwd, path)) if path else cwd
+    while not os.path.isfile(os.path.join(d, ".git")):
+        if os.path.dirname(d) == d or os.path.isdir(os.path.join(d, ".git")):
+            return
+        d = os.path.dirname(d)
+    cwd = d
+    try:
+        m = re.search(r"gitdir:\s*(.+?)/\.git/worktrees/", open(os.path.join(d, ".git"), encoding="utf-8").read())
+    except OSError:
+        return
+    if not m:
+        return
+    p = os.path.join(m.group(1), ".agent-team", "agent_worktree.json")
+    try:
+        seen = json.load(open(p, encoding="utf-8"))
+    except (OSError, ValueError):
+        seen = {}
+    prev = seen.get(key)
+    if prev and prev != cwd:
+        block(f"agent này làm ở worktree '{os.path.basename(prev)}', không được đụng worktree '{os.path.basename(cwd)}' của task khác")
+    if not prev:
+        seen[key] = cwd
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        json.dump(seen, open(p, "w", encoding="utf-8"))
+
+
 def main():
     try:
         data = json.load(sys.stdin)
@@ -1391,6 +1423,8 @@ def main():
     if tool in ("Read", "Edit", "Write", "MultiEdit", "NotebookEdit", "Grep", "Glob"):
         if (is_secret_path(path) and not is_env_file(path)) or (is_secret_path(ti.get("glob", "")) and not is_env_file(ti.get("glob", ""))):
             block(f"không được đọc/sửa file nhạy cảm '{path or ti.get('glob')}'")
+
+    bind_worktree(data, role, cwd, tool)
 
     # challenger không biết ticket: không đọc docs/ (TASK, board, CONTEXT, KB)
     if role == "challenger":

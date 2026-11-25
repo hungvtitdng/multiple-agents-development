@@ -1057,5 +1057,27 @@ run("Bash", {"command": "true"}, "frontend-dev", cx, mode="post", session="fe")
 cx_case("không ai khác làm: backend-dev Bash ghi frontend/ vẫn bị hoàn tác", lambda: open(os.path.join(cx, "frontend/a.ts"), "w").write("HACK\n"), B,
         lambda: open(os.path.join(cx, "frontend/a.ts")).read() == "FE sửa\n")
 
+# ---- v0.40.0: agent gắn với 1 worktree, không đụng worktree task khác ----
+bw = os.path.realpath(make_repo())
+for n in ("m6-t1", "m7-t2"):
+    sh(bw, "git", "worktree", "add", "-q", os.path.join(bw, ".worktrees", n), "-b", f"agent/{n}")
+
+
+def bw_err(agent, wt):
+    f = os.path.join(bw, ".worktrees", wt, "a.rb")
+    data = {"tool_name": "Edit", "tool_input": {"file_path": f, "old_string": "x", "new_string": "y"}, "cwd": bw,
+            "session_id": "s1", "agent_type": "agent-team:backend-dev", "agent_id": agent}
+    return subprocess.run([sys.executable, GUARD], input=json.dumps(data), capture_output=True, text=True).stderr
+
+
+total += 3
+ok1 = "đụng worktree" not in bw_err("ag1", "m6-t1")
+ok2 = "đụng worktree 'm7-t2'" in bw_err("ag1", "m7-t2")
+ok3 = "đụng worktree" not in bw_err("ag2", "m7-t2")
+for desc, ok in [("agent sửa worktree đầu tiên: được", ok1), ("cùng agent sửa worktree task khác: chặn", ok2),
+                 ("agent khác ở worktree đó: được", ok3)]:
+    fail += not ok
+    print(f"{'PASS' if ok else 'FAIL'}  {desc}")
+
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

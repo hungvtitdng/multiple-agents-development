@@ -37,6 +37,9 @@ if [ -f "$ROOT/.claude/agent-team.local.config" ]; then  # chỉ dòng có giá 
   . <(grep -E '^[A-Za-z_][A-Za-z0-9_]*=[^[:space:]#]' "$ROOT/.claude/agent-team.local.config")
 fi
 
+CLONE_MODE="${CLONE_MODE:-container}"
+MAIN="$(dirname "$(cd "$ROOT" && git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || echo "$ROOT/.git")")"
+[ "$CLONE_MODE" != schema ] || COMPOSE_DIR="${COMPOSE_DIR:-$MAIN}"
 COMPOSE_DIR="${COMPOSE_DIR:-$ROOT}"
 case "$COMPOSE_DIR" in /*) ;; *) COMPOSE_DIR="$ROOT/$COMPOSE_DIR" ;; esac
 export COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}" COMPOSE_PROFILES="${COMPOSE_PROFILES:-}"
@@ -45,6 +48,10 @@ STATE_DIR="$ROOT/.agent-team/clones"
 
 dc() { (cd "$COMPOSE_DIR" && docker compose "$@"); }
 
+if [ "$CMD" = "status" ] && [ "$CLONE_MODE" = schema ]; then
+  dc ps
+  exit 0
+fi
 if [ "$CMD" = "status" ]; then
   docker ps -a --filter label=agent-team.clone=1 --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'
   exit 0
@@ -136,7 +143,9 @@ generate_migration() {
   esac
   cmd="$MIGRATION_GEN_CMD $(printf '%q ' "$@")"
   echo ">> [$APP_SERVICE] $cmd"
-  if [ -n "$(dc ps --status running -q "$APP_SERVICE" 2>/dev/null)" ]; then
+  if [ "$CLONE_MODE" = schema ]; then
+    dc exec -T ${user[@]+"${user[@]}"} -w "$CPATH" "$APP_SERVICE" sh -c "$cmd"
+  elif [ -n "$(dc ps --status running -q "$APP_SERVICE" 2>/dev/null)" ]; then
     dc exec -T ${user[@]+"${user[@]}"} "$APP_SERVICE" sh -c "$cmd"
   else
     dc run --rm --no-deps ${user[@]+"${user[@]}"} "$APP_SERVICE" sh -c "$cmd"
@@ -201,6 +210,108 @@ e2e_run() {
   echo ">> E2E $base | VIEWPORTS=${VIEWPORTS:-1280} | ảnh: docs/testing/evidence/$TASK/"
   (cd "$ROOT" && BASE_URL="$base" VIEWPORTS="${VIEWPORTS:-1280}" EVIDENCE_DIR="$evid" TASK_ID="$TASK" sh -c "$E2E_CMD $*")
 }
+
+# ---- CLONE_MODE=schema: 1 container DB + 1 container app cho mọi worktree ----
+# DB riêng mỗi task trong cùng DB server (<DB_NAME>_<task>); lệnh chạy bằng exec -w <thư mục worktree trong container>
+SDB="${DB_NAME}_$(printf '%s' "$SAFE" | tr '.-' '__')"
+CMAIN="${CONTAINER_MAIN:-/var/www/main}"
+CWT="${CONTAINER_WT:-/var/www/.worktrees}"
+if [ "$ROOT" = "$MAIN" ]; then CPATH="$CMAIN"; else CPATH="$CWT/$(basename "$ROOT")"; fi
+
+db_sql() {
+  case "$DB_ENGINE" in
+    mysql) dc exec -T "$DB_SERVICE" sh -c 'B=$(command -v mysql || command -v mariadb); MYSQL_PWD="${MYSQL_ROOT_PASSWORD:-$MARIADB_ROOT_PASSWORD}" $B -uroot -e "$0"' "$1" ;;
+    postgres) dc exec -T "$DB_SERVICE" sh -c 'psql -U "${POSTGRES_USER:-postgres}" -d postgres -c "$0"' "$1" ;;
+    *) die "DB_ENGINE '$DB_ENGINE' chưa hỗ trợ (postgres|mysql)" ;;
+  esac
+}
+
+schema_envs() {
+  local pair
+  ENVS=()
+  for pair in ${SCHEMA_ENV:-DB_DATABASE=\{db\}}; do ENVS+=(-e "${pair//\{db\}/$SDB}"); done
+}
+
+link_deps() {
+  # vendor / node_modules: symlink về bản của thư mục chính; lock file khác → cài riêng trong worktree
+  [ "$ROOT" != "$MAIN" ] || return 0
+  local d lock
+  for d in ${SHARED_DEPS:-vendor:composer.lock node_modules:package-lock.json}; do
+    lock="${d#*:}"; d="${d%%:*}"
+    { [ -e "$ROOT/$d" ] || [ ! -d "$MAIN/$d" ]; } && continue
+    if [ -f "$ROOT/$lock" ] && ! cmp -s "$ROOT/$lock" "$MAIN/$lock"; then
+      echo "WARN: $lock khác thư mục chính → cài $d riêng trong worktree"
+    else
+      ln -s "../../$d" "$ROOT/$d"
+    fi
+  done
+}
+
+run_schema() {
+  schema_envs
+  echo ">> [$APP_SERVICE:$CPATH] DB=$SDB · $1"
+  dc exec -T -w "$CPATH" "${ENVS[@]}" "$APP_SERVICE" sh -c "$1"
+}
+
+kill_port() {
+  dc exec -T "$APP_SERVICE" sh -c 'for d in /proc/[0-9]*; do tr "\0" " " < $d/cmdline 2>/dev/null | grep -qE ":$0( |$)" && kill ${d#/proc/} 2>/dev/null; done; true' "$1" || true
+}
+
+schema_up() {
+  local q='`'
+  case "$DB_ENGINE" in postgres) q='"' ;; esac
+  db_sql "CREATE DATABASE ${q}${SDB}${q}" 2>/dev/null || echo "DB $SDB đã có"
+  link_deps
+  run_schema "$MIGRATE_CMD"
+  [ -z "${SEED_CMD:-}" ] || run_schema "$SEED_CMD"
+  echo "DB $SDB sẵn sàng (migrate + seed), code: $CPATH"
+}
+
+schema_down() {
+  local q='`'
+  case "$DB_ENGINE" in postgres) q='"' ;; esac
+  case "$SDB" in "${DB_NAME}_"?*) ;; *) die "tên DB '$SDB' sai tiền tố, không xoá" ;; esac
+  [ ! -f "$ROOT/.agent-team/e2e_port" ] || kill_port "$(cat "$ROOT/.agent-team/e2e_port")"
+  db_sql "DROP DATABASE IF EXISTS ${q}${SDB}${q}"
+  echo "Đã xoá DB $SDB"
+}
+
+schema_e2e() {
+  [ -n "${E2E_CMD:-}" ] || die "thiếu E2E_CMD trong config"
+  [ -n "${APP_START_CMD:-}" ] || die "thiếu APP_START_CMD trong config"
+  local port="${E2E_PORT:-$(cat "$ROOT/.agent-team/e2e_port" 2>/dev/null || echo 3999)}" base evid start
+  schema_envs
+  start="${APP_START_CMD//\{port\}/$port}"
+  kill_port "$port"
+  trap 'kill_port "$port"' EXIT
+  echo ">> [$APP_SERVICE:$CPATH] $start (localhost:$port)"
+  dc exec -d -w "$CPATH" "${ENVS[@]}" -e APP_URL="http://localhost:$port" "$APP_SERVICE" sh -c "$start"
+  base="http://localhost:$port"
+  APP_RUN="$APP_SERVICE" wait_url "$base"
+  evid="$ROOT/docs/testing/evidence/$TASK"
+  mkdir -p "$evid"
+  echo ">> E2E $base | VIEWPORTS=${VIEWPORTS:-1280} | ảnh: docs/testing/evidence/$TASK/"
+  (cd "$ROOT" && BASE_URL="$base" VIEWPORTS="${VIEWPORTS:-1280}" EVIDENCE_DIR="$evid" TASK_ID="$TASK" sh -c "$E2E_CMD $*")
+}
+
+if [ "$CLONE_MODE" = schema ]; then
+  case "$CMD" in
+    up)       schema_up ;;
+    generate) shift 2; generate_migration "$@" ;;
+    migrate)  check_dup_versions; run_schema "$MIGRATE_CMD" ;;
+    rollback) run_schema "$ROLLBACK_CMD" ;;
+    verify)
+      check_dup_versions
+      run_schema "$MIGRATE_CMD"; run_schema "$ROLLBACK_CMD"; run_schema "$MIGRATE_CMD"
+      echo "VERIFY OK: migrate -> rollback -> migrate"
+      ;;
+    test)     shift 2; run_schema "$TEST_CMD $*" ;;
+    e2e)      shift 2; schema_e2e "$@" ;;
+    down)     schema_down ;;
+    *) usage ;;
+  esac
+  exit 0
+fi
 
 case "$CMD" in
   up)       clone_up ;;

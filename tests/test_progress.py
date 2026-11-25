@@ -154,12 +154,17 @@ check("--list: 2 bước song song có ∥", out.count("∥") == 2)
 check("status line: bước 1+2/3 chạy cùng lúc", "bước 1+2/3: API; Màn hình" in run()[1])
 
 # ---- v0.22.0: status line dạng bảng (mặc định) ----
-open(os.path.join(d, ".claude", "agent-team.config"), "w").write("X=1\n")
+open(os.path.join(d, ".claude", "agent-team.config"), "w").write("X=1\nPROGRESS_LINES=table\n")
 out = run()[1]
-check("PROGRESS_LINES mặc định = bảng nhiều dòng", out.count("\n") >= 3 and "Trạng thái" in out and "⏳ Chờ" in out)
+check("PROGRESS_LINES=table = bảng nhiều dòng", out.count("\n") >= 3 and "Trạng thái" in out and "⏳ Chờ" in out)
 check("bước đang làm có thời gian chạy mm:ss", re.search(r"▶ Đang làm \d+:\d\d", out) is not None)
 open(os.path.join(d, ".claude", "agent-team.config"), "w").write("X=1\nPROGRESS_LINES=1\n")
 check("PROGRESS_LINES=1: 1 dòng như cũ", "\n" not in run()[1])
+open(os.path.join(d, ".claude", "agent-team.config"), "w").write("X=1\n")
+line = run()[1]
+md = open(os.path.join(d, ".agent-team", "STATUS.md"), encoding="utf-8").read()
+check("v0.40 mặc định: status line 1 dòng + trỏ STATUS.md, bảng đầy đủ ghi vào .agent-team/STATUS.md",
+      "\n" not in line.strip() and "STATUS.md" in line and "Trạng thái" in md and "_cập nhật" in md)
 db = sqlite3.connect(os.path.join(d, ".agent-team", "board.db"))
 db.execute("DELETE FROM plan_steps")
 db.executemany("INSERT INTO plan_steps VALUES('T-7',?,?,?,?,1,NULL,?)",
@@ -169,7 +174,7 @@ out = runl()
 check("12 bước: gộp ✅ đầu + ⏳ cuối, ≤ 8 dòng bước", "1–5" in out and "✅ Xong" in out and len([l for l in out.splitlines() if l.startswith(" ") and "Bước" in l]) <= 9)
 
 # ---- v0.23.1: S1-S2 vẫn có bảng; `- Module: N/A (...)` không coi là thư mục module ----
-open(os.path.join(d, ".claude", "agent-team.config"), "w").write("X=1\n")
+open(os.path.join(d, ".claude", "agent-team.config"), "w").write("X=1\nPROGRESS_LINES=table\n")
 open(APP, "w").write("# Cà phê\n| M | Module | Gồm R | Phụ thuộc | Loại | Branch gốc | Task-id | Trạng thái |\n|---|---|---|---|---|---|---|---|\n"
                      "| M-0 | Khung | | | VỪA | | x | DONE |\n| M-1 | Auth | | M-0 | | | | TODO |\n")
 write_task(**{"Loại": "VỪA (module M-1)"})

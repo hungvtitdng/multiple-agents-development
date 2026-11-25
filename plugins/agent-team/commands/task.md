@@ -155,6 +155,8 @@ Hook chặn theo giai đoạn: S1-S2 chỉ tài liệu, S3 chỉ code, S4 chỉ 
 Sang S5 hook kiểm `Kết quả test`, `Lint/format`, `Gap còn mở: 0` và `E2E` (PASS có ảnh đủ mọi `VIEWPORTS`, hoặc N/A khi không có UI). Sang S6 hook kiểm `Code review`, `Security review`, `Cập nhật KB`, `Bài học` (đều đọc từ TASK.md); `Cập nhật KB: YES` thì hook **kiểm thật** có file KB trong `docs/` đổi so với nhánh gốc (không tính `agent-tasks/`, `testing/`, `LESSONS.md`, `SPEC.md`), không có thì chặn; có App Mode thì hook chạy thêm `gap-check.py --gate --spec-check` (tài liệu app đủ và SPEC.md khớp). Chỉ ghi `APPROVED`/`PASS` khi thật sự đạt; challenger, reviewer, security chưa APPROVED thì làm tiếp vòng sửa.
 
 ## 6c. Điều phối nhiều task song song (`pool.py`, App / Module)
+**Task lẻ song song** (đang có Lead / task khác chạy ở thư mục chính): `python3 .claude/agent-team/pool.py side <task-id> [--base <branch>]` → worktree `.worktrees/<task-id>` + branch `agent/<task-id>` + cổng riêng; mở terminal mới `cd .worktrees/<task-id> && claude` rồi chạy task như thường (stage, TASK.md, board, DB `<DB_NAME>_<task>` riêng). Tiến độ hiện ở mục `## Task lẻ` của `.agent-team/STATUS.md` thư mục chính. Xong (đã commit + push) → `pool.py side <task-id> --done` xoá worktree, DB, process cổng. Không chạy 2 task trên cùng thư mục chính.
+
 `P="python3 .claude/agent-team/pool.py"`. Bạn (Lead, thư mục chính, branch phiên) giữ bảng `pool`; mỗi task `ĐÃ CHIA` chạy trong worktree riêng. Config: `MAX_PARALLEL` (đổi lúc nào cũng được: tăng → `fill` mở thêm ngay; giảm → task đang chạy vẫn chạy, chỉ không mở mới), `WORKTREE_DIR`, `E2E_PORT_BASE`, `INTEGRATION_CMD`.
 ```
 lặp tới hết việc:

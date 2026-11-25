@@ -628,14 +628,46 @@ def progress_list(root):
     return progress_table(root)
 
 
+def side_dirs(root):
+    return sorted(os.path.dirname(os.path.dirname(f)) for f in glob.glob(os.path.join(root, cfg(root, "WORKTREE_DIR", ".worktrees"), "*", ".agent-team", "side")))
+
+
+def write_md(root):
+    table = progress_table(root)
+    p = os.path.join(root, ".agent-team", "STATUS.md")
+    if not os.path.isdir(os.path.dirname(p)):
+        return table
+    body = f"# Agent Team · tiến độ\n\n```\n{table or 'Không có task đang chạy'}\n```\n"
+    sides = [(os.path.basename(d), progress_table(d)) for d in side_dirs(root)]
+    if sides:
+        body += "\n## Task lẻ\n" + "".join(f"\n### {n}\n\n```\n{t or 'xong / chưa bắt đầu'}\n```\n" for n, t in sides)
+    if re.sub(r"_cập nhật [^_]*_\n\n", "", read(p), count=1) == body:
+        return table
+    with open(p, "w", encoding="utf-8") as f:
+        f.write(body.replace("\n\n", f"\n\n_cập nhật {time.strftime('%H:%M:%S')}_\n\n", 1))
+    return table
+
+
 def main():
     lst = "--list" in sys.argv[1:]
     root = find_root(os.getcwd() if lst else start_dir())
-    while root and find_root(os.path.dirname(root)):
+    side = read(os.path.join(root, ".agent-team", "side")).strip() if root else ""
+    while root and not side and find_root(os.path.dirname(root)):
         root = find_root(os.path.dirname(root))
-    if root:
-        one = cfg(root, "PROGRESS_LINES", "table") == "1"
-        print(progress_list(root) if lst else progress_line(root) if one else progress_table(root))
+    if not root:
+        return
+    if lst:
+        print(progress_list(root))
+        return
+    if side:
+        write_md(side)
+        print(" · ".join(x for x in [progress_line(root), "xem STATUS.md (thư mục chính)"] if x))
+        return
+    table = write_md(root)
+    if cfg(root, "PROGRESS_LINES", "1") == "table":
+        print(table)
+    elif table:
+        print(" · ".join(x for x in [progress_line(root), "xem .agent-team/STATUS.md"] if x))
 
 
 if __name__ == "__main__":

@@ -23,6 +23,7 @@ Team (Phase B / C):
   status | resume
 """
 import argparse
+import glob
 import os
 import re
 import sqlite3
@@ -261,7 +262,12 @@ def cmd_add(db, root, a):
 
 def free_port(db, root):
     used = {r[0] for r in db.execute("SELECT port FROM pool WHERE port IS NOT NULL AND state != 'DONE'")}
-    p = int(cfg(root, "E2E_PORT_BASE", "4000"))
+    for f in glob.glob(os.path.join(root, cfg(root, "WORKTREE_DIR", ".worktrees"), "*", ".agent-team", "e2e_port")):
+        try:
+            used.add(int(open(f).read().strip()))
+        except (OSError, ValueError):
+            pass
+    p = int(cfg(root, "E2E_PORT_BASE", "8801" if cfg(root, "CLONE_MODE", "") == "schema" else "4000"))
     while p in used:
         p += 1
     return p
@@ -357,6 +363,35 @@ def cmd_fill(db, root, a):
     print("Tiếp: mỗi task mới → TASK.md `- Loại: ĐÃ CHIA` trong worktree, `cd <worktree> && echo S3 > .agent-team/stage`, `board.py plan`, gọi agent (nền)")
 
 
+def cmd_side(db, root, a):
+    wdir = cfg(root, "WORKTREE_DIR", ".worktrees")
+    path = os.path.join(root, wdir, a.task_id)
+    rel = os.path.relpath(path, root)
+    if a.done:
+        _, st = git(path, "status", "--porcelain", "--untracked-files=all")
+        own = (".agent-team/", *LOCAL_FILES, *[x + "/" for x in LOCAL_DIRS])
+        left = [x[3:] for x in st.splitlines() if x[3:] and not x[3:].startswith(own)]
+        if left:
+            die(f"{rel} còn {len(left)} file chưa commit ({', '.join(left[:5])}): commit / push trước rồi --done")
+        cleanup_task(root, {"task_id": a.task_id, "worktree": rel})
+        code, out = git(root, "worktree", "remove", "--force", path)
+        print(f"✓ xoá worktree {rel} (branch agent/{a.task_id} giữ lại)" if not code else f"✗ chưa xoá được {rel}: {out[:200]} (còn file chưa commit?)")
+        return
+    if os.path.isdir(path):
+        die(f"{rel} đã có: cd {rel}")
+    exclude_worktrees(root, wdir)
+    code, out = git(root, "worktree", "add", path, "-b", f"agent/{a.task_id}", a.base)
+    if code:
+        die(f"không tạo được worktree: {out[:200]}")
+    os.makedirs(os.path.join(path, ".agent-team"), exist_ok=True)
+    copy_local_files(root, path)
+    port = free_port(db, root)
+    open(os.path.join(path, ".agent-team", "e2e_port"), "w").write(f"{port}\n")
+    open(os.path.join(path, ".agent-team", "side"), "w").write(root + "\n")
+    print(f"▶ task lẻ {a.task_id} · worktree {rel} · branch agent/{a.task_id} (từ {a.base}) · cổng {port}")
+    print(f"Mở terminal mới: cd {path} && claude  → /agent-team:task …  · xong: pool.py side {a.task_id} --done")
+
+
 def cmd_set(db, root, a):
     r = row(db, a.label)
     st = a.state.upper()
@@ -418,6 +453,14 @@ def maybe_module_done(db, root, mod):
 def cleanup_task(root, r):
     safe = re.sub(r"[^a-z0-9_.-]", "-", r["task_id"].lower())
     out = []
+    wt0 = os.path.join(root, r["worktree"]) if r["worktree"] else ""
+    if cfg(root, "CLONE_MODE", "") == "schema" and wt0 and os.path.isdir(wt0):
+        sh_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "agent-db-clone.sh")
+        try:
+            if subprocess.run(["bash", sh_path, "down", r["task_id"]], cwd=wt0, capture_output=True, timeout=120).returncode == 0:
+                out.append(f"DB + process cổng của {r['task_id']}")
+        except (OSError, subprocess.TimeoutExpired):
+            pass
     for name in (f"agent-clone-{safe}", f"agent-e2e-{safe}"):
         try:
             if subprocess.run(["docker", "rm", "-f", name], capture_output=True, timeout=60).returncode == 0:
@@ -521,7 +564,19 @@ def cmd_wait(db, root, a):
         if time.time() - start >= a.max:
             print(f"CHƯA CÓ GÌ MỚI ({busy} task đang chạy): gọi wait lần nữa")
             sys.exit(4)
+        status_md(root)
         time.sleep(a.interval)
+
+
+def status_md(root):
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("progress", os.path.join(os.path.dirname(os.path.abspath(__file__)), "progress.py"))
+        prog = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(prog)
+        prog.write_md(root)
+    except Exception:
+        pass
 
 
 MARK = {"WAIT": "⏳ Chờ", "RUNNING": "▶", "GAP": "⛔ GAP", "FIX": "🔧 Sửa", "BLOCKED": "⛔ Chặn",
@@ -995,12 +1050,17 @@ def main(argv=None):
     cl.add_argument("module")
     sp.add_parser("sync", help="đồng bộ develop vào branch hiện tại, báo file cần đọc lại")
     sp.add_parser("handoff", help="kiểm bàn giao cuối Phase B")
+    sd = sp.add_parser("side", help="task lẻ chạy song song ở terminal khác: worktree + cổng + DB riêng")
+    sd.add_argument("task_id"), sd.add_argument("--base", default="HEAD"), sd.add_argument("--done", action="store_true")
     w = sp.add_parser("wait")
     w.add_argument("--interval", type=int, default=30), w.add_argument("--max", type=int, default=540)
     a = p.parse_args(argv)
     root = find_root()
     db = connect(root)
-    globals()[f"cmd_{a.cmd.replace('-', '_')}"](db, root, a)
+    try:
+        globals()[f"cmd_{a.cmd.replace('-', '_')}"](db, root, a)
+    finally:
+        status_md(root)
 
 
 if __name__ == "__main__":

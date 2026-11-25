@@ -48,8 +48,8 @@ LESSONS_PATH=docs/LESSONS.md
 # Agent im lặng (không dùng tool) quá số phút này thì coi là treo: board.py wait / status / status line báo ⚠.
 # Lệnh có `timeout N` thì ngưỡng theo N. Việc chạy lâu mà vẫn dùng tool (vẽ nhiều màn) không bị coi là treo.
 HANG_MINUTES=10
-# Status line: table = bảng checklist nhiều dòng (module / task + các bước), 1 = một dòng
-PROGRESS_LINES=table
+# Status line: 1 = một dòng (mặc định, không chiếm terminal), table = bảng nhiều dòng. Bảng đầy đủ luôn ghi vào .agent-team/STATUS.md (mở preview để xem)
+PROGRESS_LINES=1
 # App: auto = 1 người chạy hết Phase A-D · manual = team: dừng sau Phase B (bàn giao), mỗi người /agent-team:task M-n
 APP_BUILD=auto
 # Tạo DB mới + dữ liệu mẫu cho test / E2E (Phase B bàn giao; máy nào cũng chạy được), vd "php artisan migrate:fresh --seed"
@@ -95,6 +95,16 @@ MIGRATION_GEN_USER=                                 # trống = user mặc đị
 MIGRATE_CMD="bin/rails db:migrate"
 ROLLBACK_CMD="bin/rails db:rollback STEP=1"
 TEST_CMD="bundle exec rspec"
+
+# CLONE_MODE: container = mỗi task 1 container DB clone (cũ) · schema = 1 container DB + 1 container app cho mọi worktree:
+#   DB riêng mỗi task <DB_NAME>_<task> (migrate + SEED_CMD), lệnh chạy bằng `docker compose exec -w <thư mục worktree>`.
+#   Compose: app mount `./:/var/www/main`, `./.worktrees:/var/www/.worktrees`, volume rỗng `/var/www/main/.worktrees` (main không thấy worktree), publish sẵn 100 cổng 8800-8899 (main :8800, worktree :8801, :8802..., E2E_PORT_BASE mặc định 8801).
+#   APP_START_CMD dùng {port}, vd "PHP_CLI_SERVER_WORKERS=8 php -S 0.0.0.0:{port} -t public"
+CLONE_MODE=container
+CONTAINER_MAIN=/var/www/main
+CONTAINER_WT=/var/www/.worktrees
+SCHEMA_ENV="DB_DATABASE={db}"                           # biến env trỏ DB riêng của task
+SHARED_DEPS="vendor:composer.lock node_modules:package-lock.json"  # symlink về thư mục chính khi lock file giống
 
 # Biến env app dùng để trỏ tới DB clone. Placeholder: {host} {port} {user} {password} {db} {url}
 CLONE_ENV="DATABASE_URL={url}"

@@ -1,3 +1,18 @@
+# Release notes - 25/11/2026 (v0.40.0 - 1 container DB + 1 container app, STATUS.md)
+
+## Thay đổi
+- `CLONE_MODE=schema`: mọi worktree dùng chung 1 container DB + 1 container app. Mỗi task 1 DB `<DB_NAME>_<task>` (migrate + `SEED_CMD`), lệnh chạy bằng `exec -w /var/www/.worktrees/<task>`; `vendor/`, `node_modules/` symlink về thư mục chính. Merge xong tự kill process cổng + xoá DB của task. `CLONE_MODE=container` (cũ) vẫn là mặc định.
+- Guard: agent đã làm ở 1 worktree thì bị chặn khi đụng worktree task khác.
+- `pool.py side <task-id>`: task lẻ chạy song song ở terminal khác trong worktree riêng (branch, cổng, DB riêng); `--done` xoá worktree khi đã commit hết. `STATUS.md` có mục `## Task lẻ`, mỗi task 1 khối.
+- M-SKEL-FE: T-1 tạo route + file rỗng cho mọi màn; mỗi component chung 1 task; **mỗi màn 1 task** (agent mới, worktree mới, xong merge → pool mở màn tiếp); agent chuyển mockup dùng sonnet; chỉ lint file đã sửa, build FE 1 lần trước review UI.
+- Status line mặc định 1 dòng; bảng đầy đủ ghi vào `.agent-team/STATUS.md` (pool.py cập nhật mỗi lệnh + mỗi vòng `wait`). `PROGRESS_LINES=table` để hiện bảng như cũ.
+
+## Cần làm thủ công
+- Dùng chế độ mới: config `CLONE_MODE=schema`, `APP_START_CMD` có `{port}`.
+- docker-compose service app: `volumes: ["./:/var/www/main", "./.worktrees:/var/www/.worktrees", "/var/www/main/.worktrees"]`, `ports: ["8800-8899:8800-8899"]` (main `:8800`, worktree `:8801`, `:8802`... tự cấp), rồi `docker compose up -d app` (làm khi pool rảnh).
+- Ignore `.worktrees` trong `tsconfig`, ESLint, Vite watch.
+- Xem tiến độ: mở `.agent-team/STATUS.md` bằng preview.
+
 # Release notes - 24/11/2026 (v0.39.0 - E2E nhanh hơn)
 
 ## Thay đổi

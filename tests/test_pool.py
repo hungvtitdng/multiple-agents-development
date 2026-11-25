@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Test pool.py (điều phối nhiều task, mỗi task 1 worktree): python3 tests/test_pool.py"""
+import json
 import os
 import re
 import sqlite3
@@ -36,7 +37,7 @@ def clean():
 
 def cfg(extra=""):
     with open(os.path.join(d, ".claude", "agent-team.config"), "w") as f:
-        f.write('BE_PATHS="app"\nE2E_PORT_BASE=4100\n' + extra)
+        f.write('BE_PATHS="app"\nE2E_PORT_BASE=4100\nPROGRESS_LINES=table\n' + extra)
 
 
 d = os.path.realpath(tempfile.mkdtemp())
@@ -188,5 +189,26 @@ _out = _pm.cleanup_task(d, {"task_id": "x-t1", "worktree": ".worktrees/x-t1"})
 time.sleep(0.3)
 check("merge xong: kill process trong worktree, không đụng worktree tên gần giống", _p1.poll() is not None and _p2.poll() is None and "process" in _out)
 _p2.kill()
+# ---- v0.40.0: task lẻ (pool.py side) — worktree + cổng riêng, STATUS.md có mục riêng ----
+cfg("")
+code, out = run("side", "FIX-12")
+sp = os.path.join(d, ".worktrees", "FIX-12")
+port = open(os.path.join(sp, ".agent-team", "e2e_port")).read().strip()
+used = {open(f).read().strip() for f in __import__("glob").glob(os.path.join(d, ".worktrees", "*", ".agent-team", "e2e_port")) if not f.startswith(sp)}
+check("side: tạo worktree + branch agent/FIX-12 + cổng không trùng task khác", code == 0 and os.path.isdir(sp) and port not in used
+      and "agent/FIX-12" in out and os.path.isfile(os.path.join(sp, ".agent-team", "side")))
+os.makedirs(os.path.join(sp, "docs", "agent-tasks", "FIX-12"), exist_ok=True)
+open(os.path.join(sp, "docs", "agent-tasks", "FIX-12", "TASK.md"), "w").write("# FIX-12\n- Loại: NHỎ\n")
+open(os.path.join(sp, ".agent-team", "stage"), "w").write("S3\n")
+line = subprocess.run([sys.executable, PROG], input=json.dumps({"workspace": {"current_dir": sp}}), capture_output=True, text=True, cwd=sp).stdout
+md = open(os.path.join(d, ".agent-team", "STATUS.md"), encoding="utf-8").read()
+check("side: status line của task lẻ hiện task của nó; STATUS.md thư mục chính có mục ### FIX-12",
+      "FIX-12" in line and "## Task lẻ" in md and "### FIX-12" in md)
+code, out = run("side", "FIX-12", "--done")
+check("side --done: còn file chưa commit (TASK.md) → không xoá", code != 0 and os.path.isdir(sp) and "chưa commit" in out)
+sh(sp, "git", "add", "docs"), sh(sp, "git", "commit", "-qm", "fix")
+code, out = run("side", "FIX-12", "--done")
+check("side --done: đã commit → xoá worktree (file riêng .agent-team bỏ qua)", not os.path.isdir(sp) and "xoá worktree" in out)
+
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)
