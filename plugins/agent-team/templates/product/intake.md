@@ -9,6 +9,11 @@
 - Người dùng & quy mô: TODO (vd nội bộ 20 người / public 10k user)
 - Thanh toán: TODO (có / không)
 - Ngôn ngữ giao diện: TODO (vd vi / vi + en)
+- Thiết kế có sẵn: TODO (file HTML / Figma / ảnh màn mẫu đã duyệt → chép vào `docs/product/design-ref/`, ghi tên file + màn tương ứng / "không")
+- Logo: TODO (file → `docs/product/design-ref/`, hoặc "chưa có": dùng tên app dạng chữ)
+- Màu thương hiệu: TODO (màu chính, màu phụ / nhấn, mã hex nếu có; màu nên tránh)
+- Font: TODO (font thương hiệu / "để team đề xuất")
+- Phong cách: TODO (vd hiện đại tối giản, ấm áp thân thiện, trang trọng; 1-3 web / app owner thích làm mẫu)
 - Stack FE: TODO
 - Stack BE: TODO
 - Database: TODO

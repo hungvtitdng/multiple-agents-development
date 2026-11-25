@@ -11,6 +11,7 @@ Usage: agent-db.sh <command> <task-id> [args]
   rollback <task-id>          chạy ROLLBACK_CMD trên clone
   verify   <task-id>          migrate -> rollback -> migrate
   test     <task-id> [args]   chạy TEST_CMD trên clone
+  fe-test  <task-id> [args]   chạy FE_TEST_CMD (test component / unit FE)
   e2e      <task-id> [args]   chạy app (APP_START_CMD) trên clone rồi E2E_CMD trên máy, theo VIEWPORTS;
                               ảnh bằng chứng ở docs/testing/evidence/<task-id>/
   generate <task-id> <args>   sinh file migration bằng MIGRATION_GEN_CMD, chạy TRONG container app
@@ -367,6 +368,7 @@ if [ "$CLONE_MODE" = schema ]; then
       ;;
     main-deps) main_deps ;;
     test)     shift 2; ensure_db; run_schema "$TEST_CMD $*" ;;
+    fe-test)  shift 2; [ -n "${FE_TEST_CMD:-}" ] || die "thiếu FE_TEST_CMD trong config"; run_schema "$FE_TEST_CMD $*" ;;
     e2e)      shift 2; ensure_db; schema_e2e "$@" ;;
     down)     schema_down ;;
     *) usage ;;
@@ -389,6 +391,11 @@ case "$CMD" in
   test)
     shift 2
     run_on_clone "$TEST_CMD $*"
+    ;;
+  fe-test)
+    shift 2
+    [ -n "${FE_TEST_CMD:-}" ] || die "thiếu FE_TEST_CMD trong config"
+    run_on_clone "$FE_TEST_CMD $*"
     ;;
   e2e)
     shift 2

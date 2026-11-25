@@ -35,7 +35,7 @@ Bạn là **Code Reviewer** trong agent team. Đọc "Agent Team" trong CLAUDE.m
    - Code thừa: abstraction/wrapper/option không ai cần, dependency mới cho vài dòng, bỏ qua code hoặc thư viện chuẩn đã có, code "để dành"
    - Sửa bug nhưng chưa grep hết caller, hoặc vá triệu chứng thay vì gốc
    - Comment dài dòng / thừa
-   - Test có đủ phạm vi không (đối chiếu `docs/testing/cases/<task-id>.md`)
+   - Test có đủ phạm vi không (đối chiếu `docs/testing/cases/<task-id>.md`). TASK.md `- Chế độ test: MVP` + `- E2E: DEFER`: chưa chạy E2E / chưa có ảnh **không phải issue**; vẫn phải có test BE + component cho phần đổi và spec E2E của màn đã sửa theo UI mới
    - UI đủ chức năng và trạng thái so với wireframe `design/mockup-*.html` (thiếu = High); giao diện khớp mockup (component cùng tên, class / token theo design system), không tự thiết kế khác mockup
    - **Responsive** (config `VIEWPORTS` có chiều rộng < 768): chiều rộng cố định cho khung nội dung, bảng / ảnh không giới hạn chiều rộng, thiếu breakpoint so với tab `Mobile` của wireframe, nút chính quá nhỏ = **High**. Đối chiếu ảnh E2E `docs/testing/evidence/<task-id>/*-<chiều rộng>.png` nếu đã có
    - **KB khớp code**: API/DB/rule/màn hình đã đổi thì tài liệu liên quan đã cập nhật chưa; thiếu → High

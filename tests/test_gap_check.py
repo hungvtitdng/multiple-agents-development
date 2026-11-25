@@ -68,6 +68,7 @@ check("tài liệu đủ + --gate (owner đã duyệt) -> đạt", run(fresh(), 
 # từng lỗ hổng
 cases = [
     ("intake còn TODO", {"intake.md": GOOD["intake.md"] + "- Database: TODO\n"}, "intake"),
+    ("intake chưa hỏi màu thương hiệu", {"intake.md": GOOD["intake.md"] + "- Màu thương hiệu: TODO (màu chính)\n"}, "intake"),
     ("ý owner B-3 chưa có yêu cầu", {"brief.md": GOOD["brief.md"] + "- B-3: báo cáo doanh thu\n"}, "truy vết"),
     ("câu hỏi CAO còn MỞ", {"questions.md": GOOD["questions.md"] + "| Q-3 | Cọc bao nhiêu? | CAO | MỞ | |\n"}, "questions"),
     ("câu hỏi CAO chỉ GIẢ ĐỊNH", {"questions.md": GOOD["questions.md"] + "| Q-3 | Cọc? | CAO | GIẢ ĐỊNH | 0đ |\n"}, "questions"),

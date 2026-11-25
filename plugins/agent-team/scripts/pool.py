@@ -19,6 +19,7 @@ Team (Phase B / C):
   handoff         kiểm bàn giao cuối Phase B
   claimable       module nhận được ngay / chờ / đã có người nhận
   claim <M-n>     nhận module: branch agent/YYYYMMDD-<DEV_ID>-m<n> từ origin/BASE_BRANCH, ghi Người chạy, push
+  reconcile       task có branch đã nằm trong branch phiên (user merge tay) → DONE + dọn worktree
   sync            đồng bộ origin/BASE_BRANCH vào branch hiện tại (conflict → --abort, báo file)
   status | resume
 """
@@ -551,6 +552,23 @@ def cmd_merge_end(db, root, a):
     db.commit()
     print(f"✅ {a.label} merged" + (" (khung, không IT)" if r["module"].startswith("M-SKEL") else " + IT pass") + f" (branch {r['branch']} giữ lại)")
     maybe_module_done(db, root, r["module"])
+
+
+def cmd_reconcile(db, root, a):
+    done = []
+    for r in db.execute("SELECT * FROM pool WHERE state NOT IN ('DONE', 'WAIT', 'MERGING') AND branch IS NOT NULL").fetchall():
+        if git(root, "merge-base", "--is-ancestor", r["branch"], "HEAD")[0]:
+            continue
+        if not git(root, "log", "-1", "--format=%h", f"--grep={r['task_id']}:", "HEAD")[1].strip():
+            continue
+        cleanup_task(root, r)
+        if r["worktree"]:
+            git(root, "worktree", "remove", "--force", os.path.join(root, r["worktree"]))
+        db.execute("UPDATE pool SET state='DONE', ended_at=?, note='merge tay' WHERE label=?", (int(time.time()), r["label"]))
+        db.commit()
+        done.append(r["label"])
+        maybe_module_done(db, root, r["module"])
+    print("reconcile: " + (", ".join(done) + " đã nằm trong branch phiên → DONE" if done else "không task nào đã merge tay"))
 
 
 def wt_board(root, r):
@@ -1107,6 +1125,7 @@ def main(argv=None):
     sp.add_parser("handoff", help="kiểm bàn giao cuối Phase B")
     dr = sp.add_parser("drain", help="tạm không mở task mới (rebuild container), liệt kê task đang test")
     dr.add_argument("--off", action="store_true")
+    sp.add_parser("reconcile", help="user đã merge tay branch task vào branch phiên → đánh DONE + dọn worktree")
     sd = sp.add_parser("side", help="task lẻ chạy song song ở terminal khác: worktree + cổng + DB riêng")
     sd.add_argument("task_id"), sd.add_argument("--base", default="HEAD"), sd.add_argument("--done", action="store_true")
     w = sp.add_parser("wait")

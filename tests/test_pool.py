@@ -224,5 +224,18 @@ sh(sp, "git", "add", "docs"), sh(sp, "git", "commit", "-qm", "fix")
 code, out = run("side", "FIX-12", "--done")
 check("side --done: đã commit → xoá worktree (file riêng .agent-team bỏ qua)", not os.path.isdir(sp) and "xoá worktree" in out)
 
+# ---- v0.44.0: reconcile — user merge tay branch task vào branch phiên ----
+cfg("MAX_PARALLEL=8\n")
+run("add", "M-2/T-20", "--task-id", "20261126-m2-t20", "--title", "Merge tay")
+run("add", "M-2/T-21", "--task-id", "20261126-m2-t21", "--title", "Chưa làm gì")
+code, out = run("fill")
+w20, w21 = os.path.join(d, ".worktrees", "20261126-m2-t20"), os.path.join(d, ".worktrees", "20261126-m2-t21")
+open(os.path.join(w20, "app", "r20.txt"), "w").write("x\n")
+sh(w20, "git", "add", "app/r20.txt"), sh(w20, "git", "commit", "-qm", "[backend-dev] 20261126-m2-t20: r20")
+sh(d, "git", "merge", "-q", "--no-edit", "agent/20261126-m2-t20")
+code, out = run("reconcile")
+check("reconcile: task đã merge tay → DONE + xoá worktree", code == 0 and "M-2/T-20" in out and not os.path.isdir(w20))
+check("reconcile: task chưa có commit nào không bị đánh DONE", os.path.isdir(w21) and "M-2/T-21" not in out)
+
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

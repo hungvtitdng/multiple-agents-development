@@ -5,7 +5,7 @@ description: Luật design cho mockup và UI thật - giao diện đẹp, nhất
 
 # UI: design đẹp, nhất quán
 
-Đọc trước khi vẽ. `docs/product/ui/design-system.md` là **luật**: màu, font, cỡ, bo góc của dự án thắng mọi gợi ý dưới đây. File này chỉ quyết phần design system để trống.
+Đọc trước khi vẽ. Thứ tự ưu tiên: file owner đưa trong `docs/product/design-ref/` (màu, font, bố cục màn mẫu) > `design-system.md` > gợi ý dưới đây. `docs/product/ui/design-system.md` là **luật**: màu, font, cỡ, bo góc của dự án thắng mọi gợi ý dưới đây. File này chỉ quyết phần design system để trống.
 
 Một phần ý tưởng (mục 1, 5, 6) phỏng theo skill `frontend-design` của anthropics/skills (Apache 2.0).
 

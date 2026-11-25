@@ -33,6 +33,9 @@ VIEWPORTS="375 768 1280"
 # Lệnh có dấu $ thì để trong nháy ĐƠN ('...'), vì file này được nạp bằng shell.
 # full = mỗi task chạy E2E · mvp = task chỉ test BE + component, E2E: DEFER, chạy toàn bộ sau ở M-E2E (ship MVP nhanh)
 TEST_MODE=full
+# E2E_WAIT=120            # số giây chờ app lên trước khi chạy E2E
+# Test component / unit FE (vd "npx vitest run"), chạy bằng agent-db.sh fe-test <task-id> [args]. TEST_MODE=mvp cần lệnh này.
+FE_TEST_CMD=
 E2E_CMD=                    # vd "npx playwright test", chạy trên máy (host), nhận BASE_URL, VIEWPORTS, EVIDENCE_DIR
 APP_START_CMD=              # vd "bin/rails s -b 0.0.0.0 -p 3000", chạy trong container APP_SERVICE, nối DB riêng của task; server phải phục vụ song song (PHP: "PHP_CLI_SERVER_WORKERS=8 php -S ..."), build FE 1 lần
 APP_PORT=3000               # cổng app trong container

@@ -1,3 +1,18 @@
+# Release notes - 25/11/2026 (v0.43.0 - hỏi thương hiệu, bàn giao client, rà soát lệnh cho MVP)
+
+## Thay đổi
+- Intake (form owner lượt 1) hỏi thêm: thiết kế có sẵn, logo, màu thương hiệu, font, phong cách. File owner gửi → `docs/product/design-ref/`; design system lấy token từ đó (màn có file mẫu giữ bố cục), không có mới dùng màu owner cho / bảng trung tính.
+- `docs/product/HANDOVER.md` (mẫu `templates/product/HANDOVER.md`): bàn giao cho client ở mỗi DEMO và cuối app: tài khoản demo mỗi vai trò (không ghi mật khẩu), hướng dẫn sử dụng theo vai trò (BA viết từ flows + screens), có / chưa có, ghi chú phát hành, cách báo lỗi.
+- `FE_TEST_CMD` (config) + `agent-db.sh fe-test <task-id> [args]`: chạy test component / unit FE. M-0 dựng runner + 1 test mẫu. `TEST_MODE=mvp` dùng lệnh này.
+- `TEST_MODE=mvp`: xong mọi module → giao MVP (`demo-mvp` + `HANDOVER.md`) rồi DỪNG, M-E2E chỉ chạy khi user bảo. test-designer / code-reviewer / challenger hiểu `E2E: DEFER`.
+- `pool.py reconcile`: user merge tay branch task vào branch phiên → task thành DONE, dọn worktree (resume tự gọi).
+- Module: không chép `HANDOVER.md` / `design-ref/` vào thư mục module; module xong thì cập nhật bản chính `docs/product/HANDOVER.md`.
+- Resume: theo branch ghi trong TASK.md (user đặt tên riêng được). ui-designer + skill `ui` đọc `design-ref/` trước. Config mẫu thêm `E2E_WAIT`.
+
+## Cần làm tay
+- Dự án có FE dùng `TEST_MODE=mvp`: điền `FE_TEST_CMD` (vd `npx vitest run`).
+- Dự án đang chạy: muốn có bàn giao thì chép `templates/product/HANDOVER.md` + `design-ref/` vào `docs/product/`.
+
 # Release notes - 25/11/2026 (v0.42.0 - khung Playwright chuẩn, đổi tên agent-db.sh)
 
 ## Thay đổi

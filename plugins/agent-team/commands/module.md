@@ -35,7 +35,7 @@ Form, câu hỏi OWNER / DEV, mức CAO / THẤP, không hỏi bằng `AskUserQu
 ## 1. Chuẩn bị
 1. Có `.claude/agent-team.config` và KB `docs/` (chưa có: `/agent-team:init`; KB còn trống thì `/agent-team:kb` trước, module dựa vào KB).
 2. Task-id `YYYYMMDD-module-<slug>`, branch như `task.md` mục 0. `$M` = `docs/product/modules/<slug>/`.
-3. Copy `<plugin>/templates/product/` → `$M/` (bỏ `APP.md`, `intake.md`, `project-setup.md`), rồi `<plugin>/templates/product/module/MODULE.md`, `intake.md` → `$M/`. Không ghi đè file đã có. Copy `gap-check.py`, `owner-form.py` vào `.claude/agent-team/` nếu chưa có.
+3. Copy `<plugin>/templates/product/` → `$M/` (bỏ `APP.md`, `intake.md`, `project-setup.md`, `HANDOVER.md`, `design-ref/`: bàn giao + thiết kế tham khảo chỉ có 1 bản của app ở `docs/product/`), rồi `<plugin>/templates/product/module/MODULE.md`, `intake.md` → `$M/`. Không ghi đè file đã có. Copy `gap-check.py`, `owner-form.py` vào `.claude/agent-team/` nếu chưa có.
 4. TASK.md: `- Loại: MODULE`, `- Module: $M`. Mục 0: ý tưởng nguyên văn. `echo S1 > .agent-team/stage`.
 
 ## 2. M0 Nền từ KB (Scout, trước A0)
@@ -72,4 +72,4 @@ Form, câu hỏi OWNER / DEV, mức CAO / THẤP, không hỏi bằng `AskUserQu
 4. GAP khi code cần owner → Q-n OWNER → form lượt mới (`--dir=$M`).
 
 ## 6. Báo cáo
-Như `app.md` mục 12. Cuối Phase A thêm: bảng "Ảnh hưởng ngược" (phần cũ nào đổi, test hồi quy), KB đã ghép (file nào), danh sách task con. Cuối cùng: đúng 1 việc user làm tiếp (≤ 2 phút).
+Như `app.md` mục 12 (module xong: cập nhật bản chính `docs/product/HANDOVER.md`, có thì sửa mục 2-4, chưa có thì tạo từ mẫu; không tạo bản riêng trong `$M`). Cuối Phase A thêm: bảng "Ảnh hưởng ngược" (phần cũ nào đổi, test hồi quy), KB đã ghép (file nào), danh sách task con. Cuối cùng: đúng 1 việc user làm tiếp (≤ 2 phút).
