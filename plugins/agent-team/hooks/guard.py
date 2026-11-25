@@ -1366,6 +1366,18 @@ def touches_hidden(text):
 POST = len(sys.argv) > 1 and sys.argv[1] == "post"
 
 
+SYS_PKG_RE = re.compile(r"\b((apt-get|apt|apk|yum|dnf)\s+(install|add|remove|upgrade)|pecl\s+install|docker-php-ext-(install|enable))\b")
+
+
+def check_shared_container(cmd, cwd):
+    """CLONE_MODE=schema: mọi worktree chung 1 container app → không cài package hệ thống."""
+    root = find_root(cwd)
+    if not root or cfg_value(root, "CLONE_MODE") != "schema":
+        return
+    if SYS_PKG_RE.search(cmd):
+        block("container app dùng chung cho mọi task: không cài package hệ thống. Cần thì báo GAP → task riêng sửa Dockerfile, rebuild khi pool rảnh")
+
+
 def bind_worktree(data, role, cwd, tool):
     """Agent đã làm ở 1 worktree thì không được sửa / chạy lệnh ở worktree khác (gắn theo agent_id)."""
     key = data.get("agent_id")
@@ -1464,6 +1476,7 @@ def main():
         check_secret_tokens(cmd)
         check_env_dump(cmd)
         check_db(cmd)
+        check_shared_container(cmd, cwd)
         check_git(cmd, cwd, role)
         check_rm(cmd)
         if role in READONLY_ROLES:

@@ -15,6 +15,7 @@
 - Module: N/A (task con của module mới: docs/product/modules/<tên>; hook chờ Owner duyệt ở MODULE.md)
 - Tiêu chí nghiệm thu: TODO (chỉ cần cho NHỎ, vd AC ngắn do Lead viết)
 - Phương án chốt: TODO (tên/mô tả; VỪA/LỚN)
+- Gói hệ thống: TODO (KHÔNG / <gói> + lý do: sửa Dockerfile + rebuild TRƯỚC khi code, xem task.md "Gói hệ thống")
 - Workflow: TODO (YES = có design/workflow.md / N/A)
 - UI mockup: TODO (YES = có design/mockup-<màn>.html design full / N/A nếu task không có UI)
 - Security duyệt solution: TODO (APPROVED / N/A)

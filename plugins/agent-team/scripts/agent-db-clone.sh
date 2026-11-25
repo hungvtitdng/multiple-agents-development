@@ -213,7 +213,8 @@ e2e_run() {
 
 # ---- CLONE_MODE=schema: 1 container DB + 1 container app cho mọi worktree ----
 # DB riêng mỗi task trong cùng DB server (<DB_NAME>_<task>); lệnh chạy bằng exec -w <thư mục worktree trong container>
-SDB="${DB_NAME}_$(printf '%s' "$SAFE" | tr '.-' '__')"
+TS="$(printf '%s' "$SAFE" | tr '.-' '__')"
+SDB="${DB_NAME}_$TS"
 CMAIN="${CONTAINER_MAIN:-/var/www/main}"
 CWT="${CONTAINER_WT:-/var/www/.worktrees}"
 if [ "$ROOT" = "$MAIN" ]; then CPATH="$CMAIN"; else CPATH="$CWT/$(basename "$ROOT")"; fi
@@ -229,21 +230,66 @@ db_sql() {
 schema_envs() {
   local pair
   ENVS=()
-  for pair in ${SCHEMA_ENV:-DB_DATABASE=\{db\}}; do ENVS+=(-e "${pair//\{db\}/$SDB}"); done
+  for pair in ${SCHEMA_ENV:-DB_DATABASE=\{db\}}; do pair="${pair//\{db\}/$SDB}"; ENVS+=(-e "${pair//\{task\}/$TS}"); done
+}
+
+install_cmd() {
+  case "$1" in
+    composer.lock) echo "composer install --no-interaction" ;;
+    package-lock.json) echo "npm ci" ;;
+    yarn.lock) echo "yarn install --frozen-lockfile" ;;
+    pnpm-lock.yaml) echo "pnpm install --frozen-lockfile" ;;
+  esac
+}
+
+clone_dir() {
+  # clone APFS (macOS) / reflink (Linux): không chép dữ liệu tới khi có ghi; không hỗ trợ thì copy thường
+  cp -ac "$1" "$2" 2>/dev/null && return 0; rm -rf "$2"
+  cp -a --reflink=auto "$1" "$2" 2>/dev/null && return 0; rm -rf "$2"
+  cp -a "$1" "$2"
 }
 
 link_deps() {
-  # vendor / node_modules: symlink về bản của thư mục chính; lock file khác → cài riêng trong worktree
+  # vendor / node_modules: mỗi worktree 1 bản riêng (clone từ thư mục chính); lock khác main → cài trong worktree
   [ "$ROOT" != "$MAIN" ] || return 0
-  local d lock
+  local d lock cmd
+  [ -e "$ROOT/.env" ] || [ ! -f "$MAIN/.env" ] || ln -s ../../.env "$ROOT/.env"
+  stamp_locks
   for d in ${SHARED_DEPS:-vendor:composer.lock node_modules:package-lock.json}; do
     lock="${d#*:}"; d="${d%%:*}"
+    [ ! -L "$ROOT/$d" ] || rm "$ROOT/$d"
     { [ -e "$ROOT/$d" ] || [ ! -d "$MAIN/$d" ]; } && continue
-    if [ -f "$ROOT/$lock" ] && ! cmp -s "$ROOT/$lock" "$MAIN/$lock"; then
-      echo "WARN: $lock khác thư mục chính → cài $d riêng trong worktree"
-    else
-      ln -s "../../$d" "$ROOT/$d"
+    clone_dir "$MAIN/$d" "$ROOT/$d"
+    echo "$d: bản riêng của worktree (clone từ thư mục chính)"
+    if [ -f "$ROOT/$lock" ] && ! cmp -s "$ROOT/$lock" "$MAIN/$lock" && cmd="$(install_cmd "$lock")" && [ -n "$cmd" ]; then
+      echo "$lock khác thư mục chính → $cmd"
+      run_schema "$cmd"
     fi
+  done
+}
+
+stamp_locks() {
+  # ghi lock file của thư mục chính lúc vendor / node_modules đang khớp (để biết khi nào cần cài lại)
+  local d lock
+  mkdir -p "$MAIN/.agent-team"
+  for d in ${SHARED_DEPS:-vendor:composer.lock node_modules:package-lock.json}; do
+    lock="${d#*:}"
+    [ ! -f "$MAIN/$lock" ] || [ -f "$MAIN/.agent-team/deps_$lock" ] || cp "$MAIN/$lock" "$MAIN/.agent-team/deps_$lock"
+  done
+}
+
+main_deps() {
+  # sau merge: lock của thư mục chính đổi → cài lại bản của main (worktree có bản riêng, không bị ảnh hưởng)
+  local d lock stamp cmd
+  for d in ${SHARED_DEPS:-vendor:composer.lock node_modules:package-lock.json}; do
+    lock="${d#*:}"; d="${d%%:*}"; stamp="$MAIN/.agent-team/deps_$lock"
+    [ -f "$MAIN/$lock" ] && [ -d "$MAIN/$d" ] || continue
+    if [ ! -f "$stamp" ]; then mkdir -p "$(dirname "$stamp")"; cp "$MAIN/$lock" "$stamp"; continue; fi
+    cmp -s "$MAIN/$lock" "$stamp" && continue
+    cmd="$(install_cmd "$lock")"
+    [ -n "$cmd" ] || { echo "WARN: không biết lệnh cài cho $lock, tự cài lại $d"; continue; }
+    echo ">> [$APP_SERVICE:$CMAIN] $cmd ($lock đổi sau merge)"
+    dc exec -T -w "$CMAIN" "$APP_SERVICE" sh -c "$cmd" && cp "$MAIN/$lock" "$stamp"
   done
 }
 
@@ -257,22 +303,34 @@ kill_port() {
   dc exec -T "$APP_SERVICE" sh -c 'for d in /proc/[0-9]*; do tr "\0" " " < $d/cmdline 2>/dev/null | grep -qE ":$0( |$)" && kill ${d#/proc/} 2>/dev/null; done; true' "$1" || true
 }
 
+READY="$ROOT/.agent-team/db_$SDB"
+
 schema_up() {
   local q='`'
   case "$DB_ENGINE" in postgres) q='"' ;; esac
-  db_sql "CREATE DATABASE ${q}${SDB}${q}" 2>/dev/null || echo "DB $SDB đã có"
   link_deps
+  if [ -f "$READY" ]; then
+    echo "DB $SDB đã có → dùng lại, chỉ chạy migration mới"
+    run_schema "$MIGRATE_CMD"
+    return 0
+  fi
+  db_sql "CREATE DATABASE ${q}${SDB}${q}" 2>/dev/null || echo "DB $SDB đã có trên server"
   run_schema "$MIGRATE_CMD"
   [ -z "${SEED_CMD:-}" ] || run_schema "$SEED_CMD"
-  echo "DB $SDB sẵn sàng (migrate + seed), code: $CPATH"
+  mkdir -p "$(dirname "$READY")" && : > "$READY"
+  echo "DB $SDB sẵn sàng (tạo mới + migrate + seed), code: $CPATH"
 }
+
+ensure_db() { [ -f "$READY" ] || schema_up; }
 
 schema_down() {
   local q='`'
   case "$DB_ENGINE" in postgres) q='"' ;; esac
   case "$SDB" in "${DB_NAME}_"?*) ;; *) die "tên DB '$SDB' sai tiền tố, không xoá" ;; esac
   [ ! -f "$ROOT/.agent-team/e2e_port" ] || kill_port "$(cat "$ROOT/.agent-team/e2e_port")"
+  [ -z "${SCHEMA_DOWN_CMD:-}" ] || run_schema "${SCHEMA_DOWN_CMD//\{task\}/$TS}" || echo "WARN: SCHEMA_DOWN_CMD lỗi, bỏ qua"
   db_sql "DROP DATABASE IF EXISTS ${q}${SDB}${q}"
+  rm -f "$READY"
   echo "Đã xoá DB $SDB"
 }
 
@@ -298,15 +356,16 @@ if [ "$CLONE_MODE" = schema ]; then
   case "$CMD" in
     up)       schema_up ;;
     generate) shift 2; generate_migration "$@" ;;
-    migrate)  check_dup_versions; run_schema "$MIGRATE_CMD" ;;
-    rollback) run_schema "$ROLLBACK_CMD" ;;
+    migrate)  check_dup_versions; ensure_db; run_schema "$MIGRATE_CMD" ;;
+    rollback) ensure_db; run_schema "$ROLLBACK_CMD" ;;
     verify)
-      check_dup_versions
+      check_dup_versions; ensure_db
       run_schema "$MIGRATE_CMD"; run_schema "$ROLLBACK_CMD"; run_schema "$MIGRATE_CMD"
       echo "VERIFY OK: migrate -> rollback -> migrate"
       ;;
-    test)     shift 2; run_schema "$TEST_CMD $*" ;;
-    e2e)      shift 2; schema_e2e "$@" ;;
+    main-deps) main_deps ;;
+    test)     shift 2; ensure_db; run_schema "$TEST_CMD $*" ;;
+    e2e)      shift 2; ensure_db; schema_e2e "$@" ;;
     down)     schema_down ;;
     *) usage ;;
   esac

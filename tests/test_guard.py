@@ -1079,5 +1079,28 @@ for desc, ok in [("agent sửa worktree đầu tiên: được", ok1), ("cùng a
     fail += not ok
     print(f"{'PASS' if ok else 'FAIL'}  {desc}")
 
+# ---- v0.40.0: container dùng chung (CLONE_MODE=schema) ----
+sc = os.path.realpath(tempfile.mkdtemp())
+os.makedirs(os.path.join(sc, ".claude")), os.makedirs(os.path.join(sc, "vendor"))
+open(os.path.join(sc, ".claude", "agent-team.config"), "w").write("CLONE_MODE=schema\n")
+sw = os.path.join(sc, ".worktrees", "m6-t1")
+os.makedirs(os.path.join(sw, ".claude"))
+open(os.path.join(sw, ".claude", "agent-team.config"), "w").write("CLONE_MODE=schema\n")
+
+
+def sc_err(cmd):
+    data = {"tool_name": "Bash", "tool_input": {"command": f"cd {sw} && {cmd}"}, "cwd": sc, "agent_type": "agent-team:backend-dev"}
+    return subprocess.run([sys.executable, GUARD], input=json.dumps(data), capture_output=True, text=True).stderr
+
+
+for desc, cmd, want in [("composer require trong worktree (vendor riêng): được", "composer require x/y", None),
+                        ("apt-get install trong container chung: chặn", "docker compose exec app apt-get install -y imagick", "package hệ thống"),
+                        ("npm run build: được", "npm run build", None)]:
+    e = sc_err(cmd)
+    ok = (want in e) if want else "BLOCKED" not in e
+    total += 1
+    fail += not ok
+    print(f"{'PASS' if ok else 'FAIL'}  {desc}" + ("" if ok else f"  [{e.strip()[:150]}]"))
+
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

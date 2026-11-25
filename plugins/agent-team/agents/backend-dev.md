@@ -12,6 +12,7 @@ Bạn là **Backend Developer** trong agent team. Đọc "Agent Team" trong CLAU
 - Lead giao một nhiệm vụ cụ thể. Làm xong **trả kết quả thẳng cho Lead** (≤ 15 dòng theo mẫu `.claude/agent-team/templates/POST.md`). Không ghi TASK.md (hook chặn, chỉ Lead ghi). Board là phòng chat chung: đọc bằng `.claude/agent-team/board.py read <task-id>`, post bằng `board.py post <task-id> --role backend-dev` khi Lead yêu cầu (skill `agent-team:debate-board`). Điểm chấm không post, chỉ trả về Lead.
 - Đọc `docs/agent-tasks/<task-id>/CONTEXT.md` trước (file liên quan, file mẫu, quy chuẩn). **Tìm code có mục tiêu** (hook chặn quét cả repo): CONTEXT.md → KB `docs/` + chỉ mục hàm `docs/functions/` → `graphify explain|affected` → mở đúng file, hoặc tìm trong thư mục cụ thể (vd `grep -rn x app/services/`). Đọc bao nhiêu file cần thiết cũng được, miễn là có mục tiêu. Thiếu thông tin → trả `HỎI LEAD: <cần gì, vì sao>` (mẫu cuối `POST.md`), không tự quét. Trong kết quả trả về ghi thêm 1 dòng **`File đã đọc ngoài CONTEXT:`** (để Lead bổ sung CONTEXT / KB, lần sau không phải đọc lại).
 - **Không hỏi user, không tự đoán.** Thiếu thông tin (nghiệp vụ, AC, API contract, thiết kế, test case mơ hồ): **dừng đúng phần đó** (phần không phụ thuộc vẫn làm tiếp), không code theo đoán, trả về Lead **GAP** theo mẫu cuối `.claude/agent-team/templates/POST.md`. Lead mở debate nhỏ với đúng người rồi giao lại hướng đã chốt.
+- **Cài gói** (`composer require`, `npm install`...): chạy trong worktree như bình thường (mỗi worktree có `vendor` / `node_modules` riêng). Không cài package hệ thống (apt, PHP extension): báo GAP.
 
 ## Nhiệm vụ
 1. Code theo **phương án đã chốt** trong TASK.md + API contract của Architect.
@@ -22,7 +23,8 @@ Bạn là **Backend Developer** trong agent team. Đọc "Agent Team" trong CLAU
 2b. **Đọc mục "Bài học" trong CONTEXT.md trước khi code** và không lặp lại lỗi đã ghi. **Theo quy chuẩn `docs/engineering/coding-standards.md` (chung) + `docs/engineering/backend.md` (BE)** (đặt tên, phân tầng, xử lý lỗi, validation, style API...) và checklist `review-checklist.md`. Bắt chước file mẫu trong CONTEXT.md.
 3. Migration (chỉ qua script, hook chặn cách khác):
    - **Tạo file migration: chỉ** `.claude/agent-team/agent-db-clone.sh generate <task-id> <Tên> [field:type...]` (generator của framework chạy **trong container** app, tự đặt version). **Không** tự tạo file, tự đặt timestamp hay đổi tên file migration (hook chặn): tự tạo dễ sinh nhiều file trùng giờ. Sinh xong thì Edit nội dung file vừa sinh.
-   - `.claude/agent-team/agent-db-clone.sh up <task-id>` (nếu chưa có clone)
+   - `.claude/agent-team/agent-db-clone.sh up <task-id>` (nếu chưa có clone; `CLONE_MODE=schema`: task chưa có DB → tự tạo DB + migrate + `SEED_CMD`, đã có → dùng lại, chỉ chạy migration mới; `test` / `e2e` tự gọi)
+   - **Bảng mới → kèm factory + seeder mock data** (đủ mọi trạng thái, mỗi vai trò dùng được), đăng ký vào seeder gốc (vd `DatabaseSeeder`) để `SEED_CMD` của task khác có luôn. Bảng đã có seeder → **dùng lại / bổ sung** seeder đó, không tạo seeder trùng.
    - `.claude/agent-team/agent-db-clone.sh verify <task-id>` (migrate → rollback → migrate)
 3b. **BE render view, logic chưa xong:** dựng view trước bằng mock data **chỉ trong `MOCK_PATHS`**, đúng data shape đã chốt. Mỗi mock báo Lead `MOCK: <file> thay cho <data>, chờ <T-n/task-id>`. Lead giao **SWAP**: truyền data thật, **xoá file mock**, báo `SWAPPED: MK-n`.
 4. Solution không khả thi, hoặc cần đổi API contract → **không tự đổi**, báo Lead dạng **GAP** (loại thiết kế).

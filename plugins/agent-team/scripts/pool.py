@@ -336,6 +336,9 @@ def cmd_fill(db, root, a):
         db.execute("UPDATE pool_modules SET state='DESIGN', design_at=COALESCE(design_at, ?) WHERE module=?", (int(time.time()), m))
         db.commit()
         print(f"💬 {m}: bắt đầu debate (1 slot) → TASK.md thiết kế ở thư mục chính, debate theo Loại, chia task → pool.py add → module {m} --state SPLIT")
+    if start_t and os.path.isfile(drain_file(root)):
+        print(f"⏸ drain đang bật (rebuild container): chưa mở {len(start_t)} task READY → pool.py drain --off khi xong")
+        return
     if not start_t:
         return
     code, branch = git(root, "rev-parse", "--abbrev-ref", "HEAD")
@@ -361,6 +364,50 @@ def cmd_fill(db, root, a):
         db.commit()
         print(f"▶ {r['label']} {r['title']} · worktree {os.path.relpath(path, root)} · branch {br} · E2E_PORT {port}")
     print("Tiếp: mỗi task mới → TASK.md `- Loại: ĐÃ CHIA` trong worktree, `cd <worktree> && echo S3 > .agent-team/stage`, `board.py plan`, gọi agent (nền)")
+
+
+def main_deps(root):
+    if cfg(root, "CLONE_MODE", "") != "schema":
+        return
+    sh_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "agent-db-clone.sh")
+    try:
+        out = subprocess.run(["bash", sh_path, "main-deps", "main"], cwd=root, capture_output=True, text=True, timeout=900)
+        if out.stdout.strip() or out.returncode:
+            print((out.stdout + out.stderr).strip()[-800:])
+    except (OSError, subprocess.TimeoutExpired) as e:
+        print(f"⚠ cài lại vendor / node_modules của thư mục chính lỗi: {e}")
+
+
+def drain_file(root):
+    return os.path.join(root, ".agent-team", "drain")
+
+
+def testing_tasks(db, root):
+    out = []
+    for r in db.execute("SELECT label, state, worktree FROM pool WHERE state IN ('RUNNING','FIX','MERGING') ORDER BY ord"):
+        st = ""
+        if r["worktree"]:
+            try:
+                st = open(os.path.join(root, r["worktree"], ".agent-team", "stage")).read().strip().upper()
+            except OSError:
+                pass
+        if r["state"] == "MERGING" or st in ("S4", "S5"):
+            out.append(f"{r['label']} ({'IT' if r['state'] == 'MERGING' else st})")
+    return out
+
+
+def cmd_drain(db, root, a):
+    if a.off:
+        if os.path.isfile(drain_file(root)):
+            os.remove(drain_file(root))
+        print("▶ hết drain: pool.py fill mở task mới lại")
+        return
+    os.makedirs(os.path.dirname(drain_file(root)), exist_ok=True)
+    open(drain_file(root), "w").write(f"{int(time.time())}\n")
+    testing = testing_tasks(db, root)
+    print("⏸ drain: fill không mở task mới (task đang chạy vẫn chạy)")
+    print("Đang dùng container (test / E2E / IT): " + (", ".join(testing) if testing else "không có → rebuild được ngay"))
+    print("Xong rebuild: pool.py drain --off")
 
 
 def cmd_side(db, root, a):
@@ -403,6 +450,8 @@ def cmd_set(db, root, a):
 
 
 def cmd_merge_begin(db, root, a):
+    if os.path.isfile(drain_file(root)):
+        die("đang drain (rebuild container): merge sau khi pool.py drain --off")
     r = row(db, a.label)
     if r["state"] != "MERGE_WAIT":
         die(f"{a.label} đang {r['state']}: chỉ merge task MERGE_WAIT (code + test + review xong)")
@@ -495,6 +544,7 @@ def cmd_merge_end(db, root, a):
     killed = cleanup_task(root, r)
     if r["worktree"]:
         git(root, "worktree", "remove", "--force", os.path.join(root, r["worktree"]))
+    main_deps(root)
     db.execute("UPDATE pool SET state='DONE', ended_at=?, note=NULL WHERE label=?", (int(time.time()), a.label))
     print(f"🧹 dọn {a.label}: {killed or 'không còn process / container'} · Lead: TaskStop mọi agent + shell nền của task này")
     db.commit()
@@ -547,9 +597,13 @@ def cmd_wait(db, root, a):
                         stuck.append(f"{r['label']}: ⚠ {x['role']} im {(now - x['last_seen']) // 60}p · {x['last_tool'] or ''}")
         busy = len(rows)
         st_t, st_d, _ = plan_fill(db, root)
-        ready = [r["label"] for r in st_t] + [f"💬 debate {m}" for m in st_d]
+        draining = os.path.isfile(drain_file(root))
+        ready = ([] if draining else [r["label"] for r in st_t]) + [f"💬 debate {m}" for m in st_d]
         free = len(ready)
-        merge = [r["label"] for r in db.execute("SELECT label FROM pool WHERE state='MERGE_WAIT' ORDER BY ord")]
+        merge = [] if draining else [r["label"] for r in db.execute("SELECT label FROM pool WHERE state='MERGE_WAIT' ORDER BY ord")]
+        if draining and not testing_tasks(db, root):
+            print("DRAIN XONG: không task nào đang test / IT → rebuild container, rồi pool.py drain --off")
+            sys.exit(0)
         if stuck:
             print("CÓ AGENT TREO: TaskStop agent đó rồi gọi lại kèm lý do\n" + "\n".join(stuck))
             sys.exit(3)
@@ -1050,6 +1104,8 @@ def main(argv=None):
     cl.add_argument("module")
     sp.add_parser("sync", help="đồng bộ develop vào branch hiện tại, báo file cần đọc lại")
     sp.add_parser("handoff", help="kiểm bàn giao cuối Phase B")
+    dr = sp.add_parser("drain", help="tạm không mở task mới (rebuild container), liệt kê task đang test")
+    dr.add_argument("--off", action="store_true")
     sd = sp.add_parser("side", help="task lẻ chạy song song ở terminal khác: worktree + cổng + DB riêng")
     sd.add_argument("task_id"), sd.add_argument("--base", default="HEAD"), sd.add_argument("--done", action="store_true")
     w = sp.add_parser("wait")

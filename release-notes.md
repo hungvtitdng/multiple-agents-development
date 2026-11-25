@@ -1,15 +1,19 @@
 # Release notes - 25/11/2026 (v0.40.0 - 1 container DB + 1 container app, STATUS.md)
 
 ## Thay đổi
-- `CLONE_MODE=schema`: mọi worktree dùng chung 1 container DB + 1 container app. Mỗi task 1 DB `<DB_NAME>_<task>` (migrate + `SEED_CMD`), lệnh chạy bằng `exec -w /var/www/.worktrees/<task>`; `vendor/`, `node_modules/` symlink về thư mục chính. Merge xong tự kill process cổng + xoá DB của task. `CLONE_MODE=container` (cũ) vẫn là mặc định.
+- `CLONE_MODE=schema`: mọi worktree dùng chung 1 container DB + 1 container app. Mỗi task 1 DB `<DB_NAME>_<task>` (migrate + `SEED_CMD`), lệnh chạy bằng `exec -w /var/www/.worktrees/<task>`; `vendor/`, `node_modules/` là bản riêng của worktree (clone từ thư mục chính). Merge xong tự kill process cổng + xoá DB của task. `CLONE_MODE=container` (cũ) vẫn là mặc định.
 - Guard: agent đã làm ở 1 worktree thì bị chặn khi đụng worktree task khác.
+- DB của task (`schema`): lần đầu `up` / `test` / `e2e` tự tạo DB + migrate + `SEED_CMD`; lần sau dùng lại, chỉ chạy migration mới. `backend-dev`: bảng mới kèm factory + seeder mock data đăng ký vào seeder gốc; bảng đã có seeder thì dùng lại / bổ sung.
+- Chạy chung container an toàn: mỗi worktree có `vendor` / `node_modules` **riêng** (clone APFS / reflink từ thư mục chính, gần như không tốn ổ; lock khác main thì cài lại trong worktree), cài gói ở worktree này không đụng worktree khác; guard chặn cài package hệ thống (apt, pecl, PHP extension) vào container chung; `.env` worktree là symlink về `.env` chính (env riêng truyền bằng `-e`); `SCHEMA_ENV` có `{task}` để tách Redis / cache / search theo task, `SCHEMA_DOWN_CMD` dọn khi xong.
+- Merge task có đổi `composer.lock` / `package-lock.json`: `merge-end` tự cài lại `vendor` / `node_modules` của thư mục chính trong container; worktree khác giữ bản riêng, không bị đổi.
+- Gói hệ thống (apt, PHP extension): architect ghi ở debate, TASK.md có `- Gói hệ thống:`; biết trước → M-0 (App Mode) / task `INFRA` đầu module / bước đầu S3; lộ ra giữa chừng → GAP hạ tầng, task `INFRA-n`. Rebuild khi pool chạy: Lead hỏi user → `pool.py drain` (không mở task mới, không merge, liệt kê task đang test; `wait` báo `DRAIN XONG`) → rebuild → `pool.py drain --off`.
 - `pool.py side <task-id>`: task lẻ chạy song song ở terminal khác trong worktree riêng (branch, cổng, DB riêng); `--done` xoá worktree khi đã commit hết. `STATUS.md` có mục `## Task lẻ`, mỗi task 1 khối.
 - M-SKEL-FE: T-1 tạo route + file rỗng cho mọi màn; mỗi component chung 1 task; **mỗi màn 1 task** (agent mới, worktree mới, xong merge → pool mở màn tiếp); agent chuyển mockup dùng sonnet; chỉ lint file đã sửa, build FE 1 lần trước review UI.
 - Status line mặc định 1 dòng; bảng đầy đủ ghi vào `.agent-team/STATUS.md` (pool.py cập nhật mỗi lệnh + mỗi vòng `wait`). `PROGRESS_LINES=table` để hiện bảng như cũ.
 
 ## Cần làm thủ công
 - Dùng chế độ mới: config `CLONE_MODE=schema`, `APP_START_CMD` có `{port}`.
-- docker-compose service app: `volumes: ["./:/var/www/main", "./.worktrees:/var/www/.worktrees", "/var/www/main/.worktrees"]`, `ports: ["8800-8899:8800-8899"]` (main `:8800`, worktree `:8801`, `:8802`... tự cấp), rồi `docker compose up -d app` (làm khi pool rảnh).
+- docker-compose service app: `volumes: ["./:/var/www/main", "./.worktrees:/var/www/.worktrees", "/var/www/main/.worktrees", "./.env:/var/www/.env:ro"]`, `ports: ["8800-8899:8800-8899"]` (main `:8800`, worktree `:8801`, `:8802`... tự cấp), rồi `docker compose up -d app` (làm khi pool rảnh).
 - Ignore `.worktrees` trong `tsconfig`, ESLint, Vite watch.
 - Xem tiến độ: mở `.agent-team/STATUS.md` bằng preview.
 

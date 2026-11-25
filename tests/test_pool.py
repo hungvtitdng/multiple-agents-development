@@ -189,6 +189,16 @@ _out = _pm.cleanup_task(d, {"task_id": "x-t1", "worktree": ".worktrees/x-t1"})
 time.sleep(0.3)
 check("merge xong: kill process trong worktree, không đụng worktree tên gần giống", _p1.poll() is not None and _p2.poll() is None and "process" in _out)
 _p2.kill()
+# ---- v0.40.0: drain (rebuild container khi thêm gói hệ thống) ----
+code, out = run("drain")
+check("drain: bật, liệt kê task đang dùng container", code == 0 and "⏸ drain" in out and "Đang dùng container" in out)
+code, out = run("merge-begin", "M-9/T-9")
+check("drain: merge-begin bị chặn (IT dùng container)", code != 0 and "đang drain" in out)
+code, out = run("wait", "--interval", "1", "--max", "2")
+check("drain: wait báo DRAIN XONG khi không task nào đang test", "DRAIN XONG" in out or "CÓ AGENT TREO" in out)
+code, out = run("drain", "--off")
+check("drain --off: tắt", code == 0 and not os.path.isfile(os.path.join(d, ".agent-team", "drain")))
+
 # ---- v0.40.0: task lẻ (pool.py side) — worktree + cổng riêng, STATUS.md có mục riêng ----
 cfg("")
 code, out = run("side", "FIX-12")
