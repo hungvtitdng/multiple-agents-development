@@ -1,7 +1,7 @@
 # Release notes - 25/11/2026 (v0.41.0 - Chế độ test MVP)
 
 ## Thay đổi
-- `TEST_MODE=mvp` (config) hoặc `- Chế độ test: MVP` (TASK.md, từng task): task kiểm bằng test BE + component, spec E2E vẫn sửa nhưng không chạy, ghi `- E2E: DEFER`. Hook cho qua S5 với DEFER chỉ khi MVP. Integration test sau merge chỉ chạy `TEST_CMD`. E2E toàn bộ chạy ở M-E2E (luôn FULL).
+- `TEST_MODE=mvp` (config) hoặc `- Chế độ test: MVP` (TASK.md, từng task): task kiểm bằng test BE + component, spec E2E vẫn sửa nhưng không chạy, ghi `- E2E: DEFER`. Hook cho qua S5 với DEFER chỉ khi MVP. Integration test sau merge chỉ chạy `TEST_CMD`. E2E toàn bộ chạy ở M-E2E. M-0 và M-E2E luôn FULL (M-0 dựng Playwright + smoke E2E để M-E2E chạy được).
 
 ## Cần làm tay
 - Muốn bật cho cả dự án: thêm `TEST_MODE=mvp` vào `.claude/agent-team.config`.
