@@ -496,6 +496,8 @@ S5OK = "- Kết quả test: PASS\n- Lint/format: N/A\n- Gap còn mở: 0\n"
 gate("S5 chưa điền E2E", S5OK + "- E2E: TODO\n", "Bash", S5, None, B)
 gate("S5 task có UI mà E2E N/A", S5OK + "- UI mockup: YES\n- E2E: N/A\n", "Bash", S5, None, B)
 gate("S5 E2E PASS nhưng chưa có ảnh", S5OK + "- E2E: PASS\n", "Bash", S5, None, B)
+gate("S5 E2E DEFER khi FULL: chặn", S5OK + "- UI mockup: YES\n- E2E: DEFER\n", "Bash", S5, None, B)
+gate("S5 Chế độ test MVP + E2E DEFER: cho qua", S5OK + "- Chế độ test: MVP\n- UI mockup: YES\n- E2E: DEFER\n", "Bash", S5, None, OK)
 ev = os.path.join(gp, "docs/testing/evidence/T1")
 os.makedirs(ev, exist_ok=True)
 open(os.path.join(gp, ".claude/agent-team.config"), "a").write('VIEWPORTS="375 1280"\n')

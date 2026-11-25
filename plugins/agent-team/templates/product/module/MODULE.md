@@ -5,6 +5,7 @@
 ## Cổng (Lead cập nhật, hook kiểm)
 - Intake: TODO (YES khi intake.md đủ: nền lấy từ KB + phạm vi module, không còn TODO)
 - Challenger: TODO (DONE khi săn gap trên nháp + mockup xong, kể cả ảnh hưởng ngược lên phần cũ)
+- Mockup: VẼ (hoặc `dùng lại <thư mục mockup đã duyệt>` khi module chỉ áp mockup có sẵn, không vẽ lại)
 - Debate: TODO (DONE khi team đã debate chốt câu hỏi + đề xuất. Cần Challenger + Debate DONE mới build được form)
 - Gap-check: TODO (PASS = `.claude/agent-team/gap-check.py --dir=<thư mục này>` exit 0)
 - Owner duyệt: TODO (APPROVED khi owner trả lời hết form cuối)

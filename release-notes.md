@@ -1,3 +1,19 @@
+# Release notes - 25/11/2026 (v0.41.0 - Chế độ test MVP)
+
+## Thay đổi
+- `TEST_MODE=mvp` (config) hoặc `- Chế độ test: MVP` (TASK.md, từng task): task kiểm bằng test BE + component, spec E2E vẫn sửa nhưng không chạy, ghi `- E2E: DEFER`. Hook cho qua S5 với DEFER chỉ khi MVP. Integration test sau merge chỉ chạy `TEST_CMD`. E2E toàn bộ chạy ở M-E2E (luôn FULL).
+
+## Cần làm tay
+- Muốn bật cho cả dự án: thêm `TEST_MODE=mvp` vào `.claude/agent-team.config`.
+
+# Release notes - 25/11/2026 (v0.40.2 - Phase A bước Mockup dùng lại mockup đã duyệt)
+
+## Sửa
+- Module chỉ áp mockup có sẵn: ghi `- Mockup: dùng lại <thư mục>` trong MODULE.md (hoặc APP.md) → bước 4 "Mockup" tính xong khi thư mục đó có `mockup-*.html`, status không còn kẹt ở Mockup.
+
+## Cần làm tay
+- Module đang chạy (vd M-UI2 của 04.Cay): thêm dòng `- Mockup: dùng lại docs/product/design` vào MODULE.md.
+
 # Release notes - 25/11/2026 (v0.40.1 - sửa status line gắn nhầm module)
 
 ## Sửa

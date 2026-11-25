@@ -136,6 +136,11 @@ open(os.path.join(d, "docs", "product", "requirements.md"), "w").write("| R | Y�
 open(os.path.join(d, "docs", "product", "flows.md"), "w").write("## F-1: Đăng nhập\n")
 out = run()[1]
 check("Phase A: 3 bước đầu xong → bước 4/10 Mockup", "S2 Phase A" in out and "bước 4/10: Mockup" in out)
+os.makedirs(os.path.join(d, "docs", "ref"))
+open(os.path.join(d, "docs", "ref", "mockup-a.html"), "w").write("x")
+open(APP, "w").write(app_old.replace("- Intake: YES\n", "- Intake: YES\n- Mockup: dùng lại `docs/ref`\n"))
+check("Mockup: dùng lại <thư mục> có mockup-*.html → bước 4 xong", "bước 5/10" in run()[1])
+open(APP, "w").write(app_old)
 open(os.path.join(d, "docs", "product", "design", "mockup-login.html"), "w").write("x")
 out = runl()
 check("Phase A --list: 10 bước > 8 dòng → gộp 1–4 ✅, ▶ Săn gap", "App · Phase A · 5/10 xong" in out and "1–4" in out and "Săn gap (Challenger)" in out

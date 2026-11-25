@@ -711,8 +711,9 @@ def gate_missing(stage, text):
             miss.append("Lint/format: PASS hoặc N/A")
         if first("Gap còn mở") != "0":
             miss.append("Gap còn mở: 0 (đóng hết gap ở mục 14)")
-        if first("E2E") not in ("PASS", "N/A"):
-            miss.append("E2E: PASS hoặc N/A")
+        mvp = first("Chế độ test") == "MVP"
+        if first("E2E") not in (("PASS", "N/A", "DEFER") if mvp else ("PASS", "N/A")):
+            miss.append("E2E: PASS hoặc N/A (Chế độ test: MVP → được DEFER)")
         elif first("E2E") == "N/A" and first("UI mockup") == "YES":
             miss.append("E2E: task có UI (UI mockup: YES) thì phải PASS, không được N/A")
     elif stage == "S6":

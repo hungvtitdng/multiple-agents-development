@@ -142,6 +142,9 @@ def phase_a_steps(root, text):
     gate = read(os.path.join(d, "MODULE.md" if kind == "MODULE" else "APP.md"))
     files = os.listdir(d) if os.path.isdir(d) else []
     ddir = os.path.join(d, "design")
+    reuse = re.search(r"(?m)^-\s*Mockup:\s*dùng lại\s+`?([^`\s]+)", gate)
+    if reuse:
+        ddir = os.path.join(root, reuse[1])
     flows = read(os.path.join(d, "flows.md"))
     if kind == "MODULE":
         last = ("Chia task + ghép KB", first_word(gate, "Ghép KB") == "YES"

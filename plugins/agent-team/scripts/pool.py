@@ -482,6 +482,7 @@ def cmd_merge_begin(db, root, a):
     tag = "@" + r["module"].lower().replace("-", "")
     it = cfg(root, "INTEGRATION_CMD", "") or (
         "TEST_CMD + E2E toàn bộ (agent-db-clone.sh e2e)" if r["module"] == "M-E2E"
+        else "TEST_CMD (TEST_MODE=mvp: E2E để M-E2E)" if cfg(root, "TEST_MODE", "").lower() == "mvp"
         else f"TEST_CMD + E2E của module (agent-db-clone.sh e2e <task> --grep {tag} + spec đã sửa); toàn bộ E2E chỉ ở M-E2E")
     print(f"Đã merge (chưa commit) {a.label}. Chạy integration test: {it}\nRồi: pool.py merge-end {a.label} pass|fail")
 

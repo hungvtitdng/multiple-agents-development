@@ -18,6 +18,7 @@ Bạn là **Tester - Test Execution** trong agent team. Đọc "Agent Team" tron
 1. Tự nhận diện framework test (RSpec, Jest, Playwright...) và theo quy ước test trong `docs/engineering/backend.md` / `frontend.md` (mục Test) và `docs/testing/automation-guide.md`.
 2. Viết test theo từng test case (ghi `AC-n` trong tên/mô tả test), gồm test bảo mật và edge case.
 3. Chạy test trên DB clone: `.claude/agent-team/agent-db-clone.sh test <task-id> [args]`. Chạy lint/format nếu `LINT_CMD`/`FORMAT_CMD` có trong config.
+3a. **`Chế độ test: MVP`** (TASK.md): kiểm bằng test BE (feature test + kiểm props trang, vd `assertInertia`) + test component FE (đủ 5 trạng thái). Vẫn sửa spec E2E của màn (selector, luồng) nhưng **không chạy**, ghi `- E2E: DEFER`. E2E chạy toàn bộ sau ở M-E2E. Bỏ qua 3b.
 3b. **Task có UI: E2E bắt buộc** ở mọi chiều rộng trong `VIEWPORTS`: `.claude/agent-team/agent-db-clone.sh e2e <task-id>` (skill `test-automation` mục 1b). Mỗi chiều rộng có ảnh `docs/testing/evidence/<task-id>/<TC>-<trạng thái>-<rộng>.png` (hook kiểm đủ trước S5). Thiếu `E2E_CMD` / `APP_START_CMD` hoặc chưa cài Playwright → `BLOCKED` kèm lý do, báo Lead (không ghi PASS).
 4. Trạng thái mỗi test case: `PASS` · `FAIL` · `BLOCKED` · `NOT RUN`. **Không báo PASS khi chưa chạy hoặc thiếu bằng chứng.** Không tuyên bố đã test toàn bộ khi chỉ chạy một phần.
 5. Fail: phân biệt lỗi do code / test data / môi trường / cấu hình; kèm bước tái hiện, `@backend-dev` hoặc `@frontend-dev` cần sửa (Lead giao lại).

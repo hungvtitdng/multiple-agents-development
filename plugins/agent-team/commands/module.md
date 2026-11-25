@@ -25,7 +25,7 @@ app mới, chưa có code ──────────────────
 | Intake | stack, hosting, git... | `$M/intake.md` mẫu module: **nền lấy từ KB**, chỉ điều mới mới thành Q-n |
 | Hỏi stack, auth, vai trò đã có | Có | **Không**. Chỉ hỏi khi module cần vai trò / quyền **mới** |
 | Catalog | `chung.md` + loại app | Chỉ mục liên quan module trong `catalog/<loại>.md` (bỏ mục app đã có) |
-| Mockup | Mọi màn | Màn mới + **màn cũ bị sửa** (vẽ theo bố cục, menu đang có) |
+| Mockup | Mọi màn | Màn mới + **màn cũ bị sửa** (vẽ theo bố cục, menu đang có). Mockup đã duyệt sẵn → `- Mockup: dùng lại <thư mục>` trong MODULE.md, không vẽ lại |
 | Săn gap | thiếu chức năng / lỗi / quyền | như app + **ảnh hưởng ngược** (mục 3) |
 | Script | `gap-check.py`, `owner-form.py` | thêm `--dir=$M` |
 | Sau khi owner duyệt | SPEC + chia module M-0..n | SPEC module + **ghép KB** + chia **task con** T-1..n (không có M-0) |
