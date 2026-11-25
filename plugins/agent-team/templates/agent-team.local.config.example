@@ -1,5 +1,5 @@
 # Riêng máy này (copy thành .claude/agent-team.local.config, đã gitignore, KHÔNG commit).
-# Key ở đây ghi đè .claude/agent-team.config (config chung của team) cho: pool.py, progress.py, board.py, guard, agent-db-clone.sh.
+# Key ở đây ghi đè .claude/agent-team.config (config chung của team) cho: pool.py, progress.py, board.py, guard, agent-db.sh.
 # Không ghi password / KEY ở đây: KEY để trong .env.
 
 # Tên viết tắt của bạn: thêm vào task-id (YYYYMMDD-<DEV_ID>-<slug>) và cột "Người chạy" của bảng Module

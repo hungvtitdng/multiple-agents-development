@@ -5,7 +5,7 @@ import os
 import subprocess
 import tempfile
 
-SH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "plugins", "agent-team", "scripts", "agent-db-clone.sh")
+SH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "plugins", "agent-team", "scripts", "agent-db.sh")
 fail = total = 0
 
 
@@ -86,6 +86,18 @@ code, out, dk = run(wt, "down", "m6-t1")
 check("down: chạy SCHEMA_DOWN_CMD với {task} (dọn Redis / index của task)", "--pattern m6_t1_*" in dk)
 check("down: xoá đúng DB có tiền tố, không đụng DB chính", code == 0 and "DROP DATABASE IF EXISTS `cay_m6_t1`" in dk and "`cay`" not in dk)
 check("không tạo container clone riêng (docker run)", "docker run" not in dk and " run " not in f" {dk} ")
+open(os.path.join(bin_dir, "curl"), "w").write("#!/bin/sh\nexit 0\n")
+os.chmod(os.path.join(bin_dir, "curl"), 0o755)
+out_e2e = os.path.join(d, "e2e.out")
+open(os.path.join(wt, ".claude", "agent-team.config"), "a").write(
+    f'E2E_PORT=3999\nAPP_START_CMD="php -S 0.0.0.0:{{port}}"\nE2E_CMD=\'echo "$BASE_URL|$APP_EXEC" > {out_e2e}\'\n')
+os.makedirs(os.path.join(wt, ".agent-team"), exist_ok=True)
+open(os.path.join(wt, ".agent-team", "e2e_port"), "w").write("8803")
+code, out, dk = run(wt, "e2e", "m6-t1")
+got = open(out_e2e).read() if os.path.exists(out_e2e) else ""
+check("e2e: cổng riêng của worktree (8803) thắng E2E_PORT cố định", code == 0 and got.startswith("http://localhost:8803|") and "0.0.0.0:8803" in dk)
+check("e2e: APP_EXEC = exec vào container app chung, đúng thư mục + DB của task",
+      "docker compose exec -T -w /var/www/.worktrees/m6-t1 -e DB_DATABASE=cay_m6_t1" in got and got.rstrip().endswith(" app"))
 
 print(f"\n{total - fail}/{total} passed")
 raise SystemExit(1 if fail else 0)

@@ -2,13 +2,13 @@
 
 Project dùng plugin `agent-team`. Chạy task: `/agent-team:task <task>`. Module mới trong app đang chạy (owner duyệt qua form, rồi chia task con): `/agent-team:module <ý tưởng>`. Làm cả app từ ý tưởng: `/agent-team:app <ý tưởng>` (tài liệu sản phẩm ở `docs/product/`, owner duyệt rồi mới code). Làm tiếp task dang dở: `/agent-team:resume <task-id>`. Hỏi về logic dự án (chỉ đọc, có dẫn nguồn): `/agent-team:ask <câu hỏi>`. Dựng/làm đầy KB từ code: `/agent-team:kb`.
 
-- Config project: `.claude/agent-team.config` (nhánh gốc, đường dẫn BE/FE/test, DB clone, lint/format, `REPOS` nếu nhiều repo)
+- Config project: `.claude/agent-team.config` (nhánh gốc, đường dẫn BE/FE/test, DB riêng của task, lint/format, `REPOS` nếu nhiều repo)
 - Mọi tài liệu nằm trong `docs/` (Knowledge Base, **đọc trước khi làm**, mỗi thư mục có chủ ghi riêng, xem `docs/README.md`). Quy chuẩn code ở `docs/engineering/`.
 - Nhiều repo con (`REPOS`): `.claude/`, `docs/` nằm ở repo chính; mỗi repo có branch `agent/<task-id>` riêng, commit/push bằng `git -C <repo> ...`
 - Tài liệu mỗi task: `docs/agent-tasks/<task-id>/` gồm `TASK.md`, `CONTEXT.md` (Scout), `board/` (Lead ghi)
-- Migration/test DB: chỉ qua `.claude/agent-team/agent-db-clone.sh` (DB clone, không đụng DB hiện tại). File migration **chỉ sinh** bằng `agent-db-clone.sh generate` (generator trong container), không tự tạo/đổi tên (guard chặn).
+- Migration/test DB: chỉ qua `.claude/agent-team/agent-db.sh` (DB riêng của task, không đụng DB hiện tại). File migration **chỉ sinh** bằng `agent-db.sh generate` (generator trong container), không tự tạo/đổi tên (guard chặn).
 - Báo cáo mỗi task: `docs/agent-tasks/<task-id>/REPORT.html` (gửi client) + `REPORT.md` (`board.py report`).
-- Giao diện phải dùng được ở mọi chiều rộng trong `VIEWPORTS` (config). Task có UI: E2E Playwright bằng `agent-db-clone.sh e2e <task-id>`, ảnh bằng chứng mỗi chiều rộng ở `docs/testing/evidence/<task-id>/` (hook kiểm trước S5).
+- Giao diện phải dùng được ở mọi chiều rộng trong `VIEWPORTS` (config). Task có UI: E2E Playwright bằng `agent-db.sh e2e <task-id>`, ảnh bằng chứng mỗi chiều rộng ở `docs/testing/evidence/<task-id>/` (hook kiểm trước S5).
 - Thiết kế mỗi task: `docs/agent-tasks/<task-id>/design/`: `workflow.md`, `state.md` (BA), `sequence.md` (Architect), `mockup-<màn>.html` (ui-designer, **mockup design full theo design system, đủ chức năng + trạng thái**). FE code đủ chức năng của wireframe nhưng dùng màu, font, component của dự án.
 
 ### Quy chuẩn chung (mọi agent)

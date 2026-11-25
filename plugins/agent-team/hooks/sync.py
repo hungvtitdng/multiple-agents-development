@@ -12,7 +12,7 @@ import sys
 
 STATUS_CMD = 'python3 "$(git rev-parse --path-format=absolute --git-common-dir)/../.claude/agent-team/progress.py"'
 OLD_STATUS_CMDS = ("python3 .claude/agent-team/progress.py",)
-SCRIPTS = ("board.py", "progress.py", "pool.py", "gap-check.py", "owner-form.py", "kb-check.py", "agent-db-clone.sh")
+SCRIPTS = ("board.py", "progress.py", "pool.py", "gap-check.py", "owner-form.py", "kb-check.py", "agent-db.sh", "agent-db-clone.sh")
 TEMPLATES = ("TASK.md", "POST.md", "SUMMARY.md", "CONTEXT.md", "MOCKS.md")
 
 
@@ -41,6 +41,23 @@ def sync_scripts(plugin, root):
         os.chmod(t, 0o755)
         done.append(f)
     return done
+
+
+def tree_files(d):
+    return sorted(os.path.relpath(os.path.join(w, f), d) for w, _, fs in os.walk(d) for f in fs)
+
+
+def sync_e2e_template(plugin, root):
+    src, dst = os.path.join(plugin, "templates", "e2e"), os.path.join(root, ".claude", "agent-team", "e2e-template")
+    if not os.path.isdir(src):
+        return False
+    files = tree_files(src)
+    if os.path.isdir(dst) and files == tree_files(dst) and all(
+            filecmp.cmp(os.path.join(src, f), os.path.join(dst, f), shallow=False) for f in files):
+        return False
+    shutil.rmtree(dst, ignore_errors=True)
+    shutil.copytree(src, dst)
+    return True
 
 
 def stale_templates(plugin, root):
@@ -88,6 +105,24 @@ def ensure_status_line(root):
     return "đã thêm statusLine vào .claude/settings.json (hiện từ phiên sau / khi Claude Code đọc lại settings)"
 
 
+def migrate_db_perm(root):
+    p = os.path.join(root, ".claude", "settings.json")
+    try:
+        data = json.load(open(p, encoding="utf-8"))
+        allow = data["permissions"]["allow"]
+    except (OSError, ValueError, KeyError, TypeError):
+        return ""
+    add = [a.replace("agent-db-clone.sh", "agent-db.sh") for a in allow if "agent-db-clone.sh" in a]
+    add = [a for a in add if a not in allow]
+    if not add:
+        return ""
+    allow.extend(add)
+    with open(p, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+        f.write("\n")
+    return "đã thêm quyền agent-db.sh (tên mới của agent-db-clone.sh) vào .claude/settings.json"
+
+
 def main():
     start = sys.argv[1] if len(sys.argv) > 1 else None
     if not start:
@@ -100,15 +135,15 @@ def main():
         return
     plugin = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     msgs = []
-    done = sync_scripts(plugin, root)
+    done = sync_scripts(plugin, root) + (["e2e-template/"] if sync_e2e_template(plugin, root) else [])
     if done:
         msgs.append("đã cập nhật .claude/agent-team/ theo plugin: " + ", ".join(done))
     old = stale_templates(plugin, root)
     if old:
         msgs.append("templates khác bản plugin (không tự ghi đè, có thể bạn đã sửa): " + ", ".join(old))
-    m = ensure_status_line(root)
-    if m:
-        msgs.append(m)
+    for m in (ensure_status_line(root), migrate_db_perm(root)):
+        if m:
+            msgs.append(m)
     tracked = tracked_generated(root)
     if tracked:
         msgs.append(f"{len(tracked)} script plugin đang bị commit (team dùng chung sẽ ghi đè qua lại): thêm vào .gitignore "

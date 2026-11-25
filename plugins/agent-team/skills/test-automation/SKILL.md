@@ -1,6 +1,6 @@
 ---
 name: test-automation
-description: Nguyên tắc chuyển test case thành test tự động cho mọi framework test - chọn tầng test, đặt tên theo AC, dữ liệu, thời gian, gọi ngoài, assert, chạy trên DB clone, ghi bằng chứng PASS/FAIL. Quy ước công cụ của dự án nằm ở docs/testing/automation-guide.md. Dùng khi test-executor viết và chạy test.
+description: Nguyên tắc chuyển test case thành test tự động cho mọi framework test - chọn tầng test, đặt tên theo AC, dữ liệu, thời gian, gọi ngoài, assert, chạy trên DB riêng của task, ghi bằng chứng PASS/FAIL. Quy ước công cụ của dự án nằm ở docs/testing/automation-guide.md. Dùng khi test-executor viết và chạy test.
 ---
 
 # Test tự động từ test case
@@ -20,83 +20,30 @@ description: Nguyên tắc chuyển test case thành test tự động cho mọi
 - Assert kết quả cụ thể (mã lỗi, giá trị, số bản ghi, trạng thái). Test phải **fail được** nếu bỏ phần code mới.
 
 ## 1b. E2E trình duyệt (Playwright) + responsive
-Task có UI: E2E có ảnh bằng chứng ở **mọi chiều rộng** trong config `VIEWPORTS`. Dự án chưa có Playwright → dựng theo khung dưới (thư mục E2E theo `TEST_PATHS`, vd `e2e/`), ghi vào `automation-guide.md`.
+Task có UI: E2E có ảnh bằng chứng ở **mọi chiều rộng** trong config `VIEWPORTS`. Dự án chưa có Playwright → chép khung chuẩn `.claude/agent-team/e2e-template/` (bảng dưới), chỉ sửa `e2e/project.ts`, ghi vào `automation-guide.md`. Dự án đã có E2E → không ghi đè, dùng khung chuẩn làm mẫu khi sửa.
 
 **Chạy nhanh (bắt buộc, E2E chậm thì cả pool chờ):**
 1. **Luồng đầy đủ chỉ chạy ở chiều rộng lớn nhất.** Chiều rộng nhỏ hơn chỉ chạy test gắn tag `@responsive` (không cuộn ngang, menu ☰, nút ≥ 44, chụp ảnh trạng thái). Không lặp cả bộ test ở mọi chiều rộng.
 2. **Song song theo chiều rộng:** `workers` = số chiều rộng, `fullyParallel: false` (song song giữa project, tuần tự trong project). Dữ liệu seed tách theo chiều rộng (vd mã người dùng có hậu tố `W375`); reset chỉ xoá / tạo lại dữ liệu của chiều rộng đó, **không** xoá cả bảng dùng chung (`sessions`, `cache`, `jobs`...).
 3. **Đăng nhập 1 lần** mỗi vai trò × mỗi chiều rộng trong project `setup`, lưu `storageState`, test dùng lại. Chỉ test về chính màn đăng nhập mới đi qua form.
 4. **Reset ít nhất có thể:** file chỉ đọc → reset ở `beforeAll`; file có ghi dữ liệu → `beforeEach`. Reset bằng 1 lệnh gọn (1 tiến trình, không khởi động framework nhiều lần trong 1 lần reset).
+4b. **Reset / seed từ E2E:** gọi `sh -c "$APP_EXEC php <script>"` (lệnh `e2e` truyền sẵn `APP_EXEC` = đúng container + thư mục + DB của task, chạy được cả `CLONE_MODE=container` lẫn `schema`). Không ghi cứng tên container.
 5. **Server app phục vụ song song:** `APP_START_CMD` không dùng server 1 luồng (PHP `php -S` → thêm `PHP_CLI_SERVER_WORKERS=8`; Rails puma ≥ 2 thread; Node không chạy dev server có HMR). Build FE 1 lần trước, không build lại mỗi test.
 6. **Ít E2E:** logic / validate / quyền kiểm bằng test BE; E2E chỉ luồng chính + `@responsive`. Mỗi spec gắn tag module (`test.describe('… @m6', …)`).
 7. **Chạy đúng phạm vi:** trong task chỉ chạy spec đã sửa + `--grep @m<n>` của module; sửa lỗi thì `--last-failed`; dev tự chạy thêm `--max-failures=1`. **Toàn bộ E2E chỉ ở M-E2E** (và trước demo).
 8. **Không build FE mỗi lần chạy:** `APP_START_CMD` chỉ build khi file FE đổi (vd so hash `resources/` với file đánh dấu trong `public/build/`), không thì dùng bản đã build.
 - Đo thời gian trước / sau khi sửa E2E, ghi vào TASK.md. Không thêm `waitForTimeout`; chờ bằng `expect(...).toBeVisible()` / `waitForURL`.
 
-`playwright.config.ts`:
-```ts
-import { defineConfig } from '@playwright/test';
-const widths = (process.env.VIEWPORTS || '1280').split(/\s+/).filter(Boolean).map(Number);
-const full = Math.max(...widths);
-const vp = (w: number) => ({ viewport: { width: w, height: w < 768 ? 812 : 900 }, isMobile: w < 768, hasTouch: w < 768 });
-export default defineConfig({
-  testDir: 'e2e',
-  retries: 0,
-  workers: widths.length,
-  fullyParallel: false,
-  use: { baseURL: process.env.BASE_URL, trace: 'retain-on-failure', video: 'off' },
-  projects: [
-    { name: 'setup', testMatch: /auth\.setup\.ts/ },
-    ...widths.map((w) => ({
-      name: `vp-${w}`,
-      dependencies: ['setup'],
-      grep: w === full ? undefined : /@responsive/,
-      use: vp(w),
-    })),
-  ],
-});
-```
-
-`e2e/auth.setup.ts` (đăng nhập 1 lần, lưu phiên theo vai trò × chiều rộng):
-```ts
-import { test as setup } from '@playwright/test';
-const widths = (process.env.VIEWPORTS || '1280').split(/\s+/).filter(Boolean);
-const roles = { 'can-bo': 'CB01', 'truong-phong': 'TP01', admin: 'AD01' };
-for (const w of widths) for (const [role, code] of Object.entries(roles)) {
-  setup(`login ${role} ${w}`, async ({ page }) => {
-    await page.goto('/login');
-    await page.getByLabel('Mã cán bộ').fill(`${code}W${w}`);
-    await page.getByLabel('Mật khẩu').fill(process.env.E2E_PASSWORD || 'Matkhau1');
-    await page.getByRole('button', { name: 'Đăng nhập' }).click();
-    await page.waitForURL((u) => !u.pathname.startsWith('/login'));
-    await page.context().storageState({ path: `e2e/.auth/${role}-${w}.json` });
-  });
-}
-```
-Test dùng phiên: `test.use({ storageState: ({}, use, info) => use(`e2e/.auth/can-bo-${info.project.use.viewport!.width}.json`) })` (hoặc helper `asRole('can-bo')`). `e2e/.auth/` vào `.gitignore`.
-
-`e2e/support/responsive.ts`: chụp ảnh bằng chứng + kiểm responsive:
-```ts
-import { expect, Locator, Page } from '@playwright/test';
-import * as path from 'path';
-
-// Ảnh: <EVIDENCE_DIR>/<TC>-<trạng thái>-<rộng>.png (guard kiểm đủ mỗi chiều rộng)
-export async function shot(page: Page, name: string) {
-  const w = page.viewportSize()!.width;
-  await page.screenshot({ path: path.join(process.env.EVIDENCE_DIR || 'test-results', `${name}-${w}.png`), fullPage: true });
-}
-
-// Không cuộn ngang; < 768px: nút chính nhìn thấy và >= 44px
-export async function expectResponsive(page: Page, primary?: Locator) {
-  const over = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-  expect(over, 'trang bị cuộn ngang').toBeLessThanOrEqual(0);
-  if (primary && page.viewportSize()!.width < 768) {
-    await expect(primary).toBeInViewport();
-    const box = (await primary.boundingBox())!;
-    expect(Math.min(box.width, box.height), 'nút chính < 44px').toBeGreaterThanOrEqual(44);
-  }
-}
-```
+**Khung chuẩn: `.claude/agent-team/e2e-template/` (hook sync chép từ `templates/e2e/` của plugin mỗi phiên)** (đã chạy thật, sửa ở đây thì sửa template, không chép code vào skill):
+| File | Làm gì | Dự án sửa? |
+|---|---|---|
+| `playwright.config.ts` | quy tắc 1-3: workers theo chiều rộng, `@responsive`, project `setup`, timeout 30s / 5s, trace khi lỗi, video tắt | không |
+| `e2e/project.ts` | trang login, ô nhập, mật khẩu, tài khoản mỗi vai trò (`{w}` = chiều rộng, vd `CB01W{w}`), `resetCmd` | **có (M-0)** |
+| `e2e/auth.setup.ts` | đăng nhập 1 lần × vai trò × chiều rộng → `e2e/.auth/` | không |
+| `e2e/support/env.ts` | `widths`, `asRole('admin')` cho `test.use(...)` | không |
+| `e2e/support/db.ts` | `reset(...)` / `inApp(cmd)` qua `$APP_EXEC` (quy tắc 4b) | không |
+| `e2e/support/responsive.ts` | `shot()` ảnh bằng chứng, `expectResponsive()` | không |
+| `e2e/smoke.spec.ts` | smoke M-0: trang đầu + trang cần đăng nhập, mọi chiều rộng | không |
 
 Test mẫu (`@responsive` → chạy ở mọi chiều rộng; không tag → chỉ chiều rộng lớn nhất):
 ```ts
@@ -115,11 +62,11 @@ test('AC-2 TC-2: huỷ đơn @responsive', async ({ page }) => {
 ```
 - Mỗi trạng thái của mockup (rỗng, đang tải, lỗi, không có quyền) có ít nhất 1 ảnh, tên `<TC>-<trạng thái>`, trong test `@responsive` (hook kiểm có ảnh ở mọi chiều rộng).
 - Hành vi khác theo chiều rộng (menu ☰): `test.skip(page.viewportSize()!.width >= 768, 'chỉ màn nhỏ')`.
-- Dữ liệu E2E tạo qua API / seed của dự án trên DB clone, không phụ thuộc dữ liệu có sẵn.
+- Dữ liệu E2E tạo qua API / seed của dự án trên DB riêng của task, không phụ thuộc dữ liệu có sẵn.
 
 ## 2. Chạy
-- Trên DB clone: `.claude/agent-team/agent-db-clone.sh test <task-id> <phạm vi test>`.
-- E2E: `.claude/agent-team/agent-db-clone.sh e2e <task-id> [tham số cho E2E_CMD]`: chạy app (`APP_START_CMD`) trên clone, chạy `E2E_CMD` trên máy với `BASE_URL`, `VIEWPORTS`, `EVIDENCE_DIR=docs/testing/evidence/<task-id>/`, rồi tắt app.
+- Trên DB riêng của task: `.claude/agent-team/agent-db.sh test <task-id> <phạm vi test>`.
+- E2E: `.claude/agent-team/agent-db.sh e2e <task-id> [tham số cho E2E_CMD]`: chạy app (`APP_START_CMD`) trên clone, chạy `E2E_CMD` trên máy với `BASE_URL`, `VIEWPORTS`, `EVIDENCE_DIR=docs/testing/evidence/<task-id>/`, rồi tắt app.
 - Chạy test mới trước, sau đó nhóm test liên quan để bắt regression.
 - Lúc pass lúc fail: chạy lại 1 lần; vẫn chập chờn → ghi `FAIL` kèm "flaky", không ghi PASS.
 

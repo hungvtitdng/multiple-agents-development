@@ -1,6 +1,6 @@
 ---
 name: migration-safety
-description: Nguyên tắc thay đổi schema DB an toàn cho mọi framework và CSDL - thêm cột, index, ràng buộc NOT NULL, đổi tên, xoá cột, backfill, khoá ngoại, rollback - và cách kiểm trên DB clone. Cú pháp cụ thể của dự án nằm ở docs/database/migration-rules.md. Dùng khi architect thiết kế schema hoặc backend-dev viết migration.
+description: Nguyên tắc thay đổi schema DB an toàn cho mọi framework và CSDL - thêm cột, index, ràng buộc NOT NULL, đổi tên, xoá cột, backfill, khoá ngoại, rollback - và cách kiểm trên DB riêng của task. Cú pháp cụ thể của dự án nằm ở docs/database/migration-rules.md. Dùng khi architect thiết kế schema hoặc backend-dev viết migration.
 ---
 
 # Migration an toàn
@@ -12,7 +12,7 @@ Mục tiêu: deploy **không khoá bảng lâu, không mất dữ liệu, rollba
 - Chưa có hoặc thiếu mục nào → suy từ migration cũ trong repo + tài liệu CSDL, làm theo nguyên tắc dưới, ghi **"Đề xuất bổ sung migration-rules.md"** trong kết quả (Architect/backend-dev cập nhật khi đóng task).
 
 ## 0b. Tạo file migration
-- **Luôn sinh bằng generator của framework, chạy trong container app**: `.claude/agent-team/agent-db-clone.sh generate <task-id> <Tên> [tham số]` (lệnh generator lấy từ `MIGRATION_GEN_CMD`).
+- **Luôn sinh bằng generator của framework, chạy trong container app**: `.claude/agent-team/agent-db.sh generate <task-id> <Tên> [tham số]` (lệnh generator lấy từ `MIGRATION_GEN_CMD`).
 - **Không tự tạo file, tự đặt version/timestamp, không đổi tên file migration**: tự tạo dễ sinh nhiều file trùng version, thứ tự chạy sai. Guard chặn tạo file mới trong `MIGRATION_PATHS`.
 - Sinh xong mới sửa nội dung file vừa sinh. Script tự kiểm version trùng trước `generate`, `migrate`, `verify`.
 
@@ -34,7 +34,7 @@ Mục tiêu: deploy **không khoá bảng lâu, không mất dữ liệu, rollba
 - Backfill: bước lùi không cần khôi phục dữ liệu nhưng không được lỗi.
 
 ## 3. Kiểm trước khi báo xong
-1. `.claude/agent-team/agent-db-clone.sh verify <task-id>` pass (migrate → rollback → migrate).
+1. `.claude/agent-team/agent-db.sh verify <task-id>` pass (migrate → rollback → migrate).
 2. File schema/snapshot của dự án (nếu có) đổi khớp migration và được commit cùng.
-3. Ước lượng số dòng bảng bị đổi trên DB clone; bảng lớn phải dùng cách an toàn ở bảng trên.
+3. Ước lượng số dòng bảng bị đổi trên DB riêng của task; bảng lớn phải dùng cách an toàn ở bảng trên.
 4. TASK.md: migration nào, có backfill không, thứ tự deploy, việc cần làm khi merge.

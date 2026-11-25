@@ -7,7 +7,7 @@ model: sonnet
 Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bước trước khi làm. Tham số: $ARGUMENTS (`--skip-kb` = không dựng nháp KB từ code).
 
 1. **Tìm thư mục plugin**:
-   `find ~/.claude/plugins -type d -path "*agent-team" -exec test -f {}/scripts/agent-db-clone.sh \; -print | head -1`
+   `find ~/.claude/plugins -type d -path "*agent-team" -exec test -f {}/scripts/agent-db.sh \; -print | head -1`
 2. **Nhận diện project** (chỉ đọc):
    - Stack BE/FE/test: Gemfile, package.json, thư mục spec/test
    - Lệnh lint/format đang có (rubocop, eslint, prettier, ruff...) → `LINT_CMD`, `FORMAT_CMD`
@@ -29,7 +29,7 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
    - Dặn user: mở Claude Code ở **repo chính**, rồi thêm repo còn lại bằng `/add-dir ../FrontEnd`.
 3. **Tạo `.claude/agent-team.config`** từ `templates/agent-team.config.example`, điền giá trị đã nhận diện (kể cả `LINT_CMD`, `FORMAT_CMD`). Giữ mặc định `COST_TIER=standard` (economy | standard | max) và `LESSONS_PATH=docs/LESSONS.md`. Giá trị không chắc → `TODO` và báo user. Tuyệt đối không ghi password/KEY.
 4. **Copy vào project**:
-   - `scripts/agent-db-clone.sh` → `.claude/agent-team/agent-db-clone.sh` (chmod +x)
+   - `scripts/agent-db.sh` → `.claude/agent-team/agent-db.sh` (chmod +x)
    - `templates/TASK.md`, `POST.md`, `SUMMARY.md`, `CONTEXT.md`, `MOCKS.md` → `.claude/agent-team/templates/`
    - `scripts/kb-check.py` → `.claude/agent-team/kb-check.py` (chmod +x)
    - `scripts/board.py`, `scripts/pool.py` → `.claude/agent-team/` (chmod +x). `pool.py`: điều phối nhiều task song song (worktree). Board chat SQLite, dữ liệu ở `.agent-team/board.db` (đã gitignore).
@@ -57,6 +57,8 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
    .claude/agent-team/*.sh
    .claude/agent-team/__pycache__/
    .claude/agent-team.local.config
+   .claude/agent-team/e2e-template/
+   e2e/.auth/
    ```
    Commit: `.claude/agent-team.config` (config chung của team), `.claude/agent-team/templates/`, `.claude/settings.json`.
    Tạo `.claude/agent-team.local.config` từ `templates/agent-team.local.config.example` (riêng máy này: `DEV_ID`, `MAX_PARALLEL`, `E2E_PORT_BASE`...).

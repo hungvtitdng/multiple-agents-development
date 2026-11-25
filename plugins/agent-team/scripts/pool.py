@@ -369,7 +369,7 @@ def cmd_fill(db, root, a):
 def main_deps(root):
     if cfg(root, "CLONE_MODE", "") != "schema":
         return
-    sh_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "agent-db-clone.sh")
+    sh_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "agent-db.sh")
     try:
         out = subprocess.run(["bash", sh_path, "main-deps", "main"], cwd=root, capture_output=True, text=True, timeout=900)
         if out.stdout.strip() or out.returncode:
@@ -481,9 +481,9 @@ def cmd_merge_begin(db, root, a):
         return
     tag = "@" + r["module"].lower().replace("-", "")
     it = cfg(root, "INTEGRATION_CMD", "") or (
-        "TEST_CMD + E2E toàn bộ (agent-db-clone.sh e2e)" if r["module"] == "M-E2E"
+        "TEST_CMD + E2E toàn bộ (agent-db.sh e2e)" if r["module"] == "M-E2E"
         else "TEST_CMD (TEST_MODE=mvp: E2E để M-E2E)" if cfg(root, "TEST_MODE", "").lower() == "mvp"
-        else f"TEST_CMD + E2E của module (agent-db-clone.sh e2e <task> --grep {tag} + spec đã sửa); toàn bộ E2E chỉ ở M-E2E")
+        else f"TEST_CMD + E2E của module (agent-db.sh e2e <task> --grep {tag} + spec đã sửa); toàn bộ E2E chỉ ở M-E2E")
     print(f"Đã merge (chưa commit) {a.label}. Chạy integration test: {it}\nRồi: pool.py merge-end {a.label} pass|fail")
 
 
@@ -505,7 +505,7 @@ def cleanup_task(root, r):
     out = []
     wt0 = os.path.join(root, r["worktree"]) if r["worktree"] else ""
     if cfg(root, "CLONE_MODE", "") == "schema" and wt0 and os.path.isdir(wt0):
-        sh_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "agent-db-clone.sh")
+        sh_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "agent-db.sh")
         try:
             if subprocess.run(["bash", sh_path, "down", r["task_id"]], cwd=wt0, capture_output=True, timeout=120).returncode == 0:
                 out.append(f"DB + process cổng của {r['task_id']}")

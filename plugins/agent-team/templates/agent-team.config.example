@@ -28,13 +28,13 @@ FORMAT_CMD=
 # Wireframe vẽ tab Mobile, test case + E2E chạy đủ từng chiều rộng, code-reviewer kiểm.
 VIEWPORTS="375 768 1280"
 
-# ---- E2E trình duyệt (Playwright), chạy bằng agent-db-clone.sh e2e <task-id> trên DB clone ----
+# ---- E2E trình duyệt (Playwright), chạy bằng agent-db.sh e2e <task-id> trên DB riêng của task ----
 # Để trống E2E_CMD = dự án chưa có E2E (task có UI vẫn phải có, xem release-notes).
 # Lệnh có dấu $ thì để trong nháy ĐƠN ('...'), vì file này được nạp bằng shell.
 # full = mỗi task chạy E2E · mvp = task chỉ test BE + component, E2E: DEFER, chạy toàn bộ sau ở M-E2E (ship MVP nhanh)
 TEST_MODE=full
 E2E_CMD=                    # vd "npx playwright test", chạy trên máy (host), nhận BASE_URL, VIEWPORTS, EVIDENCE_DIR
-APP_START_CMD=              # vd "bin/rails s -b 0.0.0.0 -p 3000", chạy trong container APP_SERVICE, nối DB clone; server phải phục vụ song song (PHP: "PHP_CLI_SERVER_WORKERS=8 php -S ..."), build FE 1 lần
+APP_START_CMD=              # vd "bin/rails s -b 0.0.0.0 -p 3000", chạy trong container APP_SERVICE, nối DB riêng của task; server phải phục vụ song song (PHP: "PHP_CLI_SERVER_WORKERS=8 php -S ..."), build FE 1 lần
 APP_PORT=3000               # cổng app trong container
 E2E_PORT=3999               # cổng mở ra máy cho E2E (khác cổng app đang chạy để không đụng nhau)
 # FE tách riêng (SPA): lệnh chạy FE trên máy, nhận API_URL=http://localhost:$E2E_PORT; E2E dùng E2E_FE_URL
@@ -68,7 +68,7 @@ MERGE_WARN_MINUTES=20
 WORKTREE_DIR=.worktrees
 # Cổng E2E của worktree: E2E_PORT_BASE, +1, +2... (không đụng nhau khi chạy song song)
 E2E_PORT_BASE=4000
-# Chạy sau mỗi lần merge task về branch phiên (trống = TEST_CMD + agent-db-clone.sh e2e toàn bộ)
+# Chạy sau mỗi lần merge task về branch phiên (trống = TEST_CMD + agent-db.sh e2e toàn bộ)
 INTEGRATION_CMD=
 
 # 1 = dùng code graph Graphify (cài riêng: xem release-notes của plugin; Lead chạy graphify update)
@@ -79,7 +79,7 @@ USE_CODE_GRAPH=1
 # Ví dụ: FUNCTION_INDEX_PATHS="app/services app/models app/repositories"  (nhiều repo: "../FrontEnd/src/services")
 FUNCTION_INDEX_PATHS=
 
-# ---- Docker / DB clone ----
+# ---- Docker / DB riêng của task ----
 # Thư mục chứa docker-compose (tính từ thư mục có .claude/, vd "be"). Để trống = thư mục đó.
 COMPOSE_DIR=
 COMPOSE_FILE=docker-compose.yml
@@ -92,13 +92,13 @@ APP_SERVICE=app             # service để chạy migrate / test
 
 # Migration: CHỈ sinh file bằng generator của framework, chạy trong container app (không tự tạo file, tránh trùng timestamp)
 MIGRATION_PATHS="db/migrate"                        # thư mục chứa migration (guard chặn tạo file mới bằng tay ở đây)
-MIGRATION_GEN_CMD="bin/rails generate migration"    # agent-db-clone.sh generate <task-id> <Tên> [field:type...]
+MIGRATION_GEN_CMD="bin/rails generate migration"    # agent-db.sh generate <task-id> <Tên> [field:type...]
 MIGRATION_GEN_USER=                                 # trống = user mặc định của container; "host" = uid:gid của máy (tránh file thuộc root)
 MIGRATE_CMD="bin/rails db:migrate"
 ROLLBACK_CMD="bin/rails db:rollback STEP=1"
 TEST_CMD="bundle exec rspec"
 
-# CLONE_MODE: container = mỗi task 1 container DB clone (cũ) · schema = 1 container DB + 1 container app cho mọi worktree:
+# CLONE_MODE: container = mỗi task 1 container DB sao chép (cũ) · schema = 1 container DB + 1 container app cho mọi worktree:
 #   DB riêng mỗi task <DB_NAME>_<task> (migrate + SEED_CMD), lệnh chạy bằng `docker compose exec -w <thư mục worktree>`.
 #   Compose: app mount `./:/var/www/main`, `./.worktrees:/var/www/.worktrees`, volume rỗng `/var/www/main/.worktrees` (main không thấy worktree), publish sẵn 100 cổng 8800-8899 (main :8800, worktree :8801, :8802..., E2E_PORT_BASE mặc định 8801).
 #   APP_START_CMD dùng {port}, vd "PHP_CLI_SERVER_WORKERS=8 php -S 0.0.0.0:{port} -t public"
@@ -111,7 +111,7 @@ SCHEMA_ENV="DB_DATABASE={db}"                           # env riêng của task:
 SCHEMA_DOWN_CMD=                                        # dọn dữ liệu service của task khi xong, vd "php artisan cache:clear" (có {task})
 SHARED_DEPS="vendor:composer.lock node_modules:package-lock.json"  # mỗi worktree 1 bản riêng (clone APFS / reflink từ thư mục chính, lock khác thì cài lại)
 
-# Biến env app dùng để trỏ tới DB clone. Placeholder: {host} {port} {user} {password} {db} {url}
+# Biến env app dùng để trỏ tới DB riêng của task. Placeholder: {host} {port} {user} {password} {db} {url}
 CLONE_ENV="DATABASE_URL={url}"
 # Ví dụ app dùng biến rời:
 # CLONE_ENV="DB_HOST={host} DB_PORT={port} DB_USERNAME={user} DB_PASSWORD={password} DB_NAME={db}"

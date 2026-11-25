@@ -22,4 +22,4 @@
 |---|---|---|
 
 ## Lệnh
-<sinh file migration (MIGRATION_GEN_CMD, chạy trong container), migrate, rollback, kiểm trên DB clone>
+<sinh file migration (MIGRATION_GEN_CMD, chạy trong container), migrate, rollback, kiểm trên DB riêng của task>

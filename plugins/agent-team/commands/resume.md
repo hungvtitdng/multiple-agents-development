@@ -28,7 +28,7 @@ Trạng thái nằm trên đĩa nên làm tiếp được. **Chạy tiếp tới
 | Có `docs/audit/AUDIT-*.md` với `Bước:` khác `DONE` | Làm tiếp theo `audit.md`: `REVIEW` → gọi lại làn chưa có lỗi trong bảng · `CHỜ DUYỆT` → báo user điền cột `Sửa?` · `UPDATE` → dòng `Sửa?: YES` chưa `FIXED` / `BACKLOG` |
 | Stage S4 | test-executor chạy tiếp; xem `docs/testing/test-report.md`. Task có UI: xem ảnh đã có trong `docs/testing/evidence/<task-id>/` để biết chiều rộng nào chưa chạy E2E |
 | Stage S5 | Reviewer chưa APPROVED; issue còn mở trong TASK.md mục 11 |
-| Stage S6 | Điền TASK.md, `agent-db-clone.sh down`, push, báo cáo |
+| Stage S6 | Điền TASK.md, `agent-db.sh down`, push, báo cáo |
 | TASK.md mục 14 có gap chưa `Closed` | Xử lý gap đó theo `task.md` mục 7b (`board.py status` xem lượt debate nhỏ đang mở), rồi giao dev làm tiếp phần đã dừng |
 | TASK.md ghi `BLOCKED` | Đọc lý do + điều kiện tiếp tục; còn thiếu thì báo user, đủ thì mở khoá |
 | `Loại: APP`, `BLOCKED (chờ owner, form lượt n)` | Có đường dẫn file trả lời trong `$ARGUMENTS` → `.claude/agent-team/owner-form.py import <file>`, báo số OK / góp ý / không / để trống, rồi làm tiếp theo `app.md` mục 0b. Chưa có file → báo user vẫn đang chờ owner / dev (đường dẫn `docs/product/QnA-v<n>.xlsx`), làm phần không phụ thuộc (A2) |

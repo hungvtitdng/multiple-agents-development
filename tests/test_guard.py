@@ -46,7 +46,7 @@ cases = [
     ("docker inspect", "Bash", {"command": "docker inspect db"}, None, None, B),
     ("migrate DB thật", "Bash", {"command": "docker compose exec app bin/rails db:migrate"}, "backend-dev", None, B),
     ("migrate DB thật trong sh -c", "Bash", {"command": "docker compose exec app sh -c \"bin/rails db:migrate\""}, "backend-dev", None, B),
-    ("migrate qua clone", "Bash", {"command": ".claude/agent-team/agent-db-clone.sh migrate T1"}, "backend-dev", None, OK),
+    ("migrate qua clone", "Bash", {"command": ".claude/agent-team/agent-db.sh migrate T1"}, "backend-dev", None, OK),
     ("grep -r cả repo bị chặn (quét mù)", "Bash", {"command": "grep -rn \"db:migrate\" ."}, "code-reviewer", None, B),
     ("grep -r trong thư mục cụ thể", "Bash", {"command": "grep -rn \"db:migrate\" db/"}, "code-reviewer", None, OK),
     ("force push", "Bash", {"command": "git push -f origin agent/x"}, None, repo, B),
@@ -505,7 +505,7 @@ open(os.path.join(ev, "TC-1-normal-375.png"), "w").write("x")
 gate("S5 E2E PASS, thiếu ảnh 1280", S5OK + "- UI mockup: YES\n- E2E: PASS\n", "Bash", S5, None, B)
 open(os.path.join(ev, "TC-1-normal-1280.png"), "w").write("x")
 gate("S5 E2E PASS, đủ ảnh mọi chiều rộng", S5OK + "- UI mockup: YES\n- E2E: PASS\n", "Bash", S5, None, OK)
-gate("test-executor chạy e2e qua clone", S5OK, "Bash", {"command": ".claude/agent-team/agent-db-clone.sh e2e T1"}, "test-executor", OK)
+gate("test-executor chạy e2e qua clone", S5OK, "Bash", {"command": ".claude/agent-team/agent-db.sh e2e T1"}, "test-executor", OK)
 gate("test-designer (chỉ đọc) chạy e2e", S5OK, "Bash", {"command": ".claude/agent-team/agent-db-clone.sh e2e T1"}, "test-designer", OK)
 gate("S5 còn gap mở", "- Kết quả test: PASS\n- Lint/format: PASS\n- Gap còn mở: 2\n", "Bash", S5, None, B)
 gate("S5 chưa điền gap", "- Kết quả test: PASS\n- Lint/format: PASS\n- Gap còn mở: TODO\n", "Bash", S5, None, B)
@@ -591,7 +591,7 @@ mg = [
     ("chép file vào thư mục migration bị chặn", "Bash", {"command": "cp /tmp/a.rb db/migrate"}, "backend-dev", mp, B),
     ("Edit file migration đã sinh", "Edit", {"file_path": "db/migrate/20261119000001_add_x.rb"}, "backend-dev", mp, OK),
     ("Write ghi đè file đã sinh", "Write", {"file_path": "db/migrate/20261119000001_add_x.rb"}, "backend-dev", mp, OK),
-    ("sinh bằng generator trong container", "Bash", {"command": ".claude/agent-team/agent-db-clone.sh generate T1 AddStatusToOrders status:string"}, "backend-dev", mp, OK),
+    ("sinh bằng generator trong container", "Bash", {"command": ".claude/agent-team/agent-db.sh generate T1 AddStatusToOrders status:string"}, "backend-dev", mp, OK),
     ("tạo file ngoài thư mục migration", "Write", {"file_path": "db/seeds/x.rb"}, "backend-dev", mp, OK),
 ]
 for c in mg:

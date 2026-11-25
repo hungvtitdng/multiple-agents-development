@@ -1,9 +1,25 @@
+# Release notes - 25/11/2026 (v0.42.0 - khung Playwright chuẩn, đổi tên agent-db.sh)
+
+## Thay đổi
+- Khung E2E chuẩn `templates/e2e/` (playwright.config.ts, e2e/project.ts, auth.setup.ts, smoke.spec.ts, support/env|db|responsive.ts): workers theo chiều rộng, `@responsive`, đăng nhập 1 lần (`storageState`), reset qua `$APP_EXEC`, ảnh vào `EVIDENCE_DIR`, timeout 30s / 5s. Hook sync chép vào `.claude/agent-team/e2e-template/` mỗi phiên. M-0: dự án chưa có Playwright thì chép khung này, chỉ sửa `e2e/project.ts`, chạy smoke.
+- Đổi tên `agent-db-clone.sh` → `agent-db.sh` (chế độ schema không còn clone: DB của task tạo bằng migrate + seed). Tên cũ vẫn chạy (gọi sang tên mới). Chữ "DB clone" trong tài liệu → "DB riêng của task". Hook sync tự thêm quyền `agent-db.sh` vào `.claude/settings.json` khi đã có quyền tên cũ.
+
+## Cần làm tay
+- `.gitignore`: thêm `.claude/agent-team/e2e-template/` và `e2e/.auth/`.
+- Lệnh / quyền tên cũ `agent-db-clone.sh` vẫn chạy, không cần sửa.
+
 # Release notes - 25/11/2026 (v0.41.0 - Chế độ test MVP)
 
 ## Thay đổi
 - `TEST_MODE=mvp` (config) hoặc `- Chế độ test: MVP` (TASK.md, từng task): task kiểm bằng test BE + component, spec E2E vẫn sửa nhưng không chạy, ghi `- E2E: DEFER`. Hook cho qua S5 với DEFER chỉ khi MVP. Integration test sau merge chỉ chạy `TEST_CMD`. E2E toàn bộ chạy ở M-E2E. M-0 và M-E2E luôn FULL (M-0 dựng Playwright + smoke E2E để M-E2E chạy được).
 
+- `agent-db-clone.sh e2e` truyền `APP_EXEC` cho `E2E_CMD` (seed / reset gọi `sh -c "$APP_EXEC php …"`, chạy được ở cả 2 chế độ). Chế độ schema: cổng riêng của worktree thắng `E2E_PORT` cố định.
+
+## Sửa
+- Chế độ schema: `e2e` luôn thoát mã 1 sau khi chạy (biến `port` local bị trap EXIT đọc sau khi hàm kết thúc).
+
 ## Cần làm tay
+- E2E đang gọi `docker exec agent-e2e-<task>`: đổi sang `$APP_EXEC`. Bỏ `E2E_PORT` cố định ngoài dải cổng đã mở.
 - Muốn bật cho cả dự án: thêm `TEST_MODE=mvp` vào `.claude/agent-team.config`.
 
 # Release notes - 25/11/2026 (v0.40.2 - Phase A bước Mockup dùng lại mockup đã duyệt)

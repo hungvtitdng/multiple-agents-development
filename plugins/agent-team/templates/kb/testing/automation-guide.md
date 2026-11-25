@@ -25,9 +25,9 @@
 |---|---|---|
 | Config Playwright (project theo `VIEWPORTS`) | | |
 | Helper chụp ảnh + kiểm responsive (`shot`, `expectResponsive`) | | |
-| Tạo dữ liệu E2E trên DB clone | | |
+| Tạo dữ liệu E2E trên DB riêng của task | | |
 | Đăng nhập trong E2E | | |
 
 ## Lệnh chạy
-<lệnh chạy một file, một nhóm, toàn bộ; chạy trên DB clone>
-E2E: `.claude/agent-team/agent-db-clone.sh e2e <task-id> [args]` (config `E2E_CMD`, `APP_START_CMD`, `VIEWPORTS`)
+<lệnh chạy một file, một nhóm, toàn bộ; chạy trên DB riêng của task>
+E2E: `.claude/agent-team/agent-db.sh e2e <task-id> [args]` (config `E2E_CMD`, `APP_START_CMD`, `VIEWPORTS`)

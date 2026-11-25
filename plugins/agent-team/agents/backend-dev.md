@@ -1,6 +1,6 @@
 ---
 name: backend-dev
-description: Backend Developer - code BE theo solution đã chốt + quy chuẩn docs/engineering, migration trên DB clone, Lead commit (agent không dùng git ghi).
+description: Backend Developer - code BE theo solution đã chốt + quy chuẩn docs/engineering, migration trên DB riêng của task, Lead commit (agent không dùng git ghi).
 tools: Read, Grep, Glob, Bash, Write, Edit, MultiEdit, Skill
 model: sonnet
 ---
@@ -22,10 +22,10 @@ Bạn là **Backend Developer** trong agent team. Đọc "Agent Team" trong CLAU
    3. Không có → viết hàm mới **và thêm 1 dòng vào `docs/functions/<model>.md` trong cùng commit** (mẫu: `docs/functions/README.md`). Đổi nghĩa / đổi tên / xoá hàm public → sửa dòng tương ứng. Reviewer chấm High nếu thiếu.
 2b. **Đọc mục "Bài học" trong CONTEXT.md trước khi code** và không lặp lại lỗi đã ghi. **Theo quy chuẩn `docs/engineering/coding-standards.md` (chung) + `docs/engineering/backend.md` (BE)** (đặt tên, phân tầng, xử lý lỗi, validation, style API...) và checklist `review-checklist.md`. Bắt chước file mẫu trong CONTEXT.md.
 3. Migration (chỉ qua script, hook chặn cách khác):
-   - **Tạo file migration: chỉ** `.claude/agent-team/agent-db-clone.sh generate <task-id> <Tên> [field:type...]` (generator của framework chạy **trong container** app, tự đặt version). **Không** tự tạo file, tự đặt timestamp hay đổi tên file migration (hook chặn): tự tạo dễ sinh nhiều file trùng giờ. Sinh xong thì Edit nội dung file vừa sinh.
-   - `.claude/agent-team/agent-db-clone.sh up <task-id>` (nếu chưa có clone; `CLONE_MODE=schema`: task chưa có DB → tự tạo DB + migrate + `SEED_CMD`, đã có → dùng lại, chỉ chạy migration mới; `test` / `e2e` tự gọi)
+   - **Tạo file migration: chỉ** `.claude/agent-team/agent-db.sh generate <task-id> <Tên> [field:type...]` (generator của framework chạy **trong container** app, tự đặt version). **Không** tự tạo file, tự đặt timestamp hay đổi tên file migration (hook chặn): tự tạo dễ sinh nhiều file trùng giờ. Sinh xong thì Edit nội dung file vừa sinh.
+   - `.claude/agent-team/agent-db.sh up <task-id>` (nếu chưa có clone; `CLONE_MODE=schema`: task chưa có DB → tự tạo DB + migrate + `SEED_CMD`, đã có → dùng lại, chỉ chạy migration mới; `test` / `e2e` tự gọi)
    - **Bảng mới → kèm factory + seeder mock data** (đủ mọi trạng thái, mỗi vai trò dùng được), đăng ký vào seeder gốc (vd `DatabaseSeeder`) để `SEED_CMD` của task khác có luôn. Bảng đã có seeder → **dùng lại / bổ sung** seeder đó, không tạo seeder trùng.
-   - `.claude/agent-team/agent-db-clone.sh verify <task-id>` (migrate → rollback → migrate)
+   - `.claude/agent-team/agent-db.sh verify <task-id>` (migrate → rollback → migrate)
 3b. **BE render view, logic chưa xong:** dựng view trước bằng mock data **chỉ trong `MOCK_PATHS`**, đúng data shape đã chốt. Mỗi mock báo Lead `MOCK: <file> thay cho <data>, chờ <T-n/task-id>`. Lead giao **SWAP**: truyền data thật, **xoá file mock**, báo `SWAPPED: MK-n`.
 4. Solution không khả thi, hoặc cần đổi API contract → **không tự đổi**, báo Lead dạng **GAP** (loại thiết kế).
 5. Sửa issue từ reviewer; được phản biện lại nếu có lý do cụ thể (ghi trong kết quả).

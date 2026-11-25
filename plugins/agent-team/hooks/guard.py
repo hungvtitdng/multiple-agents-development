@@ -61,7 +61,7 @@ PERM_CMDS = {"chmod", "chown", "chgrp", "setfacl", "chattr"}
 SNAP_MAX = 2_000_000
 WRITE_CMDS = {"tee", "mv", "cp", "rm", "touch", "truncate", "install", "dd", "ln"}
 HIDDEN_RE = re.compile(r"(^|[\s/'\"=])\.agent-team(/|\s|$|['\"])")
-CLONE_SCRIPT = "agent-db-clone"
+CLONE_SCRIPT = "agent-db"
 BOARD = "board.py"
 BOARD_ROLE_CMDS = {"post", "read", "status", "whys", "done", "progress"}
 HEREDOC_RE = re.compile(r"<<(-?)\s*['\"]?([A-Za-z_][A-Za-z0-9_]*)['\"]?")
@@ -197,7 +197,7 @@ def check_db(cmd):
         if fc in READ_ONLY_FIRST or fc.startswith(CLONE_SCRIPT):
             continue
         if DB_TASK_RE.search(" ".join(tk)):
-            block("migration/lệnh DB chỉ được chạy qua agent-db-clone.sh (DB clone), không đụng DB thật")
+            block("migration/lệnh DB chỉ được chạy qua agent-db.sh (DB riêng của task), không đụng DB thật")
 
 
 def scan_outgoing(cwd):
@@ -615,7 +615,7 @@ def check_migration_new(path, cwd):
     for d in dirs:
         if rel == d or (rel.startswith(d + "/") and not os.path.exists(full)):
             block(f"không tự tạo / đổi tên file migration ('{rel}'). Sinh bằng "
-                  "`.claude/agent-team/agent-db-clone.sh generate <task-id> <Tên> [field:type...]` (generator chạy trong container), "
+                  "`.claude/agent-team/agent-db.sh generate <task-id> <Tên> [field:type...]` (generator chạy trong container), "
                   "rồi Edit file vừa sinh")
 
 
@@ -1448,10 +1448,10 @@ def main():
     if tool in ("Grep", "Glob", "Bash"):
         check_blind_scan(tool, ti, role, cwd)
 
-    # state DB clone: agent không được đọc/ghi (Lead thì được)
+    # state DB của task: agent không được đọc/ghi (Lead thì được)
     if role and tool in ("Read", "Grep", "Glob", "Write", "Edit", "MultiEdit", "NotebookEdit"):
         if touches_hidden(full_path(path, cwd) + "/") or touches_hidden(ti.get("glob", "")):
-            block("không được đụng .agent-team/ (state DB clone)")
+            block("không được đụng .agent-team/ (state DB của task)")
 
     if tool == "Bash":
         cmd = ti.get("command", "")
@@ -1465,7 +1465,7 @@ def main():
             block("không được đổi quyền file (chmod/chown...), nhờ Lead")
         check_graphify(cmd, role)
         if role and touches_hidden(cmd):
-            block("không được đụng .agent-team/ (state DB clone)")
+            block("không được đụng .agent-team/ (state DB của task)")
         if role and "agent-tasks" in cmd and (
                 re.search(r">|\btee\b|\bsed\s+(-\w*\s+)*-i|\b(mv|cp|rm|touch|truncate)\b", unquoted(cmd))):
             block("docs/agent-tasks (TASK, board) chỉ Lead ghi, trả kết quả cho Lead")
