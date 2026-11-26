@@ -44,6 +44,10 @@ E2E_PORT=3999               # cổng mở ra máy cho E2E (khác cổng app đan
 E2E_FE_START_CMD=
 E2E_FE_URL=
 
+# Kiểu response API: cooked (mặc định) = BE tính toán / gộp rồi trả · flat = BE chỉ đọc + lọc theo quyền rồi trả dữ liệu thô, FE tự tính
+# (tổng, gom nhóm, định dạng). flat: mỗi API ghi PHẲNG / XỬ LÝ trong API contract (quy tắc ở agents/solution-architect.md).
+API_RESPONSE=cooked
+
 # Mức model: economy | standard | max (mặc định standard). Lead chọn model theo bảng trong run.md mục 2.
 COST_TIER=standard
 

@@ -21,6 +21,8 @@ Không hỏi user. Không commit (để user xem). Không đụng code.
 Gọi `agent-team:scout` mảng **Bản đồ**: mọi repo trong `REPOS`, module/thư mục chính, entry point, lệnh chạy, nơi để routes, services, models, policies, migrations, tests, frontend. Trả danh sách module (tên + đường dẫn + ước lượng quy mô). **Không ghi file.**
 
 ## 2. Đọc sâu song song (nhiều Scout trong cùng một message)
+**Model theo việc (truyền tham số `model` khi gọi Scout, không cần user chỉnh):** mảng **đọc logic** (Module, Frontend, Tổng hợp nghiệp vụ ở mục 3) → `opus` (`COST_TIER=economy`: `sonnet`): sót quy tắc ở đây thì mọi task / app làm lại sau này sai theo. Mảng **liệt kê** (Bản đồ, Kiến trúc + API + DB, Chỉ mục hàm, Quy chuẩn + test) → `sonnet`.
+
 Chia việc dựa trên bản đồ. Bạn ghi bảng **Danh sách module** (`Module | Code`) trong `docs/modules/README.md` từ bản đồ (kb-check báo module chưa có README). **Mỗi file KB chỉ một Scout ghi** (tránh ghi đè nhau). Mỗi Scout nhận: mảng, danh sách file sở hữu, đường dẫn repo/module phải đọc, nhắc phải đọc **logic thật** theo bảng trong định nghĩa Scout.
 
 | Scout | File KB sở hữu |
@@ -33,7 +35,7 @@ Chia việc dựa trên bản đồ. Bạn ghi bảng **Danh sách module** (`Mo
 
 Argument là một module/mảng → chỉ gọi đúng Scout cho phần đó.
 
-## 3. Tổng hợp nghiệp vụ (1 Scout, sau khi bước 2 xong)
+## 3. Tổng hợp nghiệp vụ (1 Scout opus, sau khi bước 2 xong)
 Gọi `agent-team:scout` mảng **Tổng hợp nghiệp vụ**: sở hữu `domain-model.md`, `business-rules.md`, `roles-and-permissions.md` (vai trò + điều kiện `C-`), `permission-matrix.md` (vai trò × hành động `P-`, không ô trống), `flows/README.md` (luồng qua nhiều page `F-n`), `glossary.md`. Đọc `modules/*/README.md` + `screens/` đã có, gộp quy tắc thành bảng chung (giữ `file:dòng`, bỏ trùng), đọc policy/guard/scope để dựng ma trận quyền, rút thuật ngữ.
 
 ## 4. Kiểm và lặp (bắt buộc, không bỏ qua)

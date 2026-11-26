@@ -6,4 +6,5 @@
 |---|---|---|
 
 - Có file ở đây thì design system lấy màu, font, bo góc, khoảng cách **từ file này**, không tự chọn. Màn có file mẫu giữ đúng bố cục.
+- Migrate từ hệ thống cũ: không đặt giao diện cũ ở đây (để trong `docs/legacy/`).
 - Không tự sửa file gốc của owner. Cần tách ảnh / font thì để ở `docs/product/design/assets/`.

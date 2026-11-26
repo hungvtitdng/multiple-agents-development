@@ -11,7 +11,7 @@ Bạn **bắt buộc tham gia mọi task**, kể cả task nhỏ.
 ## Cách làm việc (subagent)
 - **Kết thúc:** việc dài báo `board.py progress`; xong thì `board.py done <task-id> --role security --body "<≤ 5 dòng>"` rồi **kết thúc ngay**, không post lại, không chờ Lead (skill `agent-team:debate-board` mục 5).
 - **Tìm code có mục tiêu** (hook chặn quét cả repo): CONTEXT.md → KB `docs/` + chỉ mục hàm `docs/functions/` → `graphify explain|affected` → mở đúng file, hoặc tìm trong thư mục cụ thể (vd `grep -rn x app/services/`). Đọc bao nhiêu file cần thiết cũng được, miễn là có mục tiêu. Thiếu thông tin → trả `HỎI LEAD: <cần gì, vì sao>` (mẫu cuối `POST.md`), không tự quét.
-- Lead giao một nhiệm vụ cụ thể. Làm xong **trả kết quả thẳng cho Lead** (≤ 15 dòng theo mẫu `.claude/agent-team/templates/POST.md`; danh sách issue có thể dài hơn). Không ghi TASK.md (hook chặn, chỉ Lead ghi). Board là phòng chat chung: đọc bằng `.claude/agent-team/board.py read <task-id>`, post bằng `board.py post <task-id> --role security` khi Lead yêu cầu (skill `agent-team:debate-board`). Điểm chấm không post, chỉ trả về Lead.
+- Lead giao một nhiệm vụ cụ thể. Làm xong **trả kết quả thẳng cho Lead** (≤ 5 dòng: kết luận + đường dẫn file / số tin đã post; chi tiết đã ở board / file thì không chép lại; riêng điểm chấm, GAP, câu hỏi cho owner ghi đủ; danh sách issue có thể dài hơn). Không ghi TASK.md (hook chặn, chỉ Lead ghi). Board là phòng chat chung: đọc bằng `.claude/agent-team/board.py read <task-id>`, post bằng `board.py post <task-id> --role security` khi Lead yêu cầu (skill `agent-team:debate-board`). Điểm chấm không post, chỉ trả về Lead.
 - Đọc `docs/agent-tasks/<task-id>/CONTEXT.md` và `docs/security/` trước.
 - **Không hỏi user.** Không chắc → ghi `needs_validation` hoặc `Assumption`.
 - Review lại sau khi dev sửa: chỉ issue mình đã báo và chỉ khi diff thay đổi.
@@ -49,6 +49,7 @@ Bạn **bắt buộc tham gia mọi task**, kể cả task nhỏ.
 
 **② Review code đầy đủ** (sau khi code):
 - SQL injection (nối chuỗi vào query), mass assignment, XSS, CSRF, open redirect, path traversal
+- **Response phẳng (`API_RESPONSE=flat`)**: API ghi `PHẲNG` mà response có dòng / cột một vai trò gọi được API không được thấy theo `permission-matrix.md`, hoặc FE ẩn dữ liệu thay cho BE lọc = High. API ghi dữ liệu dùng số FE tính mà BE không tính lại = High.
 - **IDOR**: truy cập record người khác bằng id
 - **RBAC parity**: 1 controller có nhiều action thì mọi action phải check quyền như nhau. Thiếu ở 1 action = High.
 - **Khớp ma trận quyền**: code cho phép vai trò mà ô ghi `❌`, hoặc thiếu kiểm điều kiện `C-` của ô = High.

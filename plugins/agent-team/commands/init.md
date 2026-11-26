@@ -28,6 +28,17 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
    - Config: `REPOS=". ../FrontEnd"` (`.` là repo chính). `BE_PATHS`, `FE_PATHS`, `TEST_PATHS` tính từ repo chính, vd `FE_PATHS="../FrontEnd"`.
    - Dặn user: mở Claude Code ở **repo chính**, rồi thêm repo còn lại bằng `/add-dir ../FrontEnd`.
 3. **Tạo `.claude/agent-team.config`** từ `templates/agent-team.config.example`, điền giá trị đã nhận diện (kể cả `LINT_CMD`, `FORMAT_CMD`). Giữ mặc định `COST_TIER=standard` (economy | standard | max) và `LESSONS_PATH=docs/LESSONS.md`. Giá trị không chắc → `TODO` và báo user. Tuyệt đối không ghi password/KEY.
+3b. **⛔ User duyệt cấu hình chạy (bắt buộc, trước mọi lần gọi agent; không tự quyết thay):** in bảng dưới với giá trị vừa ghi vào config + đề xuất theo trường hợp của dự án này, rồi hỏi bằng `AskUserQuestion` ("Chạy với cấu hình này" / "Sửa"). User sửa → ghi lại config, in lại bảng, hỏi lại. Chưa duyệt thì dừng ở đây (bước 4-7 chỉ chép file vẫn làm được, bước 7b gọi Scout thì không).
+   | Key | Giá trị | Ý nghĩa | Đề xuất theo trường hợp |
+   |---|---|---|---|
+   | `COST_TIER` | economy / standard / max | model mỗi role (bảng ở `task.md` mục 2) | thử nghiệm: economy · bình thường: standard · nghiệp vụ khó / tiền / bảo mật: max |
+   | Scout dựng KB | số Scout dự kiến + model từng mảng (`kb.md` mục 2) | đọc code có sẵn | có code cũ / chuẩn bị migrate: mảng đọc logic dùng opus |
+   | `MAX_PARALLEL` | số task chạy cùng lúc | nhanh hơn nhưng tốn quota + máy | quota thấp / máy yếu: 3-5 · bình thường: 8 · tối đa đang dùng: 15 |
+   | `MAX_DEBATE` | số debate module cùng lúc | | 2-4 |
+   | `API_RESPONSE` | cooked / flat | flat: BE chỉ đọc + lọc theo quyền, FE tự tính; API nào có vai trò không được thấy dữ liệu thô thì BE vẫn xử lý | muốn BE nhẹ, FE đủ sức tính: flat · mặc định: cooked |
+   | `TEST_MODE` | full / mvp | mvp: E2E để cuối, ra bản dùng thử nhanh | app mới cần demo sớm: mvp |
+   | `CLONE_MODE` | container / schema | schema: 1 container DB + 1 container app cho mọi task | chạy song song nhiều: schema |
+   | `PUSH` | 0 / 1 | có tự push branch task không | |
 4. **Copy vào project**:
    - `scripts/agent-db.sh` → `.claude/agent-team/agent-db.sh` (chmod +x)
    - `templates/TASK.md`, `POST.md`, `SUMMARY.md`, `CONTEXT.md`, `MOCKS.md` → `.claude/agent-team/templates/`
@@ -75,4 +86,7 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
    5. **Không có lối thoát "quá dài thì bỏ qua".** Chưa đọc hết thì ghi rõ trong `docs/README.md` mục "Tình trạng KB" (đã quét / chưa quét / vì sao) và báo user chạy `/agent-team:kb <module>` để làm tiếp.
    6. Dự án mới (chưa có code): bỏ qua bước này, chỉ giữ khung. Quy chuẩn code đặt ở A0-A2 của `/agent-team:app` (từ `project-setup.md` mục 6), trước khi viết kiến trúc. Làm app từ ý tưởng: `/agent-team:app <ý tưởng>` (tự copy `templates/product/` → `docs/product/`).
 8. **Ghi `release-notes.md`** (tạo nếu chưa có), mục `Release notes - DD/MM/YYYY`: đã cài agent team, file nào được thêm, key mới (`LINT_CMD`, `FORMAT_CMD`, `COST_TIER`, `LESSONS_PATH`, `FUNCTION_INDEX_PATHS`).
-9. Báo user: danh sách file đã tạo/sửa, các `TODO` cần điền, kết quả `kb-check.py` (đạt/tổng), phần KB chưa quét và còn `Unverified`. **Không commit**, để user xem trước. Cuối cùng: đúng 1 việc làm tiếp (≤ 2 phút), vd chạy `/agent-team:task <task đầu tiên>` (dự án mới: `/agent-team:app <ý tưởng>`).
+9. Báo user: danh sách file đã tạo/sửa, các `TODO` cần điền, kết quả `kb-check.py` (đạt/tổng), phần KB chưa quét và còn `Unverified`. **Không commit**, để user xem trước. Cuối cùng in **"Bước tiếp"** theo đúng trường hợp của dự án này (3-4 dòng đánh số, dòng 1 làm được ngay; đầy đủ ở README plugin mục "Bắt đầu"):
+   - Dự án mới: (1) dev điền `docs/product/project-setup.md` (2) gom logo / màu / app tham khảo vào `docs/product/design-ref/` (3) `/agent-team:app "<ý tưởng>"`.
+   - Có code sẵn: (1) đọc lướt `docs/`, sửa chỗ KB hiểu sai (2) còn `THIEU` → `/agent-team:kb` (3) `/agent-team:audit` 1 lần (4) `/agent-team:task "<việc>"` hoặc `/agent-team:module "<tính năng lớn>"`.
+   - Có `docs/legacy/` (viết lại hệ thống cũ): như dự án mới, `/agent-team:app` tự dùng `docs/legacy/`.

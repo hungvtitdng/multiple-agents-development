@@ -2,6 +2,53 @@
 
 Plugin cho Claude Code. Đưa 1 task → Lead + BA + Architect + Test Design debate, Lead chốt best solution (chọn một hoặc gộp ý), team code, test, review, push lên branch riêng. Thiết kế đầy đủ: `docs/design.md`.
 
+## Bắt đầu: làm gì sau mỗi bước
+
+Cài plugin (mục "Cài đặt") → mở project trong Claude Code → chọn 1 trong 4 đường:
+
+```
+Dự án mới, có ý tưởng ──────────▶ A
+Dự án đã có code ───────────────▶ B
+Viết lại hệ thống cũ ───────────▶ C
+Đang làm dở, phiên bị đóng ─────▶ D
+```
+
+**A. App mới từ ý tưởng**
+
+| # | Bạn làm | Team làm | Xong thì thấy gì |
+|---|---|---|---|
+| 1 | `/agent-team:init`, duyệt bảng cấu hình (app cần demo sớm: `TEST_MODE=mvp`) | tạo config, khung `docs/` | `.claude/agent-team.config` |
+| 2 | Dev điền `docs/product/project-setup.md` (stack, cách chạy); gom logo, màu, app tham khảo vào `docs/product/design-ref/` | | |
+| 3 | `/agent-team:app "<ý tưởng>"` | hỏi, debate, vẽ mockup nháp | file `QnA-v1.xlsx` + mockup HTML |
+| 4 | Trả lời form (mục A owner, mục B dev), xem mockup, gửi lại | chốt logic, mockup, chia module | bảng module trong `docs/product/APP.md` |
+| 5 | Chờ; trả lời khi team hỏi thêm | dựng khung, build từng module song song | `.agent-team/STATUS.md`, dòng trạng thái |
+| 6 | Xem bản demo: branch `demo-mvp` + `docs/product/HANDOVER.md` | (mvp) dừng chờ bạn | app chạy được, tài khoản demo |
+| 7 | Nói "chạy M-E2E" khi muốn test trình duyệt toàn bộ | test E2E, sửa lỗi | báo cáo cuối |
+| 8 | Mở PR từ branch phiên vào nhánh chính, tự merge | | |
+
+**B. Dự án đã có code**
+
+| # | Bạn làm | Xong thì thấy gì |
+|---|---|---|
+| 1 | `/agent-team:init`, duyệt bảng cấu hình | config + nháp Knowledge Base trong `docs/` (Scout đọc code) |
+| 2 | Đọc lướt `docs/` (quy tắc, luồng, quyền), sửa chỗ hiểu sai. Còn thiếu: `/agent-team:kb` | `kb-check` báo đủ |
+| 3 | (nên làm 1 lần) `/agent-team:audit` | danh sách lỗi → Backlog |
+| 4 | Việc nhỏ / vừa: `/agent-team:task "<việc>"` · tính năng lớn: `/agent-team:module "<ý tưởng>"` | branch `agent/<task-id>` đã test + review |
+| 5 | Muốn hỏi logic dự án: `/agent-team:ask "<câu hỏi>"` | câu trả lời có dẫn nguồn |
+| 6 | Xem branch, mở PR, tự merge | |
+
+**C. Viết lại hệ thống cũ (chỉ giữ nghiệp vụ)**
+
+| # | Ở đâu | Bạn làm |
+|---|---|---|
+| 1 | repo cũ | `/agent-team:init` → `/agent-team:kb` tới khi đủ → `/agent-team:audit` |
+| 2 | repo mới | `/agent-team:init`, chép `docs/` của repo cũ vào `docs/legacy/` |
+| 3 | repo mới | làm tiếp như đường A từ bước 2 (`/agent-team:app` tự nhận `docs/legacy/`: lập bảng GIỮ / ĐỔI / BỎ, thêm module chuyển dữ liệu) |
+
+**D. Đang dở**: `/agent-team:resume` (đọc trạng thái trên đĩa, làm tiếp đúng bước). Phiên dài, tốn token: `/clear` rồi `/agent-team:resume` khi không còn agent nào đang chạy.
+
+**Lúc nào cũng dùng được:** xem tiến độ ở dòng trạng thái và `.agent-team/STATUS.md`; team không tự merge vào nhánh chính, không tự mở PR.
+
 ## Cấu trúc
 
 ```

@@ -237,5 +237,30 @@ code, out = run("reconcile")
 check("reconcile: task đã merge tay → DONE + xoá worktree", code == 0 and "M-2/T-20" in out and not os.path.isdir(w20))
 check("reconcile: task chưa có commit nào không bị đánh DONE", os.path.isdir(w21) and "M-2/T-21" not in out)
 
+# ---- v0.45.0: commit — agent xong, 1 lệnh add + commit file vùng của role ----
+cfg('MAX_PARALLEL=8\nFE_PATHS="web"\nTEST_PATHS="tests"\n')
+os.makedirs(os.path.join(w21, "web")), os.makedirs(os.path.join(w21, "docs"))
+for f in ("app/c.txt", "web/c.tsx", "docs/kb.md", ".env", "app/c.test.ts"):
+    open(os.path.join(w21, f), "w").write("x\n")
+code, out = run("commit", "M-2/T-21", "agent-team:backend-dev", "them c")
+names = sh(w21, "git", "show", "--name-only", "--format=%s", "HEAD").split()
+check("commit: backend-dev → chỉ file vùng be + file ngoài mọi vùng, message `[role] task-id: mô tả`",
+      code == 0 and "[backend-dev] 20261126-m2-t21: them c" in sh(w21, "git", "log", "-1", "--format=%s") and "app/c.txt" in names and "docs/kb.md" in names
+      and "web/c.tsx" not in names and "app/c.test.ts" not in names)
+check("commit: báo file vùng role khác còn lại, bỏ qua .env", "vùng role khác" in out and "BỎ QUA" in out and ".env" not in names)
+code, out = run("commit", "M-2/T-21", "test-executor", "test c", "--set", "merge_wait")
+check("commit --set: test-executor commit file test + đổi trạng thái 1 lần gọi",
+      code == 0 and "app/c.test.ts" in sh(w21, "git", "show", "--name-only", "--format=", "HEAD") and "MERGE_WAIT" in out)
+code, out = run("commit", "M-2/T-21", "backend-dev", "khong co gi")
+check("commit: không có file của role → báo, không lỗi", code == 0 and "không có file" in out)
+sh(d, "git", "switch", "-q", "master")
+open(os.path.join(d, "app", "m.txt"), "w").write("x\n")
+code, out = run("commit", "20261126-le", "backend-dev", "x")
+check("commit: từ chối trên master", code == 1 and "master" in out)
+sh(d, "git", "switch", "-q", "agent/20261124-app")
+code, out = run("commit", "20261126-le", "backend-dev", "task le")
+check("commit: task lẻ (task-id) commit ở thư mục chính, không cuốn theo .claude/",
+      code == 0 and sh(d, "git", "show", "--name-only", "--format=%s", "HEAD").split("\n")[:3] == ["[backend-dev] 20261126-le: task le", "", "app/m.txt"])
+
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

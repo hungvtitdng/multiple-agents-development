@@ -1,3 +1,21 @@
+# Release notes - 25/11/2026 (v0.44.0 - giảm token phiên Lead)
+
+## Thay đổi
+- Sync tự thêm `env.CLAUDE_CODE_DISABLE_1M_CONTEXT=1` vào `.claude/settings.json`: phiên chạy ngữ cảnh 200k, tự nén sớm (có hiệu lực từ phiên sau).
+- Agent trả về Lead ≤ 5 dòng (kết luận + đường dẫn file / số tin đã post); điểm chấm, GAP, câu hỏi cho owner vẫn ghi đủ.
+- `pool.py commit <M-n/T-k | task-id> <role> "<mô tả>" [--set <STATE>]`: agent xong, 1 lệnh add file vùng của role + commit + đổi trạng thái (file vùng role khác, `.claude/`, file nhạy cảm để lại).
+- Lead gom lệnh sổ sách liên tiếp vào 1 lần Bash, không tự `grep` / `cat` code kiểm lại việc của agent.
+- Lead không dán bảng tiến độ vào chat sau mỗi bước / mỗi lượt: xem dòng trạng thái + `.agent-team/STATUS.md`.
+- README mục "Bắt đầu: làm gì sau mỗi bước" (4 đường: app mới, có code, viết lại hệ thống cũ, đang dở); `/agent-team:init` kết thúc bằng "Bước tiếp" theo trường hợp.
+- `API_RESPONSE=flat` (config, mặc định `cooked`): BE chỉ đọc + lọc theo quyền, FE tự tính; architect ghi `PHẲNG | XỬ LÝ` cho từng API theo quyền, security chấm High khi API phẳng lộ dữ liệu vượt quyền.
+- `/agent-team:init`: dừng cho user duyệt cấu hình chạy (`API_RESPONSE`, `COST_TIER`, model Scout, `MAX_PARALLEL`, `MAX_DEBATE`, `TEST_MODE`, `CLONE_MODE`, `PUSH`) trước khi gọi agent.
+- `/agent-team:kb` + `init` (dự án có code): Scout mảng đọc logic (Module, Frontend, Tổng hợp nghiệp vụ) tự dùng opus (`COST_TIER=economy`: sonnet); mảng liệt kê giữ sonnet.
+- Migrate hệ thống cũ: có `docs/legacy/` (KB + audit của repo cũ) thì `/agent-team:app` chỉ lấy nghiệp vụ từ đó, thiết kế mới workflow / DB / API / giao diện; BA lập `docs/product/legacy-map.md` (GIỮ / ĐỔI / BỎ), thêm module "Chuyển dữ liệu" (`docs/database/legacy-data-map.md`, chỉ chạy trên bản sao).
+
+## Cần làm tay
+- Migrate: ở repo cũ chạy `/agent-team:init` + `/agent-team:kb` + `/agent-team:audit`, chép `docs/` của nó vào `docs/legacy/` của repo mới rồi chạy `/agent-team:app`.
+- Muốn giữ ngữ cảnh 1M: đổi giá trị `CLAUDE_CODE_DISABLE_1M_CONTEXT` trong `.claude/settings.json` thành `"0"`.
+
 # Release notes - 25/11/2026 (v0.43.0 - hỏi thương hiệu, bàn giao client, rà soát lệnh cho MVP)
 
 ## Thay đổi

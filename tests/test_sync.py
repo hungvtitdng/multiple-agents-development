@@ -69,6 +69,12 @@ st = json.load(open(os.path.join(d, ".claude", "settings.json")))
 check("quyền tên cũ agent-db-clone.sh → thêm quyền agent-db.sh 1 lần, giữ quyền cũ",
       st["permissions"]["allow"] == ["Bash(.claude/agent-team/agent-db-clone.sh:*)", "Bash(.claude/agent-team/agent-db.sh:*)"])
 
+check("thêm env tắt ngữ cảnh 1M (Lead tự nén ở 200k), giữ key khác", st.get("env") == {"CLAUDE_CODE_DISABLE_1M_CONTEXT": "1"})
+st["env"]["CLAUDE_CODE_DISABLE_1M_CONTEXT"] = "0"
+json.dump(st, open(os.path.join(d, ".claude", "settings.json"), "w"))
+run(d)
+check("user đã đặt env đó = 0 → không ghi đè", json.load(open(os.path.join(d, ".claude", "settings.json")))["env"]["CLAUDE_CODE_DISABLE_1M_CONTEXT"] == "0")
+
 json.dump({"statusLine": {"type": "command", "command": "my-line.sh"}}, open(os.path.join(d, ".claude", "settings.json"), "w"))
 code, out = run(d)
 st = json.load(open(os.path.join(d, ".claude", "settings.json")))

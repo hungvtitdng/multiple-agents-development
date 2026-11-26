@@ -83,6 +83,16 @@ Demo client: 🚀 1 mockup + form (mục 7) · 🚀 2 nhánh `demo-ui` khi M-SKE
   - Lượt 2 chỉ gồm câu ghi "không", ô để trống, câu mới do góp ý làm đổi logic.
 - **Chờ trả lời:** TASK.md `Trạng thái: BLOCKED (chờ owner, form lượt <n>)`. Báo user: gửi file `QnA-v<n>.xlsx` cho owner (mục A) và dev (mục B), nhận lại rồi chạy `/agent-team:resume <task-id> <đường dẫn file trả lời>`. Dev trả lời trước hay sau owner đều được; logic chỉ chốt theo mục A.
 
+## 0c. Migrate từ hệ thống cũ (`docs/legacy/` có file)
+Chép KB + báo cáo audit của hệ thống cũ (`docs/` của repo cũ, dựng bằng `/agent-team:init` + `kb` + `audit` ở repo đó) vào `docs/legacy/` của repo mới → app này là **làm lại từ đầu, chỉ giữ nghiệp vụ**:
+- **`docs/legacy/` chỉ để đọc**, không sửa, không coi là KB của app mới (KB mới vẫn ở `docs/`). Lấy từ đó: quy tắc nghiệp vụ, vai trò, quyền, trạng thái, dữ liệu đang có. **Không lấy làm thiết kế:** API, schema, workflow, bố cục màn, stack cũ: thiết kế mới theo A2-A3 như app mới.
+- **A0:** brief ghi `Nguồn nghiệp vụ: docs/legacy/`. `business-analyst` lập `docs/product/legacy-map.md` (mẫu `templates/product/legacy-map.md`): **mỗi** quy tắc (`BR-`) / luồng (`F-n`) / chức năng / vai trò của hệ thống cũ 1 dòng, cột Quyết định `GIỮ | ĐỔI | BỎ` + lý do + R-n mới. **Luồng cũ không còn hợp** (thừa bước, làm tay, vòng vèo, sinh từ giới hạn kỹ thuật cũ) → BA đề xuất luồng mới trong debate A2-A3, ghi `ĐỔI` kèm "cũ: … → mới: …" + lợi ích; không tự giữ luồng cũ chỉ vì nó đang chạy. Lỗi / lỗ hổng trong báo cáo audit → `BỎ` hoặc `ĐỔI`, không mang sang.
+- **Câu hỏi:** điều `docs/legacy/` đã trả lời thì không hỏi owner lại (đề xuất của team lấy từ đó, ghi nguồn `legacy: <file>`). Hỏi owner các dòng `ĐỔI` / `BỎ` ảnh hưởng người dùng (gom 1 nhóm trong form) + thương hiệu, phong cách mới.
+- **Mockup (A3a-A3b):** giao diện mới hoàn toàn. Ảnh / HTML giao diện cũ **không** đặt vào `docs/product/design-ref/` (thư mục đó là mẫu phải theo); cần thì để trong `docs/legacy/` làm danh sách chức năng.
+- **Săn gap (A4):** thêm 1 kiểm: mọi dòng `legacy-map.md` có Quyết định; dòng `GIỮ` / `ĐỔI` có R-n tồn tại trong `requirements.md`. Thiếu → gap.
+- **Chia module (A5):** thêm 1 module số cuối (trước M-E2E) "Chuyển dữ liệu": `solution-architect` viết `docs/database/legacy-data-map.md` (**mỗi** bảng / cột cũ 1 dòng: `CHUYỂN | GỘP | BỎ` + quy tắc đổi; dữ liệu dư thừa (bảng / cột không còn dùng, bản ghi mồ côi, trùng, rác test) → `BỎ` kèm lý do + số dòng, owner duyệt danh sách `BỎ` trong form; không xoá gì ở DB cũ, DB cũ giữ nguyên làm bản lưu chỉ đọc), script chuyển chạy lại được nhiều lần, có đếm đối chiếu số dòng cũ / mới. **Chỉ chạy trên bản sao DB cũ**; chạy trên DB thật + kế hoạch cắt là việc user duyệt và tự bấm.
+- **Báo cáo (mục 12):** thêm số dòng `GIỮ / ĐỔI / BỎ` + kết quả chạy thử chuyển dữ liệu.
+
 ## 1. Chuẩn bị
 1. Thư mục plugin: `find ~/.claude/plugins -type d -path "*agent-team" -exec test -f {}/scripts/gap-check.py \; -print | head -1` (dùng cho `catalog/`, `templates/product/`).
 2. Chưa có `.claude/agent-team.config` → làm `/agent-team:init` trước (dự án mới: init tự xử lý chưa có git/remote, mục 2a của init).
@@ -97,7 +107,7 @@ Demo client: 🚀 1 mockup + form (mục 7) · 🚀 2 nhánh `demo-ui` khi M-SKE
 3b. **Quy chuẩn code trước kiến trúc:** `project-setup.md` mục 6 đã điền (hoặc có dự án mẫu) → giao `solution-architect` ghi vào `docs/engineering/backend.md` / `frontend.md` (nhãn `Confirmed`, nguồn = project-setup) **trước A2**. Chưa điền → A2 Architect đề xuất quy chuẩn cùng stack, ghi Q-n `DEV`, chốt ở mục B form lượt 1.
 4. `docs/product/APP.md`: `- Intake: YES` khi intake không còn TODO (ô chờ owner ghi "chờ form, Q-n"). `echo S2 > .agent-team/stage`.
 
-**Tiến độ cho user:** Phase A có 10 bước cố định (Intake → Vấn đề → Giải pháp + nháp → Mockup → Săn gap → Chốt câu hỏi → Gửi form → Owner duyệt → Mockup + SPEC → Chia module), ✅ theo cổng trong `APP.md` + file có thật. Xong mỗi bước: chạy `python3 .claude/agent-team/progress.py --list`, dán nguyên văn vào chat. Phase B (M-0): danh sách bước như `task.md` mục 6. Không tự đoán giờ xong.
+**Tiến độ cho user:** Phase A có 10 bước cố định (Intake → Vấn đề → Giải pháp + nháp → Mockup → Săn gap → Chốt câu hỏi → Gửi form → Owner duyệt → Mockup + SPEC → Chia module), ✅ theo cổng trong `APP.md` + file có thật. Không dán bảng tiến độ sau mỗi bước (user xem dòng trạng thái + `.agent-team/STATUS.md`); chỉ chạy `python3 .claude/agent-team/progress.py --list` và dán khi dừng chờ user hoặc user hỏi. Phase B (M-0): danh sách bước như `task.md` mục 6. Không tự đoán giờ xong.
 
 ## 3. A1 Vấn đề + 12 góc nhìn
 `business-analyst` (chế độ App Mode trong file agent): `problem.md` (G-n, thước đo, ngoài phạm vi) + `coverage.md` (12 góc nhìn). Góc nào `CHƯA BIẾT` → BA trả câu hỏi kèm **đề xuất + vì sao + mức + ai trả lời**. Bạn ghi `questions.md`.
@@ -198,7 +208,7 @@ Góp ý giao diện của owner trong form → `ui-designer` sửa `design-syste
 ## 12. Báo cáo
 - **Mỗi lượt form:** dòng đầu "Gửi file `docs/product/QnA-v<n>.xlsx`: owner điền mục A, dev điền mục B" + số câu mỗi mục (số câu CAO). Việc tiếp theo: nhận file trả lời rồi `/agent-team:resume <task-id> <file>`.
 - **Cuối Phase A:** dòng đầu "Owner đã chốt logic" (hoặc còn chờ gì). Kèm: đường dẫn `docs/product/SPEC.md`, số yêu cầu, số luồng, số màn, danh sách module + thứ tự, các `GIẢ ĐỊNH` mức THẤP.
-- **Trong lúc điều phối:** tiến độ đầy đủ ở `.agent-team/STATUS.md` (tự cập nhật, báo user đường dẫn 1 lần). User nói đã merge tay → `pool.py reconcile`. Mỗi lần `pool.py wait` trả về, dán `pool.py status` (hoặc `progress.py --list`) vào chat 1 lần, rồi **chạy tiếp luôn**, không chờ user.
+- **Trong lúc điều phối:** tiến độ đầy đủ ở `.agent-team/STATUS.md` (tự cập nhật, báo user đường dẫn 1 lần). User nói đã merge tay → `pool.py reconcile`. Không dán `pool.py status` / `progress.py --list` vào chat sau mỗi lượt: chỉ báo 1 dòng khi task ✅ / FIX / GAP, rồi **chạy tiếp luôn**, không chờ user. Gom lệnh theo `task.md` mục 2 (Ít lượt gọi).
 - **Bàn giao (`docs/product/HANDOVER.md`, mẫu `templates/product/HANDOVER.md`)** ở mỗi DEMO 2 / MVP / DEMO 3 và cuối app: `business-analyst` viết mục 2 "Hướng dẫn sử dụng theo vai trò" từ `flows.md` + `screens.md` (luồng chính, từng bước theo màn thật), mục 3 "Có / chưa có" từ bảng Module + `requirements.md`; bạn điền phần còn lại: URL, branch / tag, tài khoản demo mỗi vai trò lấy từ seeder (**không ghi mật khẩu**, chỉ tên biến), ghi chú phát hành (migration, env mới chỉ tên, lệnh chạy), cách báo lỗi. Viết cho client: không mã nội bộ. Commit cùng lần push nhánh demo; báo user đường dẫn file.
 - **Cuối app** (hết bảng Module hoặc dừng ở điểm dừng): bảng module (Trạng thái, tag, lý do BLOCKED), branch phiên để merge, `docs/product/HANDOVER.md` đã cập nhật.
 - Cuối cùng: đúng 1 việc user làm tiếp (≤ 2 phút); đang chạy tiếp thì ghi "chưa cần làm gì".

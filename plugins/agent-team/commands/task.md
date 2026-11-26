@@ -37,6 +37,7 @@ Làm đúng playbook dưới đây. **Không hỏi lại user**, team tự bàn 
 - Gọi subagent `agent-team:<role>`. Mỗi agent chạy xong là kết thúc. Agent **tự đọc và post lên board** (mục 3), trả về bạn ≤ 5 dòng: số tin đã post, **điểm chấm** (kín, không post), `Assumption`. Không ghi TASK.md (hook chặn). **Gọi các agent cùng lượt trong cùng một message để chạy song song.**
 - Mỗi lần gọi nêu: task-id, mục tiêu, đầu vào (đường dẫn TASK.md, CONTEXT.md). **Không dán lại kết quả lượt trước**: agent tự `board.py read <task-id>`. Đầu ra: bài post ≤ 15 dòng theo `templates/POST.md` + điểm chấm trả riêng cho bạn.
 - Skill trong plugin (`agent-team:<tên>`) agent tự nạp khi cần, không cần dán vào prompt.
+- **Ít lượt gọi (mỗi lượt của bạn đọc lại toàn bộ ngữ cảnh phiên):** agent xong → **một** lệnh `python3 .claude/agent-team/pool.py commit <M-n/T-k | task-id> <role> "<mô tả>" [--set <STATE>]` (tự add file vùng của role + file docs, commit `[role] task-id: mô tả`, đổi trạng thái; file vùng role khác / `.claude/` / file nhạy cảm để lại và in ra), không `git status` / `git add` / `git commit` rời; các lệnh sổ sách khác liên tiếp (`board.py step / plan`, ghi stage) nối bằng `&&` trong **một** lần Bash; nhiều agent xong cùng lúc → xử lý chung 1 lượt. Không tự `grep` / `cat` code để kiểm lại việc của agent: cần thêm thì đọc `board.py read` hoặc hỏi lại agent đó. Không `Read` ảnh chụp trừ khi phải tự chấm.
 - **Gọi agent chạy nền, chờ bằng `board.py wait`** (để 1 agent treo không làm bạn kẹt theo):
   ```
   1. Gọi các agent của lượt trong cùng 1 message, mỗi agent `run_in_background: true`.
@@ -141,7 +142,7 @@ Hook chặn theo giai đoạn: S1-S2 chỉ tài liệu, S3 chỉ code, S4 chỉ 
 **Danh sách bước (user phải biết đang ở bước nào, còn bước nào):**
 - Trước khi gọi agent ở S3-S5: `$B plan <task-id> --set "Auth API @backend-dev ∥ Trang auth @frontend-dev | Test + lint @test-executor"` (`|` = bước sau, `∥` = chạy cùng lúc). Hook chặn gọi agent ở S3-S5 khi chưa có danh sách bước.
 - **S3 có `FE_PATHS`: BE ∥ FE mặc định** (gọi cả 2 agent trong cùng 1 message, FE dùng mock theo API contract). Không chạy song song được → ghi `- Song song: KHÔNG - <vì sao>` vào TASK.md (FE chờ API nào / task chỉ BE / chỉ FE), không có thì hook chặn.
-- Trạng thái tự đổi: bạn gọi agent X → bước ○ đầu tiên của X thành ▶; X `done` (hoặc kết thúc) → ✅. Bước của bạn (role `lead`) hoặc sửa tay: `$B step <task-id> <n> start|done|skip`. Mỗi lần đổi: chạy `progress.py --list`, dán vào chat (✅ xong · ▶ đang làm · ○ chưa làm · ∥ song song).
+- Trạng thái tự đổi: bạn gọi agent X → bước ○ đầu tiên của X thành ▶; X `done` (hoặc kết thúc) → ✅. Bước của bạn (role `lead`) hoặc sửa tay: `$B step <task-id> <n> start|done|skip`. Không dán bảng tiến độ vào chat: user xem dòng trạng thái + `.agent-team/STATUS.md` (✅ xong · ▶ đang làm · ○ chưa làm · ∥ song song); chỉ in `progress.py --list` khi user hỏi hoặc khi dừng chờ user.
 - Đổi kế hoạch giữa chừng: `plan --set` lại, bước trùng tên giữ trạng thái.
 - **Không tự đoán giờ xong** ("dự kiến 1-2 giờ"). Chỉ báo bước hiện tại và các bước còn lại.
 
@@ -170,7 +171,7 @@ lặp tới hết việc:
      `- Tiêu chí nghiệm thu:` AC của task) → `cd <worktree> && echo S3 > .agent-team/stage` → `cd <worktree> && board.py plan ...`
      → gọi agent (nền), prompt ghi rõ: "làm trong <worktree>, mọi lệnh `cd <worktree> && ...`, sửa file bằng đường dẫn trong worktree"
   2. $P wait                → exit 0 có việc (agent DONE / còn chỗ + READY / có task chờ merge) · 3 agent treo · 4 chờ tiếp
-  3. agent DONE → bạn commit trong worktree theo role (`cd <worktree> && git add <file của role> && git commit -m "[role] <task-id>: ..."`)
+  3. agent DONE → bạn commit theo role bằng 1 lệnh: `$P commit <M-n/T-k> <role> "..."` (bước cuối của task: thêm `--set MERGE_WAIT`)
      → bước kế của task (dev → test-executor S4 → code-reviewer ∥ security S5) → S5 APPROVED + điền `Cập nhật KB`, `Bài học` trong TASK.md
      của worktree + commit → `$P set <M-n/T-k> MERGE_WAIT` (task ĐÃ CHIA không `echo S6` trong worktree: merge là bước đóng)
      GAP → `$P set <task> GAP --note ..` + debate nhỏ (mục 7b), task khác chạy tiếp. Đổi contract → dừng các task dùng contract đó.

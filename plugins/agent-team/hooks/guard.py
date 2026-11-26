@@ -42,6 +42,7 @@ KB_OWNERS = [
     ("docs/product/design/", {"ui-designer"}), ("docs/product/screens.md", {"ui-designer"}),
     ("docs/product/problem.md", _BA), ("docs/product/coverage.md", _BA), ("docs/product/defaults.md", _BA),
     ("docs/product/requirements.md", _BA), ("docs/product/flows.md", _BA), ("docs/product/data.md", _BA),
+    ("docs/product/legacy-map.md", _BA),
 ]
 PRODUCT_APP = "docs/product/APP.md"
 GAP_CHECK = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts", "gap-check.py")

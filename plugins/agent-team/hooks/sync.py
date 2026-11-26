@@ -11,6 +11,7 @@ import shutil
 import sys
 
 STATUS_CMD = 'python3 "$(git rev-parse --path-format=absolute --git-common-dir)/../.claude/agent-team/progress.py"'
+NO_1M = "CLAUDE_CODE_DISABLE_1M_CONTEXT"
 OLD_STATUS_CMDS = ("python3 .claude/agent-team/progress.py",)
 SCRIPTS = ("board.py", "progress.py", "pool.py", "gap-check.py", "owner-form.py", "kb-check.py", "agent-db.sh", "agent-db-clone.sh")
 TEMPLATES = ("TASK.md", "POST.md", "SUMMARY.md", "CONTEXT.md", "MOCKS.md")
@@ -105,6 +106,22 @@ def ensure_status_line(root):
     return "đã thêm statusLine vào .claude/settings.json (hiện từ phiên sau / khi Claude Code đọc lại settings)"
 
 
+def limit_context(root):
+    p = os.path.join(root, ".claude", "settings.json")
+    try:
+        data = json.load(open(p, encoding="utf-8"))
+        env = data.setdefault("env", {})
+    except (OSError, ValueError, AttributeError):
+        return ""
+    if not isinstance(env, dict) or NO_1M in env:
+        return ""
+    env[NO_1M] = "1"
+    with open(p, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+        f.write("\n")
+    return f"đã thêm env {NO_1M}=1 vào .claude/settings.json (ngữ cảnh 200k, tự nén sớm, từ phiên sau; muốn 1M: đổi thành \"0\")"
+
+
 def migrate_db_perm(root):
     p = os.path.join(root, ".claude", "settings.json")
     try:
@@ -141,7 +158,7 @@ def main():
     old = stale_templates(plugin, root)
     if old:
         msgs.append("templates khác bản plugin (không tự ghi đè, có thể bạn đã sửa): " + ", ".join(old))
-    for m in (ensure_status_line(root), migrate_db_perm(root)):
+    for m in (ensure_status_line(root), migrate_db_perm(root), limit_context(root)):
         if m:
             msgs.append(m)
     tracked = tracked_generated(root)

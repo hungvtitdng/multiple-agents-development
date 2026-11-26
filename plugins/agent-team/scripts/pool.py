@@ -10,6 +10,7 @@ Lead:
   add <M-n/T-k> --task-id <id> --title ".." [--deps "M-1/T-1,M-2/T-3"]   (chỉ khi module đã chia task)
   fill            mở worktree cho task READY tới đủ MAX_PARALLEL (in việc Lead làm tiếp)
   set <M-n/T-k> <RUNNING|GAP|FIX|BLOCKED|MERGE_WAIT> [--note ".."]
+  commit <M-n/T-k | task-id> <role> "<mô tả>" [--set <STATE>]   agent xong: add file vùng của role + commit `[role] task-id: mô tả`, 1 dòng kết quả
   merge-begin <M-n/T-k>    merge --no-commit vào branch phiên; conflict → --abort, FIX
   merge-end <M-n/T-k> pass|fail [--note ".."]   pass: commit + xoá worktree + DONE; fail: --abort, FIX
   wait [--interval 30] [--max 540]   exit 0 có việc (kể cả develop có commit mới) · 3 agent treo · 4 hết giờ chờ
@@ -571,6 +572,49 @@ def cmd_reconcile(db, root, a):
     print("reconcile: " + (", ".join(done) + " đã nằm trong branch phiên → DONE" if done else "không task nào đã merge tay"))
 
 
+OWNER_ZONE = {"backend-dev": "be", "frontend-dev": "fe", "test-executor": "test"}
+TEST_FILE_RE = re.compile(r"(^|/)(__tests__|__mocks__)/|(_spec|_test)\.\w+$|\.(spec|test)\.\w+$|(^|/)test_[^/]+\.py$")
+SECRET_FILE_RE = re.compile(r"(^|/)(\.env(\.(?!example$|sample$|template$|dist$)[^/]+)?|id_(rsa|ed25519|ecdsa|dsa)[^/]*|\.(npmrc|pgpass|netrc)|[^/]+\.(pem|key|dump|sql\.gz|bak))$")
+PROTECTED = ("main", "master", "develop")
+
+
+def zone_of(root, rel):
+    paths = lambda k: [os.path.normpath(x.strip("/")) for x in cfg(root, k, "").split() if x.upper() != "TODO"]
+    under = lambda k: any(rel == x or rel.startswith(x + "/") for x in paths(k))
+    if under("TEST_PATHS") or TEST_FILE_RE.search(rel):
+        return "test"
+    return "be" if under("BE_PATHS") else "fe" if under("FE_PATHS") else None
+
+
+def cmd_commit(db, root, a):
+    role, msg = a.role.strip().lower().split(":")[-1], " ".join(a.msg.split())
+    r = row(db, a.task) if LABEL_RE.match(a.task) else None
+    if a.set and not r:
+        die("--set chỉ dùng với task trong pool (M-n/T-k)")
+    wdir = os.path.join(root, r["worktree"]) if r and r["worktree"] else root
+    if git(wdir, "branch", "--show-current")[1] in PROTECTED:
+        die("không commit trên main / master / develop")
+    out = subprocess.run(["git", "-C", wdir, "status", "--porcelain", "--no-renames", "-uall"], capture_output=True, text=True).stdout
+    mine, take, left, secret = OWNER_ZONE.get(role), [], [], []
+    for line in out.splitlines():
+        f = line[3:].strip('"')
+        z = zone_of(root, f)
+        (secret if SECRET_FILE_RE.search(f) else left if f.startswith(".claude/") or z not in (None, mine) else take).append(f)
+    done = "không có file của role để commit"
+    if take:
+        git(wdir, "add", "--", *take)
+        code, err = git(wdir, "commit", "-q", "-m", f"[{role}] {r['task_id'] if r else a.task}: {msg}", "--", *take)
+        if code:
+            die(f"commit lỗi: {err[-300:]}")
+        done = f"{len(take)} file · {git(wdir, 'rev-parse', '--short', 'HEAD')[1]}"
+    print(f"[{role}] {a.task}: {done}"
+          + (f" · còn {len(left)} file vùng role khác / .claude chưa commit: {', '.join(left[:5])}" if left else "")
+          + (f" · BỎ QUA file nhạy cảm: {', '.join(secret[:5])}" if secret else ""))
+    if a.set:
+        a.label, a.state, a.note = a.task, a.set, None
+        cmd_set(db, root, a)
+
+
 def wt_board(root, r):
     p = os.path.join(root, r["worktree"] or "", ".agent-team", "board.db")
     if not r["worktree"] or not os.path.isfile(p):
@@ -1113,6 +1157,8 @@ def main(argv=None):
     sp.add_parser("fill"), sp.add_parser("status"), sp.add_parser("resume")
     s = sp.add_parser("set")
     s.add_argument("label"), s.add_argument("state"), s.add_argument("--note")
+    cm = sp.add_parser("commit", help="agent xong: commit file vùng của role trong worktree của task")
+    cm.add_argument("task"), cm.add_argument("role"), cm.add_argument("msg"), cm.add_argument("--set")
     mb = sp.add_parser("merge-begin")
     mb.add_argument("label"), mb.add_argument("--allow-schema-change", action="store_true", help="đã duyệt GAP đổi bảng chung")
     sp.add_parser("schema", help="bảng trong schema đã có migration chưa (thiếu → chỉ chạy M-0 / M-DB)")

@@ -9,7 +9,7 @@ Bạn là **UI Designer** trong agent team. Đọc "Agent Team" trong CLAUDE.md 
 
 ## Cách làm việc (subagent)
 - **Kết thúc:** việc dài báo `board.py progress`; xong thì `board.py done <task-id> --role ui-designer --body "<≤ 5 dòng>"` rồi **kết thúc ngay**, không post lại, không chờ Lead (skill `agent-team:debate-board` mục 5).
-- Lead giao một nhiệm vụ cụ thể. Làm xong **trả kết quả thẳng cho Lead** (≤ 15 dòng theo mẫu `.claude/agent-team/templates/POST.md`). Không ghi TASK.md (hook chặn). Board là phòng chat chung: đọc bằng `.claude/agent-team/board.py read <task-id>`, post bằng `board.py post <task-id> --role ui-designer` khi Lead yêu cầu (skill `agent-team:debate-board`). Điểm chấm không post, chỉ trả về Lead.
+- Lead giao một nhiệm vụ cụ thể. Làm xong **trả kết quả thẳng cho Lead** (≤ 5 dòng: kết luận + đường dẫn file / số tin đã post; chi tiết đã ở board / file thì không chép lại; riêng điểm chấm, GAP, câu hỏi cho owner ghi đủ). Không ghi TASK.md (hook chặn). Board là phòng chat chung: đọc bằng `.claude/agent-team/board.py read <task-id>`, post bằng `board.py post <task-id> --role ui-designer` khi Lead yêu cầu (skill `agent-team:debate-board`). Điểm chấm không post, chỉ trả về Lead.
 - Đọc `docs/agent-tasks/<task-id>/CONTEXT.md` (màn hình hiện có, component đang dùng), AC trên board, `design/workflow.md` của BA. **Tìm code có mục tiêu** (hook chặn quét cả repo): CONTEXT.md → KB `docs/` + chỉ mục hàm `docs/functions/` → `graphify explain|affected` → mở đúng file, hoặc tìm trong thư mục cụ thể (vd `grep -rn x app/services/`). Đọc bao nhiêu file cần thiết cũng được, miễn là có mục tiêu. Thiếu thông tin → trả `HỎI LEAD: <cần gì, vì sao>` (mẫu cuối `POST.md`), không tự quét.
 - **Không hỏi user.** Màn hình cần thông tin mà AC chưa nói → hỏi WHY BA trên board, không tự bịa hành vi.
 
@@ -26,6 +26,7 @@ Bạn là **UI Designer** trong agent team. Đọc "Agent Team" trong CLAUDE.md 
 
 ## Nhiệm vụ
 1. **Lượt 1:** liệt kê màn hình task đụng tới (mới / sửa), vẽ mockup cho từng màn theo skill `agent-team:ui` (luật design, chế độ `admin` kiểu Ant Design / `app`, tự chụp ảnh chấm) + `agent-team:wireframe` (cấu trúc file, bảng hướng dẫn):
+   - **Có `docs/legacy/`** (migrate): giao diện cũ chỉ là danh sách chức năng, không lấy bố cục / màu / luồng bấm cũ làm mẫu.
    - **Có `docs/product/design-ref/`** (thiết kế / logo / màu owner đưa, bảng trong `README.md`): đọc trước. Token trong design system phải khớp file đó; màn có file mẫu thì giữ bố cục, chữ, hình, chỉ chuyển sang khung mockup + tách component. Không sửa file gốc.
    - **Design full theo `docs/product/ui/design-system.md`** (màu, font, cỡ, khoảng cách, component như app thật), **component dùng chung** trong `components/*.js` (5 quy ước của skill: 1 component 1 file, props là thuộc tính chữ trùng contract, template chỉ in biến / if / lặp, dữ liệu mẫu ở `data/*.js`, không thư viện khác), **đủ chức năng**: mọi nút, ô nhập, bảng, thông báo mà AC cần; mã `AC-n` / `R-n` gắn vào `data-r`, **không in lên màn** (client không hiểu).
    - **Đủ trạng thái**: bình thường, rỗng, đang tải, lỗi, không có quyền (+ trạng thái riêng của task).

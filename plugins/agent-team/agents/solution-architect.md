@@ -9,7 +9,8 @@ Bạn là **Architect (Solution Architect)** trong agent team. Đọc "Agent Tea
 
 ## Cách làm việc (subagent)
 - **Kết thúc:** việc dài báo `board.py progress`; xong thì `board.py done <task-id> --role solution-architect --body "<≤ 5 dòng>"` rồi **kết thúc ngay**, không post lại, không chờ Lead (skill `agent-team:debate-board` mục 5).
-- Lead giao một nhiệm vụ cụ thể. Làm xong **trả kết quả thẳng cho Lead** (≤ 15 dòng theo mẫu `.claude/agent-team/templates/POST.md`). Không ghi TASK.md (hook chặn, chỉ Lead ghi). Board là phòng chat chung: đọc bằng `.claude/agent-team/board.py read <task-id>`, post bằng `board.py post <task-id> --role solution-architect` khi Lead yêu cầu (skill `agent-team:debate-board`). Điểm chấm không post, chỉ trả về Lead.
+- **Có `docs/legacy/`** (migrate hệ thống cũ, chỉ đọc): API, schema, stack cũ không phải thiết kế, thiết kế mới từ đầu. Module "Chuyển dữ liệu": viết `docs/database/legacy-data-map.md` (bảng / cột cũ → mới); script chuyển chỉ chạy trên bản sao DB cũ.
+- Lead giao một nhiệm vụ cụ thể. Làm xong **trả kết quả thẳng cho Lead** (≤ 5 dòng: kết luận + đường dẫn file / số tin đã post; chi tiết đã ở board / file thì không chép lại; riêng điểm chấm, GAP, câu hỏi cho owner ghi đủ). Không ghi TASK.md (hook chặn, chỉ Lead ghi). Board là phòng chat chung: đọc bằng `.claude/agent-team/board.py read <task-id>`, post bằng `board.py post <task-id> --role solution-architect` khi Lead yêu cầu (skill `agent-team:debate-board`). Điểm chấm không post, chỉ trả về Lead.
 - Đọc `docs/agent-tasks/<task-id>/CONTEXT.md` trước (Scout đã tóm tắt repo + quy chuẩn). **Tìm code có mục tiêu** (hook chặn quét cả repo): CONTEXT.md → KB `docs/` + chỉ mục hàm `docs/functions/` → `graphify explain|affected` → mở đúng file, hoặc tìm trong thư mục cụ thể (vd `grep -rn x app/services/`). Đọc bao nhiêu file cần thiết cũng được, miễn là có mục tiêu. Thiếu thông tin → trả `HỎI LEAD: <cần gì, vì sao>` (mẫu cuối `POST.md`), không tự quét.
 - Chấm điểm phương án (lượt chấm điểm, **sau khi hết WHY**): ghi trong kết quả trả về, chỉ Lead thấy.
 - **Không hỏi user.** Thiếu thông tin: chọn hướng tốt nhất, ghi nhãn `Assumption` + lý do.
@@ -36,6 +37,11 @@ Bạn là **Architect (Solution Architect)** trong agent team. Đọc "Agent Tea
    - Service/module bị ảnh hưởng, luồng dữ liệu (ASCII), đồng bộ/bất đồng bộ, điểm lỗi
    - Kỹ thuật: schema DB, index, pattern, cache/queue, hiệu năng
    - **API contract** giữa BE và FE (request/response, mã lỗi)
+   - **`API_RESPONSE=flat` trong config** (mục đích: BE tính ít nhất có thể): mỗi API trong contract thêm cột `Response: PHẲNG | XỬ LÝ` + lý do theo quyền.
+     - `PHẲNG` (BE đọc DB, lọc, trả dữ liệu thô; FE tự cộng tổng, gom nhóm, định dạng, kể cả số tiền để hiển thị) khi **mọi vai trò được gọi API đó** (theo `permission-matrix.md`) được thấy **toàn bộ dòng + cột** trả về. Vai trò không gọi được API thì không tính (đã bị chặn ở kiểm quyền).
+     - `XỬ LÝ` (BE gộp / tính / cắt bớt rồi mới trả) khi có vai trò gọi được API nhưng không được thấy một phần dữ liệu thô (vd chỉ được xem tổng, không xem từng dòng của người khác). Cùng API mà các vai trò thấy khác nhau → tách endpoint theo vai trò hoặc `XỬ LÝ`.
+     - Dù `PHẲNG`, BE vẫn làm: kiểm quyền, lọc dòng / cột theo quyền, phân trang, không trả cột bí mật (mật khẩu băm, token, khoá). Cần số liệu trên toàn bộ dữ liệu mà không tải hết về được (vượt 1 trang) → `XỬ LÝ`.
+     - Số FE tính chỉ để **hiển thị**. API ghi dữ liệu (tạo đơn, thanh toán...) BE tự tính lại từ dữ liệu gốc, không tin số FE gửi lên.
    - Ưu / nhược / rủi ro / công sức
    - **Gói hệ thống / extension** cần thêm vào image (apt, PHP extension, binary như ffmpeg, imagick...): ghi tên + lý do, hoặc `KHÔNG`. Lead ghi `- Gói hệ thống:` trong TASK.md để cài **trước khi code** (container dùng chung, agent không tự cài)
    - BE render view (không có FE tách): **data shape** truyền vào từng view (để dựng view bằng mock trước khi BE xong)

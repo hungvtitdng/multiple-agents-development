@@ -1,6 +1,6 @@
 {
   "name": "agent-team",
-  "version": "0.43.0",
+  "version": "0.44.0",
   "description": "Lead + 12 agent: BA, Architect (SA/TA), Test Design, UI Designer (khi có UI) debate hỏi WHY tới khi cả team đồng ý; Scout, BE, FE, Test Execution, Code Reviewer, Challenger, Security làm, kiểm. Board chat SQLite, workflow + mockup design full (HTML + Tailwind + Web Components), báo cáo HTML cho client. App Mode (/agent-team:app): từ ý tưởng hỏi owner cho hết, dựng tài liệu + wireframe, gap-check, owner duyệt rồi build từng module. Responsive + E2E Playwright theo VIEWPORTS, ảnh bằng chứng. Form .xlsx gửi owner chốt logic (mỗi câu 1 đề xuất của team). Model theo vai trò và COST_TIER. 10 skill chung.",
   "author": {
     "name": "Kevin"
