@@ -97,7 +97,7 @@ w(B, ".claude/agent-team.local.config", "DEV_ID=hv\n")
 check("claim M-2 khi M-1 chưa xong bị từ chối", "chờ M-1" in run(B, "claim", "M-2")[1])
 code, out = run(B, "claim", "M-1")
 br = sh(B, "git", "rev-parse", "--abbrev-ref", "HEAD").strip()
-check("claim M-1: branch agent/YYYYMMDD-hv-m1 từ origin/develop + push", code == 0 and br.endswith("-hv-m1") and br in sh(B, "git", "branch", "-r"))
+check("claim M-1: branch task/YYYYMMDD-hv-m1 từ origin/develop + push", code == 0 and br.endswith("-hv-m1") and br in sh(B, "git", "branch", "-r"))
 row = [l for l in open(os.path.join(B, "docs/product/APP.md"), encoding="utf-8") if l.startswith("| M-1 ")][0]
 check("dòng M-1: Người chạy hv, DESIGN, Task-id; dòng khác giữ nguyên", "| hv | DESIGN |" in row and br.split("/")[1] in row
       and "| M-2 | Hồ sơ | R-3 | M-1 | VỪA |" in open(os.path.join(B, "docs/product/APP.md"), encoding="utf-8").read())

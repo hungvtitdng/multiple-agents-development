@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Branch | `agent/<task-id>` (nhiều repo: liệt kê repo + branch từng repo) |
+| Branch | `task/<task-id>` (nhiều repo: liệt kê repo + branch từng repo) |
 | Trạng thái | ANALYZING / READY / IN_PROGRESS / TESTING / IN_REVIEW / FIX_REQUIRED / BLOCKED / DONE |
 | Giai đoạn | S1 / S2 / S3 / S4 / S5 / S6 |
 | Thành viên | (role tham gia; role bỏ qua + lý do) |

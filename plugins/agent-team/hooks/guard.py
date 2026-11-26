@@ -293,11 +293,11 @@ def check_git(cmd, cwd, role=None):
                 if target in PROTECTED_BRANCHES:
                     block(f"không push vào '{target}'")
             if branch in PROTECTED_BRANCHES:
-                block(f"đang ở '{branch}', chỉ push từ branch agent/*")
+                block(f"đang ở '{branch}', chỉ push từ branch task/*")
             scan_outgoing(cwd)
         elif sub in ("commit", "merge", "rebase", "cherry-pick", "revert", "am", "pull"):
             if branch in PROTECTED_BRANCHES:
-                block(f"không {sub} trên '{branch}', hãy dùng branch agent/*")
+                block(f"không {sub} trên '{branch}', hãy dùng branch task/*")
             if sub == "commit":
                 if find_root(hook_cwd):
                     check_commit_msg(args)
@@ -618,6 +618,29 @@ def check_migration_new(path, cwd):
             block(f"không tự tạo / đổi tên file migration ('{rel}'). Sinh bằng "
                   "`.claude/agent-team/agent-db.sh generate <task-id> <Tên> [field:type...]` (generator chạy trong container), "
                   "rồi Edit file vừa sinh")
+
+
+APPROVE_RE = re.compile(r"(?m)^\s*CONFIG_APPROVED=[ \t]*['\"]?(\w*)")
+APPROVE_SET_RE = re.compile(r"CONFIG_APPROVED=[ \t]*['\"]?\w")
+
+
+def config_approved(cwd):
+    root = find_root(cwd)
+    if not root:
+        return True
+    m = APPROVE_RE.search(open(os.path.join(root, ".claude", "agent-team.config"), encoding="utf-8", errors="ignore").read())
+    return not m or m.group(1).lower() in ("ok", "yes", "1")
+
+
+def check_config_approval(tool, ti, cwd):
+    if config_approved(cwd):
+        return
+    if tool in ("Agent", "Task") and str(ti.get("subagent_type") or "").startswith("agent-team:"):
+        block("user chưa duyệt cấu hình. In bảng cấu hình (init bước 3b) rồi DỪNG: user tự mở .claude/agent-team.config, "
+              "sửa dòng `CONFIG_APPROVED=ok`. Bạn không được tự ghi dòng này")
+    text = " ".join(str(ti.get(k) or "") for k in ("command", "content", "new_string")) + json.dumps(ti.get("edits") or "")
+    if APPROVE_SET_RE.search(text):
+        block("chỉ user được ghi CONFIG_APPROVED (duyệt cấu hình). Báo user tự sửa dòng đó trong .claude/agent-team.config")
 
 
 def check_owner(path, cwd, role):
@@ -1427,6 +1450,8 @@ def main():
     if POST:
         post_check(data, role, cwd)
         sys.exit(0)
+
+    check_config_approval(tool, ti, cwd)
 
     if tool in ("Agent", "Task") and not role:
         if not pool_active(cwd):  # điều phối nhiều task: danh sách bước nằm trong từng worktree

@@ -19,7 +19,7 @@ Nền dữ liệu:
 Team (Phase B / C):
   handoff         kiểm bàn giao cuối Phase B
   claimable       module nhận được ngay / chờ / đã có người nhận
-  claim <M-n>     nhận module: branch agent/YYYYMMDD-<DEV_ID>-m<n> từ origin/BASE_BRANCH, ghi Người chạy, push
+  claim <M-n>     nhận module: branch task/YYYYMMDD-<DEV_ID>-m<n> từ origin/BASE_BRANCH, ghi Người chạy, push
   reconcile       task có branch đã nằm trong branch phiên (user merge tay) → DONE + dọn worktree
   sync            đồng bộ origin/BASE_BRANCH vào branch hiện tại (conflict → --abort, báo file)
   status | resume
@@ -345,11 +345,11 @@ def cmd_fill(db, root, a):
         return
     code, branch = git(root, "rev-parse", "--abbrev-ref", "HEAD")
     if code or branch in ("HEAD", "main", "master", "develop"):
-        die(f"thư mục chính phải đứng ở branch của phiên (agent/<task-id app>), đang là '{branch}'")
+        die(f"thư mục chính phải đứng ở branch của phiên (task/<task-id app>), đang là '{branch}'")
     exclude_worktrees(root, wdir)
     for r in start_t:
         path = os.path.join(root, wdir, r["task_id"])
-        br = f"agent/{r['task_id']}"
+        br = f"task/{r['task_id']}"
         if not os.path.isdir(path):
             code, out = git(root, "worktree", "add", path, "-b", br, "HEAD")
             if code:
@@ -424,12 +424,12 @@ def cmd_side(db, root, a):
             die(f"{rel} còn {len(left)} file chưa commit ({', '.join(left[:5])}): commit / push trước rồi --done")
         cleanup_task(root, {"task_id": a.task_id, "worktree": rel})
         code, out = git(root, "worktree", "remove", "--force", path)
-        print(f"✓ xoá worktree {rel} (branch agent/{a.task_id} giữ lại)" if not code else f"✗ chưa xoá được {rel}: {out[:200]} (còn file chưa commit?)")
+        print(f"✓ xoá worktree {rel} (branch task/{a.task_id} giữ lại)" if not code else f"✗ chưa xoá được {rel}: {out[:200]} (còn file chưa commit?)")
         return
     if os.path.isdir(path):
         die(f"{rel} đã có: cd {rel}")
     exclude_worktrees(root, wdir)
-    code, out = git(root, "worktree", "add", path, "-b", f"agent/{a.task_id}", a.base)
+    code, out = git(root, "worktree", "add", path, "-b", f"task/{a.task_id}", a.base)
     if code:
         die(f"không tạo được worktree: {out[:200]}")
     os.makedirs(os.path.join(path, ".agent-team"), exist_ok=True)
@@ -437,7 +437,7 @@ def cmd_side(db, root, a):
     port = free_port(db, root)
     open(os.path.join(path, ".agent-team", "e2e_port"), "w").write(f"{port}\n")
     open(os.path.join(path, ".agent-team", "side"), "w").write(root + "\n")
-    print(f"▶ task lẻ {a.task_id} · worktree {rel} · branch agent/{a.task_id} (từ {a.base}) · cổng {port}")
+    print(f"▶ task lẻ {a.task_id} · worktree {rel} · branch task/{a.task_id} (từ {a.base}) · cổng {port}")
     print(f"Mở terminal mới: cd {path} && claude  → /agent-team:task …  · xong: pool.py side {a.task_id} --done")
 
 
@@ -495,7 +495,7 @@ def maybe_module_done(db, root, mod):
     if left or not m or m["state"] != "SPLIT":
         return
     _, branch = git(root, "rev-parse", "--abbrev-ref", "HEAD")
-    tag = f"{branch.replace('agent/', '')}-{mod.lower().replace('-', '')}-done"
+    tag = f"{branch.split('/', 1)[-1]}-{mod.lower().replace('-', '')}-done"
     code, out = git(root, "tag", tag)
     db.execute("UPDATE pool_modules SET state='DONE', tag=? WHERE module=?", (tag if not code else None, mod))
     db.commit()
@@ -825,8 +825,8 @@ def mod_branch_suffix(m):
 
 
 def taken_remote(root, m, me):
-    """Branch module của người khác trên remote: agent/YYYYMMDD-<dev>-m<n> (kết thúc đúng -m<n>)."""
-    code, out = git(root, "branch", "-r", "--list", "origin/agent/*")
+    """Branch module của người khác trên remote: task/YYYYMMDD-<dev>-m<n> (kết thúc đúng -m<n>)."""
+    code, out = git(root, "branch", "-r", "--list", "origin/task/*", "origin/agent/*")
     suf = "-" + mod_branch_suffix(m)
     hits = [b.strip() for b in out.splitlines() if b.strip().endswith(suf)]
     return [b for b in hits if not (me and f"-{me}-" in b)]
@@ -917,7 +917,7 @@ def cmd_claim(db, root, a):
     if m not in [x[0] for x in ok]:
         die(f"không thấy {m} trong bảng Module ở {ref}")
     tid = f"{time.strftime('%Y%m%d')}-{me}-{mod_branch_suffix(m)}"
-    br = f"agent/{tid}"
+    br = f"task/{tid}"
     code, out = git(root, "switch", "-c", br, ref)
     if code:
         die(f"không tạo được branch {br}: {out[:200]}")
@@ -958,7 +958,7 @@ def cmd_sync(db, root, a):
     _, docs = git(root, "diff", "--name-only", f"HEAD...{ref}", "--", "docs/")
     _, code_files = git(root, "diff", "--name-only", f"HEAD...{ref}", "--", ".", ":!docs")
     _, br = git(root, "rev-parse", "--abbrev-ref", "HEAD")
-    code, out = git(root, "merge", "--no-ff", "-m", f"[lead] {br.replace('agent/', '')}: đồng bộ {ref}", ref)
+    code, out = git(root, "merge", "--no-ff", "-m", f"[lead] {br.split('/', 1)[-1]}: đồng bộ {ref}", ref)
     if code:
         _, files = git(root, "diff", "--name-only", "--diff-filter=U")
         git(root, "merge", "--abort")

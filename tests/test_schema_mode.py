@@ -39,7 +39,7 @@ open(os.path.join(main, ".gitignore"), "w").write("vendor\n.worktrees/\n.env\n")
 sh(main, "git", "init", "-q", "-b", "master"), sh(main, "git", "config", "user.email", "t@t"), sh(main, "git", "config", "user.name", "t")
 sh(main, "git", "add", "."), sh(main, "git", "commit", "-qm", "init")
 wt = os.path.join(main, ".worktrees", "m6-t1")
-sh(main, "git", "worktree", "add", "-q", wt, "-b", "agent/m6-t1")
+sh(main, "git", "worktree", "add", "-q", wt, "-b", "task/m6-t1")
 env = {**os.environ, "PATH": bin_dir + os.pathsep + os.environ["PATH"]}
 
 
@@ -66,7 +66,7 @@ check("up: .env symlink về .env thư mục chính (không copy)", os.path.isli
 open(os.path.join(wt, "vendor", "x.php"), "w").write("<?php\n")
 check("wt1 thêm gói vào vendor của nó: vendor thư mục chính không đổi", os.listdir(os.path.join(main, "vendor")) == ["autoload.php"])
 wt2 = os.path.join(main, ".worktrees", "m7-t2")
-sh(main, "git", "worktree", "add", "-q", wt2, "-b", "agent/m7-t2")
+sh(main, "git", "worktree", "add", "-q", wt2, "-b", "task/m7-t2")
 open(os.path.join(wt2, "composer.lock"), "w").write('{"wt2": 1}\n')
 code, out, dk = run(wt2, "up", "m7-t2")
 check("worktree có lock khác main: clone xong cài trong worktree", "-w /var/www/.worktrees/m7-t2" in dk and "composer install --no-interaction" in dk

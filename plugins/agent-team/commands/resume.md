@@ -14,7 +14,7 @@ Trạng thái nằm trên đĩa nên làm tiếp được. **Chạy tiếp tới
 1c. Có bảng `pool`: `python3 .claude/agent-team/pool.py reconcile` trước (user merge tay branch task vào branch phiên khi phiên đóng → task đó thành DONE, dọn worktree; không thì pool + STATUS.md kẹt ở trạng thái cũ).
 2. Xác định task: `$ARGUMENTS` hoặc thư mục mới nhất trong `docs/agent-tasks/`. Không có task nào → báo user dùng `/agent-team:task`.
 3. Đọc theo thứ tự: `TASK.md` (điều kiện chuyển giai đoạn, phương án chốt, trạng thái), `.agent-team/stage`, `board/SUMMARY.md`, `.claude/agent-team/board.py status <task-id>` và `board.py whys <task-id> --open` (không đọc lại cả board; cần chi tiết 1 câu WHY: `board.py read <task-id> --why <n>`), `CONTEXT.md`. Task cũ chưa có board SQLite thì đọc các file `board/S*-R*`. Làm theo task.md mục 2b (giữ ngữ cảnh gọn).
-4. Mỗi repo trong `REPOS`: `git branch --show-current` phải là branch ghi trong TASK.md (dòng `Branch`; user đặt tên riêng thì theo tên đó), không ghi thì `agent/<task-id>`; `git status --short` xem thay đổi chưa commit; `git log --oneline <nhánh gốc>..HEAD` xem đã commit gì. Sai branch → `git checkout agent/<task-id>` (nếu có thay đổi chưa commit thuộc task khác thì dừng và báo user).
+4. Mỗi repo trong `REPOS`: `git branch --show-current` phải là branch ghi trong TASK.md (dòng `Branch`; user đặt tên riêng thì theo tên đó), không ghi thì `task/<task-id>`; `git status --short` xem thay đổi chưa commit; `git log --oneline <nhánh gốc>..HEAD` xem đã commit gì. Sai branch → `git checkout task/<task-id>` (nếu có thay đổi chưa commit thuộc task khác thì dừng và báo user).
 5. File `.agent-team/stage` mất (đã bị xoá/đóng phiên) → suy ra giai đoạn từ TASK.md rồi ghi lại bằng `echo S<n> > .agent-team/stage` (hook kiểm điều kiện).
 
 ## 2. Xác định bước dang dở
@@ -37,7 +37,7 @@ Trạng thái nằm trên đĩa nên làm tiếp được. **Chạy tiếp tới
 | `Loại: APP`, stage S1-S2 (Phase A) | Làm tiếp theo `app.md` (plugin). Bước dang dở suy từ `docs/product/`: `APP.md` `Intake` chưa YES → A0 · `coverage.md` còn TODO → A1 · chưa `Phương án chốt` → A2 · chưa có `requirements` → A3 (nháp) · `screens.md` trống → A3b mockup · `Challenger` chưa DONE → A4 · `Debate` chưa DONE → debate chốt câu hỏi · chưa có `QnA-v1.xlsx` → build form cuối · `Owner duyệt` chưa APPROVED → mục 7 · chưa có bảng Module → A5. Câu hỏi đi **form** (A owner, B dev), không `AskUserQuestion` |
 | Có `docs/product/APP.md`, task module | Như `task`; xong thì sang module kế (mục 3) |
 | Task mới nhất đã đóng (S6 xong, không còn stage), bảng Module (`APP.md`) / Task (`MODULE.md`) còn dòng `TODO` / `DOING` | Mở module / task kế theo `app.md` mục 10.2, không báo "đã xong" |
-| Branch hiện tại `agent/YYYYMMDD-<DEV_ID>-m<n>` (team, Phase C) | Làm tiếp module đó (`pool.py resume`), trước tiên `pool.py sync`. Module đã PR xong → báo user, không tự nhận module khác |
+| Branch hiện tại `task/YYYYMMDD-<DEV_ID>-m<n>` (team, Phase C) | Làm tiếp module đó (`pool.py resume`), trước tiên `pool.py sync`. Module đã PR xong → báo user, không tự nhận module khác |
 | Có bảng `pool` (điều phối nhiều task) | `python3 .claude/agent-team/pool.py resume`: task RUNNING / FIX / GAP → `cd <worktree>` làm tiếp như bảng này (agent DONE thì không gọi lại); MERGING → chạy lại integration test rồi `merge-end`; module đang DESIGN → làm tiếp debate. Rồi `pool.py fill` cho đủ `MAX_PARALLEL` → vòng điều phối (`task.md` mục 6c) |
 
 Ghi vào TASK.md mục "Phán quyết"/SUMMARY: "Resume từ <bước>" kèm lý do dừng nếu biết (hết quota, lỗi...).

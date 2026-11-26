@@ -15,7 +15,7 @@ Không sửa code trong audit. Lỗi code (kể cả nhỏ) → Backlog, mỗi d
 ## 0. Điều kiện
 1. Có `.claude/agent-team.config` (chưa có → chạy `/agent-team:init --skip-kb` trước). Có `.agent-team/stage` (đang có task) → dừng, báo user đóng task trước.
 2. Có `docs/audit/AUDIT-*.md` với `Bước:` khác `DONE` → làm tiếp file đó (như `/agent-team:resume`), không tạo mới.
-3. Không `--check`: `git checkout -b agent/audit-<YYYYMMDD>` từ nhánh gốc.
+3. Không `--check`: `git checkout -b task/audit-<YYYYMMDD>` từ nhánh gốc.
 4. Copy `<plugin>/templates/AUDIT.md` → `docs/audit/AUDIT-<YYYYMMDD>.md`, điền mục Trạng thái, `Bước: REVIEW`. Copy `kb-check.py` vào `.claude/agent-team/` nếu chưa có.
 
 ## 1. Tiêu chí (đọc trước, dẫn trong mọi lỗi)

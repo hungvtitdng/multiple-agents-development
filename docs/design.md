@@ -283,7 +283,7 @@ Repository
 ├── Task B  → Worktree B, Branch feature/trip-cancellation-ui
 └── Task C  → Worktree C, Branch test/trip-cancellation
 ```
-Tên branch tuân quy ước dự án (mặc định plugin: `agent/<task-id>`). Không checkout cùng một branch trong nhiều worktree theo cách gây xung đột.
+Tên branch tuân quy ước dự án (mặc định plugin: `task/<task-id>`). Không checkout cùng một branch trong nhiều worktree theo cách gây xung đột.
 
 ### 5.3 Không dùng chung worktree
 Tránh lẫn thay đổi, commit nhầm file; dễ xác định trách nhiệm, review, kiểm thử, khôi phục; giảm xung đột song song. Một agent làm nhiều task theo thời điểm, mỗi task vẫn worktree + branch riêng.
@@ -349,7 +349,7 @@ Không tự xóa thay đổi chưa commit, reset làm mất công việc, checko
 - **[+B]** Guard chặn commit có body hoặc trailer, sai format.
 
 ### 7.4 Push, merge, lịch sử
-Không force push, không rewrite lịch sử, không tự merge vào main/master/develop, không tạo PR, không xóa branch/worktree khi chưa kiểm tra hoặc khi đang dùng/còn thay đổi chưa xử lý. Push dạng `git push -u origin agent/<task-id>`. Hoàn thành task không đồng nghĩa được merge hoặc xóa branch.
+Không force push, không rewrite lịch sử, không tự merge vào main/master/develop, không tạo PR, không xóa branch/worktree khi chưa kiểm tra hoặc khi đang dùng/còn thay đổi chưa xử lý. Push dạng `git push -u origin task/<task-id>`. Hoàn thành task không đồng nghĩa được merge hoặc xóa branch.
 
 **[+B]** Hook chặn push nếu diff có secret, `.env`, key, dump DB.
 

@@ -4,7 +4,7 @@ Project dùng plugin `agent-team`. Chạy task: `/agent-team:task <task>`. Modul
 
 - Config project: `.claude/agent-team.config` (nhánh gốc, đường dẫn BE/FE/test, DB riêng của task, lint/format, `REPOS` nếu nhiều repo)
 - Mọi tài liệu nằm trong `docs/` (Knowledge Base, **đọc trước khi làm**, mỗi thư mục có chủ ghi riêng, xem `docs/README.md`). Quy chuẩn code ở `docs/engineering/`.
-- Nhiều repo con (`REPOS`): `.claude/`, `docs/` nằm ở repo chính; mỗi repo có branch `agent/<task-id>` riêng, commit/push bằng `git -C <repo> ...`
+- Nhiều repo con (`REPOS`): `.claude/`, `docs/` nằm ở repo chính; mỗi repo có branch `task/<task-id>` riêng, commit/push bằng `git -C <repo> ...`
 - Tài liệu mỗi task: `docs/agent-tasks/<task-id>/` gồm `TASK.md`, `CONTEXT.md` (Scout), `board/` (Lead ghi)
 - Migration/test DB: chỉ qua `.claude/agent-team/agent-db.sh` (DB riêng của task, không đụng DB hiện tại). File migration **chỉ sinh** bằng `agent-db.sh generate` (generator trong container), không tự tạo/đổi tên (guard chặn).
 - Báo cáo mỗi task: `docs/agent-tasks/<task-id>/REPORT.html` (gửi client) + `REPORT.md` (`board.py report`).
@@ -12,7 +12,7 @@ Project dùng plugin `agent-team`. Chạy task: `/agent-team:task <task>`. Modul
 - Thiết kế mỗi task: `docs/agent-tasks/<task-id>/design/`: `workflow.md`, `state.md` (BA), `sequence.md` (Architect), `mockup-<màn>.html` (ui-designer, **mockup design full theo design system, đủ chức năng + trạng thái**). FE code đủ chức năng của wireframe nhưng dùng màu, font, component của dự án.
 
 ### Quy chuẩn chung (mọi agent)
-- Mỗi task 1 branch `agent/<task-id>`. Tự commit + push. Không push/merge vào main/develop, không force push, không rewrite lịch sử.
+- Mỗi task 1 branch `task/<task-id>`. Tự commit + push. Không push/merge vào main/develop, không force push, không rewrite lịch sử.
 - Commit **một dòng** `[role] task-id: mô tả`. Không body, không Co-authored-by/Signed-off-by (guard chặn).
 - Không commit `.env*`, key, credentials, dump DB. `.env*` được xem / sửa: chỉ đụng dòng cần thiết, không in giá trị KEY ra chat / board / log.
 - Không sửa code cũ khi không cần thiết, không refactor ngoài phạm vi. Comment ngắn, chỉ khi cần.

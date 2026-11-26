@@ -1,7 +1,7 @@
 # Agent team config cho project. KHÔNG ghi password/KEY vào file này.
 
 BASE_BRANCH=develop
-# 1 = có remote: fetch + push branch agent/*. 0 = repo chỉ ở máy (dự án mới chưa có remote): không fetch/push.
+# 1 = có remote: fetch + push branch task/*. 0 = repo chỉ ở máy (dự án mới chưa có remote): không fetch/push.
 PUSH=1
 # Repo nào có nhánh gốc khác BASE_BRANCH thì ghi ở đây (repo=nhánh, cách nhau bằng dấu cách). Chỉ cần khi có REPOS.
 # Ví dụ: BASE_BRANCH=main  BASE_BRANCHES="../FrontEnd=master"
@@ -44,9 +44,13 @@ E2E_PORT=3999               # cổng mở ra máy cho E2E (khác cổng app đan
 E2E_FE_START_CMD=
 E2E_FE_URL=
 
-# Kiểu response API: cooked (mặc định) = BE tính toán / gộp rồi trả · flat = BE chỉ đọc + lọc theo quyền rồi trả dữ liệu thô, FE tự tính
+# Duyệt cấu hình: CHỈ user tự ghi `ok` sau khi đọc bảng cấu hình init in ra (hook chặn gọi agent khi còn trống, chặn Lead tự ghi).
+# Config cũ không có dòng này thì không bị chặn.
+CONFIG_APPROVED=
+
+# Kiểu response API: flat (mặc định) = BE chỉ đọc + lọc theo quyền rồi trả dữ liệu thô, FE tự tính · cooked = BE tính toán / gộp rồi trả
 # (tổng, gom nhóm, định dạng). flat: mỗi API ghi PHẲNG / XỬ LÝ trong API contract (quy tắc ở agents/solution-architect.md).
-API_RESPONSE=cooked
+API_RESPONSE=flat
 
 # Mức model: economy | standard | max (mặc định standard). Lead chọn model theo bảng trong run.md mục 2.
 COST_TIER=standard

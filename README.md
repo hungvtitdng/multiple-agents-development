@@ -33,7 +33,7 @@ Viết lại hệ thống cũ ───────────▶ C
 | 1 | `/agent-team:init`, duyệt bảng cấu hình | config + nháp Knowledge Base trong `docs/` (Scout đọc code) |
 | 2 | Đọc lướt `docs/` (quy tắc, luồng, quyền), sửa chỗ hiểu sai. Còn thiếu: `/agent-team:kb` | `kb-check` báo đủ |
 | 3 | (nên làm 1 lần) `/agent-team:audit` | danh sách lỗi → Backlog |
-| 4 | Việc nhỏ / vừa: `/agent-team:task "<việc>"` · tính năng lớn: `/agent-team:module "<ý tưởng>"` | branch `agent/<task-id>` đã test + review |
+| 4 | Việc nhỏ / vừa: `/agent-team:task "<việc>"` · tính năng lớn: `/agent-team:module "<ý tưởng>"` | branch `task/<task-id>` đã test + review |
 | 5 | Muốn hỏi logic dự án: `/agent-team:ask "<câu hỏi>"` | câu trả lời có dẫn nguồn |
 | 6 | Xem branch, mở PR, tự merge | |
 
@@ -93,7 +93,7 @@ Viết lại hệ thống cũ ───────────▶ C
 ```
 /agent-team:task <task>
    │
- Lead phân loại NHỎ / VỪA / LỚN, tạo branch agent/<task-id>
+ Lead phân loại NHỎ / VỪA / LỚN, tạo branch task/<task-id>
    │
    ├─ NHỎ (Fast Track): Lead viết tiêu chí nghiệm thu → Dev → test → Code Reviewer ∥ Security
    │
@@ -327,7 +327,7 @@ Chọn **1 repo chính** (thường API/BE) chứa `.claude/`, `docs/`, `CLAUDE.
 │   └── docs/               KB + agent-tasks
 └── FrontEnd/ ← repo thứ hai, thêm bằng /add-dir ../FrontEnd
 ```
-- Mỗi repo có branch `agent/<task-id>` riêng, commit/push trong từng repo (`git -C ../FrontEnd ...`). Nhánh gốc theo repo (`BASE_BRANCHES`).
+- Mỗi repo có branch `task/<task-id>` riêng, commit/push trong từng repo (`git -C ../FrontEnd ...`). Nhánh gốc theo repo (`BASE_BRANCHES`).
 - `/agent-team:init` hỏi chọn repo chính khi thấy ≥ 2 repo. `REPOS` trống = 1 repo.
 
 ## Code graph (Graphify, cài riêng)

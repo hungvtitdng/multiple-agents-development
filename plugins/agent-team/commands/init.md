@@ -28,14 +28,14 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
    - Config: `REPOS=". ../FrontEnd"` (`.` là repo chính). `BE_PATHS`, `FE_PATHS`, `TEST_PATHS` tính từ repo chính, vd `FE_PATHS="../FrontEnd"`.
    - Dặn user: mở Claude Code ở **repo chính**, rồi thêm repo còn lại bằng `/add-dir ../FrontEnd`.
 3. **Tạo `.claude/agent-team.config`** từ `templates/agent-team.config.example`, điền giá trị đã nhận diện (kể cả `LINT_CMD`, `FORMAT_CMD`). Giữ mặc định `COST_TIER=standard` (economy | standard | max) và `LESSONS_PATH=docs/LESSONS.md`. Giá trị không chắc → `TODO` và báo user. Tuyệt đối không ghi password/KEY.
-3b. **⛔ User duyệt cấu hình chạy (bắt buộc, trước mọi lần gọi agent; không tự quyết thay):** in bảng dưới với giá trị vừa ghi vào config + đề xuất theo trường hợp của dự án này, rồi hỏi bằng `AskUserQuestion` ("Chạy với cấu hình này" / "Sửa"). User sửa → ghi lại config, in lại bảng, hỏi lại. Chưa duyệt thì dừng ở đây (bước 4-7 chỉ chép file vẫn làm được, bước 7b gọi Scout thì không).
+3b. **⛔ User duyệt cấu hình chạy (bắt buộc, trước mọi lần gọi agent; không tự quyết thay):** in bảng dưới với giá trị vừa ghi vào config + đề xuất theo trường hợp của dự án này, rồi hỏi bằng `AskUserQuestion` ("Sửa" / "Tôi sẽ tự ghi ok"). User sửa → ghi lại config, in lại bảng, hỏi lại. **Duyệt = user tự mở `.claude/agent-team.config` sửa dòng `CONFIG_APPROVED=ok`** (bạn không ghi dòng này, hook chặn; hook cũng chặn mọi lần gọi agent khi dòng này còn trống). Bước 4-7 chỉ chép file vẫn làm được; tới 7b mà chưa `ok` → in "Bước tiếp: sửa `CONFIG_APPROVED=ok` rồi chạy lại `/agent-team:init`" và DỪNG.
    | Key | Giá trị | Ý nghĩa | Đề xuất theo trường hợp |
    |---|---|---|---|
    | `COST_TIER` | economy / standard / max | model mỗi role (bảng ở `task.md` mục 2) | thử nghiệm: economy · bình thường: standard · nghiệp vụ khó / tiền / bảo mật: max |
    | Scout dựng KB | số Scout dự kiến + model từng mảng (`kb.md` mục 2) | đọc code có sẵn | có code cũ / chuẩn bị migrate: mảng đọc logic dùng opus |
    | `MAX_PARALLEL` | số task chạy cùng lúc | nhanh hơn nhưng tốn quota + máy | quota thấp / máy yếu: 3-5 · bình thường: 8 · tối đa đang dùng: 15 |
    | `MAX_DEBATE` | số debate module cùng lúc | | 2-4 |
-   | `API_RESPONSE` | cooked / flat | flat: BE chỉ đọc + lọc theo quyền, FE tự tính; API nào có vai trò không được thấy dữ liệu thô thì BE vẫn xử lý | muốn BE nhẹ, FE đủ sức tính: flat · mặc định: cooked |
+   | `API_RESPONSE` | flat / cooked | flat: BE chỉ đọc + lọc theo quyền, FE tự tính; API nào có vai trò không được thấy dữ liệu thô thì BE vẫn xử lý | mặc định: flat · FE mỏng / nhiều client dùng chung API cần BE tính sẵn: cooked |
    | `TEST_MODE` | full / mvp | mvp: E2E để cuối, ra bản dùng thử nhanh | app mới cần demo sớm: mvp |
    | `CLONE_MODE` | container / schema | schema: 1 container DB + 1 container app cho mọi task | chạy song song nhiều: schema |
    | `PUSH` | 0 / 1 | có tự push branch task không | |

@@ -49,7 +49,7 @@ cases = [
     ("migrate qua clone", "Bash", {"command": ".claude/agent-team/agent-db.sh migrate T1"}, "backend-dev", None, OK),
     ("grep -r cả repo bị chặn (quét mù)", "Bash", {"command": "grep -rn \"db:migrate\" ."}, "code-reviewer", None, B),
     ("grep -r trong thư mục cụ thể", "Bash", {"command": "grep -rn \"db:migrate\" db/"}, "code-reviewer", None, OK),
-    ("force push", "Bash", {"command": "git push -f origin agent/x"}, None, repo, B),
+    ("force push", "Bash", {"command": "git push -f origin task/x"}, None, repo, B),
     ("push develop", "Bash", {"command": "git push origin develop"}, None, repo, B),
     ("push khi đang ở develop", "Bash", {"command": "git push"}, None, repo, B),
     ("commit trên develop", "Bash", {"command": "git commit -m x"}, "backend-dev", repo, B),
@@ -86,19 +86,19 @@ total = len(cases)
 cases = []
 
 # Branch agent: push có secret thì phải bị chặn
-sh(repo, "git", "checkout", "-qb", "agent/t1")
+sh(repo, "git", "checkout", "-qb", "task/t1")
 open(os.path.join(repo, "b.rb"), "w").write('API_KEY = "AKIAABCDEFGHIJKLMNOP"\n')
 sh(repo, "git", "add", ".")
 sh(repo, "git", "commit", "-qm", "leak")
-check("push có secret", "Bash", {"command": "git push -u origin agent/t1"}, None, repo, B)
+check("push có secret", "Bash", {"command": "git push -u origin task/t1"}, None, repo, B)
 total += 1
 sh(repo, "git", "reset", "-q", "--hard", "HEAD~1")
 open(os.path.join(repo, "c.rb"), "w").write('key = ENV.fetch("API_KEY")\n')
 sh(repo, "git", "add", ".")
 sh(repo, "git", "commit", "-qm", "ok")
-cases.append(("push sạch từ agent/*", "Bash", {"command": "git push -u origin agent/t1"}, None, repo, OK))
+cases.append(("push sạch từ task/*", "Bash", {"command": "git push -u origin task/t1"}, None, repo, OK))
 cases.append(("agent tự commit bị chặn (v0.25: chỉ Lead commit)", "Bash", {"command": "git commit -m x"}, "backend-dev", repo, B))
-cases.append(("Lead commit trên agent/*", "Bash", {"command": "git commit -m x"}, None, repo, OK))
+cases.append(("Lead commit trên task/*", "Bash", {"command": "git commit -m x"}, None, repo, OK))
 
 # Debate board + .agent-team
 proj = tempfile.mkdtemp()
@@ -431,7 +431,7 @@ total += len(kb)
 
 # ---- v0.3: commit một dòng, không trailer (chỉ khi project có agent-team.config) ----
 cr = make_repo()
-sh(cr, "git", "checkout", "-qb", "agent/c1")
+sh(cr, "git", "checkout", "-qb", "task/c1")
 os.makedirs(os.path.join(cr, ".claude"))
 open(os.path.join(cr, ".claude/agent-team.config"), "w").write('BE_PATHS="app"\n')
 commits = [
@@ -697,7 +697,7 @@ app_gate("S6 task thường, không có App Mode -> như cũ", DONE, OK, stage=S
 
 # ---- S6: "Cập nhật KB: YES" phải có file KB đổi thật so với nhánh gốc ----
 def kb_gate(desc, files, exp, task=DONE, base="develop", commit=False):
-    """files: {đường dẫn: nội dung} ghi trên branch agent/k1 (commit=True thì commit luôn)."""
+    """files: {đường dẫn: nội dung} ghi trên branch task/k1 (commit=True thì commit luôn)."""
     global fail, total
     d = tempfile.mkdtemp()
     sh(d, "git", "init", "-q", "-b", "develop")
@@ -709,7 +709,7 @@ def kb_gate(desc, files, exp, task=DONE, base="develop", commit=False):
         open(os.path.join(d, rel), "w").write(text)
     sh(d, "git", "add", ".")
     sh(d, "git", "commit", "-qm", "init")
-    sh(d, "git", "switch", "-qc", "agent/k1")
+    sh(d, "git", "switch", "-qc", "task/k1")
     for rel, text in {"app/a.rb": "y\n", **files}.items():
         os.makedirs(os.path.dirname(os.path.join(d, rel)), exist_ok=True)
         open(os.path.join(d, rel), "w").write(text)
@@ -951,18 +951,18 @@ for c in ev:
     check(*c)
 total += len(ev)
 er = make_repo()
-sh(er, "git", "checkout", "-qb", "agent/env")
+sh(er, "git", "checkout", "-qb", "task/env")
 open(os.path.join(er, ".env"), "w").write("DB_PASSWORD=x\n")
 sh(er, "git", "add", "-f", ".env")
 check("commit khi đang stage .env → chặn", "Bash", {"command": "git commit -m x"}, "backend-dev", er, B)
 sh(er, "git", "commit", "-qm", "leak env")
-check("push commit có .env → chặn", "Bash", {"command": "git push -u origin agent/env"}, None, er, B)
+check("push commit có .env → chặn", "Bash", {"command": "git push -u origin task/env"}, None, er, B)
 total += 2
 
 # ---- v0.25-0.27: chỉ Lead dùng git ghi; worktree theo đường dẫn; loại ĐÃ CHIA; pool ----
 gw = [
-    ("agent push bị chặn", "Bash", {"command": "git push -u origin agent/t1"}, "frontend-dev", repo, B),
-    ("agent merge bị chặn", "Bash", {"command": "git merge agent/x"}, "backend-dev", repo, B),
+    ("agent push bị chặn", "Bash", {"command": "git push -u origin task/t1"}, "frontend-dev", repo, B),
+    ("agent merge bị chặn", "Bash", {"command": "git merge task/x"}, "backend-dev", repo, B),
     ("agent tạo worktree bị chặn", "Bash", {"command": "git worktree add .worktrees/x"}, "backend-dev", repo, B),
     ("agent git diff / status vẫn được", "Bash", {"command": "git diff --stat && git status"}, "backend-dev", repo, OK),
     ("agent chạy pool.py bị chặn", "Bash", {"command": "python3 .claude/agent-team/pool.py fill"}, "backend-dev", repo, B),
@@ -1065,7 +1065,7 @@ cx_case("không ai khác làm: backend-dev Bash ghi frontend/ vẫn bị hoàn t
 # ---- v0.40.0: agent gắn với 1 worktree, không đụng worktree task khác ----
 bw = os.path.realpath(make_repo())
 for n in ("m6-t1", "m7-t2"):
-    sh(bw, "git", "worktree", "add", "-q", os.path.join(bw, ".worktrees", n), "-b", f"agent/{n}")
+    sh(bw, "git", "worktree", "add", "-q", os.path.join(bw, ".worktrees", n), "-b", f"task/{n}")
 
 
 def bw_err(agent, wt):
@@ -1106,6 +1106,26 @@ for desc, cmd, want in [("composer require trong worktree (vendor riêng): đư�
     total += 1
     fail += not ok
     print(f"{'PASS' if ok else 'FAIL'}  {desc}" + ("" if ok else f"  [{e.strip()[:150]}]"))
+
+# ---- v0.44.0: CONFIG_APPROVED — user tự ghi ok mới được gọi agent ----
+ap = tempfile.mkdtemp()
+os.makedirs(os.path.join(ap, ".claude"))
+apc = os.path.join(ap, ".claude", "agent-team.config")
+scout = {"subagent_type": "agent-team:scout", "prompt": "x"}
+for desc, conf, tool, ti, exp in [
+    ("duyệt cấu hình: CONFIG_APPROVED trống → chặn gọi agent", "X=1\nCONFIG_APPROVED=\n", "Agent", scout, B),
+    ("duyệt cấu hình: agent ngoài agent-team không bị chặn", "CONFIG_APPROVED=\n", "Agent", {"subagent_type": "Explore", "prompt": "x"}, OK),
+    ("duyệt cấu hình: Lead tự ghi ok bằng Bash bị chặn", "CONFIG_APPROVED=\n", "Bash", {"command": "sed -i '' 's/CONFIG_APPROVED=/CONFIG_APPROVED=ok/' .claude/agent-team.config"}, B),
+    ("duyệt cấu hình: Lead tự ghi ok bằng Edit bị chặn", "CONFIG_APPROVED=\n", "Edit", {"file_path": apc, "old_string": "CONFIG_APPROVED=", "new_string": "CONFIG_APPROVED=ok"}, B),
+    ("duyệt cấu hình: Lead sửa key khác vẫn được", "CONFIG_APPROVED=\n", "Edit", {"file_path": apc, "old_string": "X=1", "new_string": "MAX_PARALLEL=5"}, OK),
+    ("duyệt cấu hình: user đã ghi ok → gọi agent được", "CONFIG_APPROVED=ok\n", "Agent", scout, OK),
+    ("duyệt cấu hình: config cũ không có dòng này → không chặn", "X=1\n", "Agent", scout, OK),
+]:
+    open(apc, "w").write(conf)
+    got = run(tool, ti, None, ap)
+    fail += got != exp
+    total += 1
+    print(f"{'PASS' if got == exp else 'FAIL'}  {desc}  (expect {exp}, got {got})")
 
 print(f"\n{total - fail}/{total} passed")
 sys.exit(1 if fail else 0)

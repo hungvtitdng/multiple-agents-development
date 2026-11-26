@@ -51,7 +51,7 @@ w("docs/product/APP.md", f"""# App
 - M-7 → M-1 (code): dùng bảng của M-1
 - M-8 → M-1 (contract): chỉ gọi service M-1
 """)
-sh("git", "add", "."), sh("git", "commit", "-qm", "init"), sh("git", "switch", "-qc", "agent/app")
+sh("git", "add", "."), sh("git", "commit", "-qm", "init"), sh("git", "switch", "-qc", "task/app")
 
 code, out = run("fill")
 check("fill: 4 module đầu bắt đầu debate (mỗi debate 1 slot), MAX_DEBATE=4", out.count("💬 ") == 4 and all(f"💬 M-{i}:" in out for i in range(1, 5)))

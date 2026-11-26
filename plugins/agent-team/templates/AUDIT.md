@@ -5,7 +5,7 @@
 ## Trạng thái
 - Phạm vi: TODO (cả dự án / module <tên>)
 - Commit: TODO
-- Nhánh: TODO (agent/audit-<YYYYMMDD>)
+- Nhánh: TODO (task/audit-<YYYYMMDD>)
 - Bước: TODO (REVIEW / CHỜ DUYỆT / UPDATE / DONE)
 
 ## Điểm

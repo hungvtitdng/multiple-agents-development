@@ -96,7 +96,7 @@ Chép KB + báo cáo audit của hệ thống cũ (`docs/` của repo cũ, dựn
 ## 1. Chuẩn bị
 1. Thư mục plugin: `find ~/.claude/plugins -type d -path "*agent-team" -exec test -f {}/scripts/gap-check.py \; -print | head -1` (dùng cho `catalog/`, `templates/product/`).
 2. Chưa có `.claude/agent-team.config` → làm `/agent-team:init` trước (dự án mới: init tự xử lý chưa có git/remote, mục 2a của init).
-3. Task-id `YYYYMMDD-app-<slug>`. Branch `agent/<task-id>`: có remote (`PUSH=1`) như `task.md` mục 0; `PUSH=0` thì không `fetch`, tạo branch từ HEAD hiện tại (repo chưa có commit: `git switch -c agent/<task-id>`).
+3. Task-id `YYYYMMDD-app-<slug>`. Branch `task/<task-id>`: có remote (`PUSH=1`) như `task.md` mục 0; `PUSH=0` thì không `fetch`, tạo branch từ HEAD hiện tại (repo chưa có commit: `git switch -c task/<task-id>`).
 4. Copy `<plugin>/templates/product/` → `docs/product/` (không ghi đè file đã có). Copy `<plugin>/scripts/gap-check.py` và `owner-form.py` → `.claude/agent-team/` (chmod +x) nếu chưa có (hai file đi cùng nhau).
 5. Tạo TASK.md như `task.md`, ghi `- Loại: APP`. Mục 0: ý tưởng nguyên văn. `echo S1 > .agent-team/stage`.
 
@@ -179,9 +179,9 @@ Góp ý giao diện của owner trong form → `ui-designer` sửa `design-syste
    - `APP_BUILD=auto` (mặc định, 1 người): sang C ngay.
 
 **Phase C (build module):**
-2. **`APP_BUILD=manual` (team):** mỗi người (máy riêng, `DEV_ID` trong `.claude/agent-team.local.config`) chạy `/agent-team:task M-<n>`: Lead của máy đó `pool.py claim M-<n>` (pull, kiểm phụ thuộc đã `DONE` trên nhánh gốc hoặc chỉ cần contract đã có, kiểm chưa ai nhận, tạo branch `agent/YYYYMMDD-<DEV_ID>-m<n>`, ghi Người chạy, push ngay) → thiết kế module theo Loại → chia task → `pool.py` như dưới, **chỉ module đó** → `pool.py sync` + integration test → PR vào nhánh gốc (người review merge) → báo cáo → **dừng** (không tự nhận module khác). `pool.py claimable`: module nhận được / chờ / đã có người.
+2. **`APP_BUILD=manual` (team):** mỗi người (máy riêng, `DEV_ID` trong `.claude/agent-team.local.config`) chạy `/agent-team:task M-<n>`: Lead của máy đó `pool.py claim M-<n>` (pull, kiểm phụ thuộc đã `DONE` trên nhánh gốc hoặc chỉ cần contract đã có, kiểm chưa ai nhận, tạo branch `task/YYYYMMDD-<DEV_ID>-m<n>`, ghi Người chạy, push ngay) → thiết kế module theo Loại → chia task → `pool.py` như dưới, **chỉ module đó** → `pool.py sync` + integration test → PR vào nhánh gốc (người review merge) → báo cáo → **dừng** (không tự nhận module khác). `pool.py claimable`: module nhận được / chờ / đã có người.
    **`APP_BUILD=auto`:** bạn làm mục 2b cho mọi module, trên 1 branch phiên.
-2b. **Điều phối (cả 2 chế độ): nhiều task chạy song song** (`task.md` mục 6c, script `pool.py`). 1 phiên = 1 branch `agent/<task-id app>`; mỗi task 1 worktree + branch tạm, xong merge về branch phiên. Không dừng hỏi user, không bảo user gõ lệnh.
+2b. **Điều phối (cả 2 chế độ): nhiều task chạy song song** (`task.md` mục 6c, script `pool.py`). 1 phiên = 1 branch `task/<task-id app>`; mỗi task 1 worktree + branch tạm, xong merge về branch phiên. Không dừng hỏi user, không bảo user gõ lệnh.
    ```
    Debate module (≤ MAX_DEBATE, mỗi debate 1 slot)  Thực thi (task + debate ≤ MAX_PARALLEL cả app)   Merge (lần lượt)
    M-n: debate theo loại → chia task T-k  ──►  task READY → worktree → dev → test → review  ──►  merge --no-commit → IT
@@ -199,7 +199,7 @@ Góp ý giao diện của owner trong form → `ui-designer` sửa `design-syste
 2c. **Đồng bộ nhánh gốc (`pool.py sync`)**, bắt buộc: trước khi chia task, mỗi khi `pool.py wait` báo nhánh gốc có commit mới, trước khi tạo PR. Đọc lại **đúng file docs đã đổi** (script in danh sách), contract / quy tắc / quyền / ADR đổi mà module đang dùng → GAP, dừng task liên quan. Conflict → script `--abort`, báo user file conflict, **không tự gộp code người khác**.
 2c2. **`TEST_MODE=mvp` → giao MVP trước Phase D:** mọi module trừ M-E2E `DONE` → build FE 1 lần + `TEST_CMD` + `FE_TEST_CMD` toàn bộ PASS → cập nhật `HANDOVER.md` (bản MVP) → `git push origin <branch phiên>` → `git push origin HEAD:demo-mvp` → báo user (như DEMO 2) + danh sách task `E2E: DEFER`. **DỪNG**, M-E2E giữ `BLOCKED "chờ user bảo chạy"`; chỉ chạy Phase D khi user bảo ("chạy M-E2E"). M-E2E bước đầu: chạy toàn bộ spec (các spec DEFER chưa chạy lần nào), phân loại fail = spec lệch (test-executor sửa) / lỗi app (task sửa).
 2d. **Phase D:** khi mọi module trừ M-E2E `DONE` trên nhánh gốc (`pool.py claimable` thấy 🟢 M-E2E): `/agent-team:task M-E2E` (manual) hoặc bạn làm tiếp (auto): chạy toàn bộ E2E mọi luồng "1 ngày của <vai trò>" × mọi `VIEWPORTS`, lỗi tích hợp → task sửa, báo cáo cuối app. M-E2E `PASS` → **🚀 DEMO 3 (bản hoàn thiện)**: `git push origin <branch phiên>` → `git push origin HEAD:demo-full`, báo user như DEMO 2; fixbug sau đó xong đợt nào đẩy lại `HEAD:demo-full` đợt đó (`demo-ui` không cập nhật nữa). Trước E2E: grep dấu stub (vd `#[Stub(`) và mock FE (vd `mocks/`) phải rỗng (còn stub → task sửa của module chủ).
-3. **Merge cho user:** auto: 1 branch `agent/<task-id app>` (tag `…-m<n>-done` mỗi module), user merge 1 lần hoặc tới tag. manual: mỗi module 1 PR vào nhánh gốc, người review merge (agent không bao giờ merge vào nhánh gốc). Branch tạm của task giữ lại (không xoá branch). `PUSH=1`: push branch phiên + tag sau mỗi module.
+3. **Merge cho user:** auto: 1 branch `task/<task-id app>` (tag `…-m<n>-done` mỗi module), user merge 1 lần hoặc tới tag. manual: mỗi module 1 PR vào nhánh gốc, người review merge (agent không bao giờ merge vào nhánh gốc). Branch tạm của task giữ lại (không xoá branch). `PUSH=1`: push branch phiên + tag sau mỗi module.
 4. **Tài liệu app luôn đúng với code:** module đổi yêu cầu / phát sinh GAP → sửa `docs/product/` (task.md mục 7b). Mỗi module xong: cập nhật cột Trạng thái trong `APP.md`, chạy `gap-check.py --spec`. Hook chặn S6 của mọi task khi tài liệu app thiếu hoặc SPEC.md cũ.
 
 ## 11. Thiếu sót phát hiện về sau

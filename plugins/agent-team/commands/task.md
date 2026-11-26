@@ -12,7 +12,7 @@ Làm đúng playbook dưới đây. **Không hỏi lại user**, team tự bàn 
 
 ## 0. Chuẩn bị
 1. Đọc `CLAUDE.md` (mục "Agent Team"), `.claude/agent-team.config`, `docs/README.md`. Chưa có config thì dừng, báo user chạy `/agent-team:init`.
-2. `git status` sạch. `git fetch`, tạo branch `agent/<task-id>` từ `origin/<nhánh gốc>` (nhánh gốc = `BASE_BRANCHES` của repo nếu có, không thì `BASE_BRANCH`). Config `PUSH=0` (repo chưa có remote): không `fetch`, tạo branch từ nhánh gốc local. **1 phiên = 1 branch:** task thiết kế module của app làm ngay trên branch phiên (không tạo branch mới); task `ĐÃ CHIA` thì `pool.py fill` tạo worktree + branch tạm (mục 6c).
+2. `git status` sạch. `git fetch`, tạo branch `task/<task-id>` từ `origin/<nhánh gốc>` (nhánh gốc = `BASE_BRANCHES` của repo nếu có, không thì `BASE_BRANCH`). Config `PUSH=0` (repo chưa có remote): không `fetch`, tạo branch từ nhánh gốc local. **1 phiên = 1 branch:** task thiết kế module của app làm ngay trên branch phiên (không tạo branch mới); task `ĐÃ CHIA` thì `pool.py fill` tạo worktree + branch tạm (mục 6c).
    - `<task-id>` = `YYYYMMDD-<slug-ngắn>`; có `DEV_ID` (config riêng `.claude/agent-team.local.config`) → `YYYYMMDD-<DEV_ID>-<slug-ngắn>` (team nhiều người không trùng branch).
    - Nhiều repo (`REPOS`): làm trong từng repo (`git -C ../FrontEnd ...`), chỉ repo task đụng tới; ghi danh sách vào TASK.md. Board và `docs/` nằm ở repo chính.
 3. Tạo `docs/agent-tasks/<task-id>/TASK.md` (từ `.claude/agent-team/templates/TASK.md`) và `board/SUMMARY.md` (từ `SUMMARY.md`). `echo S1 > .agent-team/stage`.
@@ -161,7 +161,7 @@ Sang S5 hook kiểm `Kết quả test`, `Lint/format`, `Gap còn mở: 0` và `E
 - **Lộ ra giữa chừng** (agent báo GAP hạ tầng): task đó `pool.py set <label> BLOCKED --note "chờ <gói>"`, task khác chạy tiếp → task `INFRA-n` sửa Dockerfile trong worktree, `security` duyệt, merge.
 - **Rebuild (cả 2 trường hợp, khi pool đang chạy):** hỏi user trước ("rebuild app để thêm <gói>, N task đang chạy sẽ dừng test vài phút") → `pool.py drain` (không mở task mới, liệt kê task đang test / E2E) → chờ các task đó xong → `docker compose build <APP_SERVICE> && docker compose up -d <APP_SERVICE>` → `pool.py drain --off` → task BLOCKED chạy tiếp. Pool chưa chạy (M-0) → rebuild luôn, không cần hỏi.
 
-**Task lẻ song song** (đang có Lead / task khác chạy ở thư mục chính): `python3 .claude/agent-team/pool.py side <task-id> [--base <branch>]` → worktree `.worktrees/<task-id>` + branch `agent/<task-id>` + cổng riêng; mở terminal mới `cd .worktrees/<task-id> && claude` rồi chạy task như thường (stage, TASK.md, board, DB `<DB_NAME>_<task>` riêng). Tiến độ hiện ở mục `## Task lẻ` của `.agent-team/STATUS.md` thư mục chính. Xong (đã commit + push) → `pool.py side <task-id> --done` xoá worktree, DB, process cổng. Không chạy 2 task trên cùng thư mục chính.
+**Task lẻ song song** (đang có Lead / task khác chạy ở thư mục chính): `python3 .claude/agent-team/pool.py side <task-id> [--base <branch>]` → worktree `.worktrees/<task-id>` + branch `task/<task-id>` + cổng riêng; mở terminal mới `cd .worktrees/<task-id> && claude` rồi chạy task như thường (stage, TASK.md, board, DB `<DB_NAME>_<task>` riêng). Tiến độ hiện ở mục `## Task lẻ` của `.agent-team/STATUS.md` thư mục chính. Xong (đã commit + push) → `pool.py side <task-id> --done` xoá worktree, DB, process cổng. Không chạy 2 task trên cùng thư mục chính.
 
 `P="python3 .claude/agent-team/pool.py"`. Bạn (Lead, thư mục chính, branch phiên) giữ bảng `pool`; mỗi task `ĐÃ CHIA` chạy trong worktree riêng. Config: `MAX_PARALLEL` (đổi lúc nào cũng được: tăng → `fill` mở thêm ngay; giảm → task đang chạy vẫn chạy, chỉ không mở mới), `WORKTREE_DIR`, `E2E_PORT_BASE`, `INTEGRATION_CMD`.
 ```
@@ -244,7 +244,7 @@ Lỗi thuộc sản phẩm của người khác → ghi vào kết quả giao l�
 
 ## 9. Git
 - **Chỉ bạn (Lead) dùng git ghi** (commit, push, merge, tag, worktree); agent bị hook chặn. Agent DONE → bạn commit file của role đó: `git add <file trong vùng role>` (không `git add .`), commit **một dòng** `[<role>] <task-id>: <mô tả>`. Không body, không Co-authored-by/Signed-off-by (hook chặn). Board và `docs/` commit cùng repo chính.
-- Push: `git push -u origin agent/<task-id>` (`PUSH=0`: không push, báo user branch nằm ở máy). Nhiều repo: commit/push trong từng repo (`git -C ../FrontEnd push -u origin agent/<task-id>`), mỗi repo chỉ commit file của repo đó.
+- Push: `git push -u origin task/<task-id>` (`PUSH=0`: không push, báo user branch nằm ở máy). Nhiều repo: commit/push trong từng repo (`git -C ../FrontEnd push -u origin task/<task-id>`), mỗi repo chỉ commit file của repo đó.
 - Không push/merge vào main/develop, không force push, không rewrite lịch sử, không tạo PR, không xoá branch. Hook chặn commit / push có secret, `.env*`, key, dump DB. `.env*` được xem / sửa, không in giá trị KEY ra chat / board.
 
 ## 10. Báo cáo cho user (cuối cùng)

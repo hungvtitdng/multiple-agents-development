@@ -58,7 +58,7 @@ w("docs/product/APP.md", """# App
 | M-2 | IDP | R-2 | M-DB | VỪA | | | | TODO |
 | M-3 | Báo cáo | R-3 | M-DB | VỪA | | | | TODO |
 """)
-sh(d, "git", "add", "."), sh(d, "git", "commit", "-qm", "init"), sh(d, "git", "switch", "-qc", "agent/app")
+sh(d, "git", "add", "."), sh(d, "git", "commit", "-qm", "init"), sh(d, "git", "switch", "-qc", "task/app")
 
 code, out = run("schema")
 check("schema: 4 bảng (gồm `cache`, `cache_locks` cùng 1 dòng), bảng ở mục khác không tính; thiếu idps, cache_locks → exit 1",

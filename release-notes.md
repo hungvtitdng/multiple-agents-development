@@ -7,7 +7,9 @@
 - Lead gom lệnh sổ sách liên tiếp vào 1 lần Bash, không tự `grep` / `cat` code kiểm lại việc của agent.
 - Lead không dán bảng tiến độ vào chat sau mỗi bước / mỗi lượt: xem dòng trạng thái + `.agent-team/STATUS.md`.
 - README mục "Bắt đầu: làm gì sau mỗi bước" (4 đường: app mới, có code, viết lại hệ thống cũ, đang dở); `/agent-team:init` kết thúc bằng "Bước tiếp" theo trường hợp.
-- `API_RESPONSE=flat` (config, mặc định `cooked`): BE chỉ đọc + lọc theo quyền, FE tự tính; architect ghi `PHẲNG | XỬ LÝ` cho từng API theo quyền, security chấm High khi API phẳng lộ dữ liệu vượt quyền.
+- Branch của task đổi tiền tố `agent/<task-id>` → `task/<task-id>` (branch phiên, worktree, claim module, audit). Phiên đang chạy trên `agent/*` vẫn làm tiếp được: tag module và `claim` nhận cả 2 tiền tố; task mới trong phiên đó tạo branch `task/*`.
+- `API_RESPONSE=flat` (config, mặc định `flat` cho dự án init mới; config cũ không có key = `cooked` như trước): BE chỉ đọc + lọc theo quyền, FE tự tính; architect ghi `PHẲNG | XỬ LÝ` cho từng API theo quyền, security chấm High khi API phẳng lộ dữ liệu vượt quyền.
+- `CONFIG_APPROVED=` (config mới): hook chặn gọi agent khi user chưa tự ghi `ok`, chặn Lead tự ghi dòng này. Config cũ không có dòng này thì không bị chặn.
 - `/agent-team:init`: dừng cho user duyệt cấu hình chạy (`API_RESPONSE`, `COST_TIER`, model Scout, `MAX_PARALLEL`, `MAX_DEBATE`, `TEST_MODE`, `CLONE_MODE`, `PUSH`) trước khi gọi agent.
 - `/agent-team:kb` + `init` (dự án có code): Scout mảng đọc logic (Module, Frontend, Tổng hợp nghiệp vụ) tự dùng opus (`COST_TIER=economy`: sonnet); mảng liệt kê giữ sonnet.
 - Migrate hệ thống cũ: có `docs/legacy/` (KB + audit của repo cũ) thì `/agent-team:app` chỉ lấy nghiệp vụ từ đó, thiết kế mới workflow / DB / API / giao diện; BA lập `docs/product/legacy-map.md` (GIỮ / ĐỔI / BỎ), thêm module "Chuyển dữ liệu" (`docs/database/legacy-data-map.md`, chỉ chạy trên bản sao).
