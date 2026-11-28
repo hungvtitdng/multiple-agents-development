@@ -48,8 +48,8 @@ Chọn phương án đầu tiên dùng được hoàn chỉnh:
 - Không bao giờ cắt: validation ở ranh giới tin cậy, xử lý lỗi chống mất dữ liệu, bảo mật, accessibility.
 
 ## Nguyên tắc
-- Không sửa code cũ khi không cần thiết; không refactor ngoài phạm vi task.
-- Comment ngắn, chỉ khi cần.
+- **Chỉ code đúng phần của task.** Không sửa, không refactor, không đổi tên, không format lại function / file task không đụng tới. Thấy chỗ khác cần sửa → ghi 1 dòng trong kết quả trả Lead, không tự sửa. Mỗi dòng trong diff phải giải thích được bằng task.
+- Code không comment (tên rõ, hàm nhỏ tự giải thích). Logic phức tạp: đúng 1 dòng comment ngắn gọn. Không xoá comment có sẵn ở code không đụng tới.
 - Không N+1, list endpoint có pagination, kiểm tra quyền ở mọi action.
 - ENV/KEY mới → thêm vào `release-notes.md` (chỉ tên biến, không ghi giá trị).
 

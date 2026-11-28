@@ -224,6 +224,76 @@ sh(sp, "git", "add", "docs"), sh(sp, "git", "commit", "-qm", "fix")
 code, out = run("side", "FIX-12", "--done")
 check("side --done: đã commit → xoá worktree (file riêng .agent-team bỏ qua)", not os.path.isdir(sp) and "xoá worktree" in out)
 
+# ---- v0.46.0: batch — nhiều task lẻ, mỗi task 1 phiên Claude nền ----
+fake = os.path.join(d, ".agent-team", "fake-claude.py")
+sess = os.path.join(d, ".agent-team", "fake-sessions.json")
+open(sess, "w").write("[]")
+open(fake, "w").write(f"""#!{sys.executable}
+import json, os, sys
+p = {sess!r}
+rows = json.load(open(p))
+if sys.argv[1:3] == ["agents", "--json"]:
+    print(json.dumps(rows))
+else:
+    rows.append({{"id": "bg" + str(len(rows)), "kind": "background", "status": "busy", "cwd": os.getcwd(), "prompt": sys.argv[-1]}})
+    json.dump(rows, open(p, "w"))
+    print("backgrounded · bg" + str(len(rows) - 1))
+""")
+os.chmod(fake, 0o755)
+ENV["AGENT_TEAM_CLAUDE"] = fake
+ENV["AGENT_TEAM_NO_NOTIFY"] = "1"
+check("batch: thiếu file ticket, chưa có TICKET_CMD → từ chối", run("batch", "JR-1")[0] != 0)
+os.makedirs(os.path.join(d, ".agent-team", "tickets"), exist_ok=True)
+for t in ("JR-1", "JR-2"):
+    open(os.path.join(d, ".agent-team", "tickets", t + ".md"), "w").write(f"yêu cầu {t}\n")
+cfg("MAX_PARALLEL=2\nJIRA_TOKEN=abc\nTICKET_CMD=echo noi dung {id}\n")
+check("batch: token nằm trong config chung → từ chối", run("batch", "JR-9")[0] != 0 and "coi như lộ" in run("batch", "JR-9")[1])
+cfg("MAX_PARALLEL=2\nTICKET_CMD=echo noi dung {id} $JIRA_URL\n")
+lc = os.path.join(d, ".claude", "agent-team.secret")
+open(lc, "w").write("JIRA_URL=site-x\nJIRA_TOKEN=abc\n")
+check("batch: agent-team.secret chưa gitignore → từ chối", run("batch", "JR-9")[0] != 0 and "chưa được gitignore" in run("batch", "JR-9")[1])
+open(os.path.join(d, ".git", "info", "exclude"), "a").write(".claude/agent-team.secret\n")
+
+
+def stop_watch():
+    try:
+        os.kill(int(open(os.path.join(d, ".agent-team", "batch.pid")).read()), 15)
+    except (OSError, ValueError):
+        pass
+
+
+code, out = run("batch", "JR-1", "JR-2", "JR-3", "--base", "HEAD")
+stop_watch()
+rows = json.load(open(sess))
+check("batch: mở MAX_PARALLEL=2 phiên nền trong 2 worktree, task thứ 3 chờ", code == 0 and len(rows) == 2 and "○ chờ chỗ trống · JR-3" in out
+      and os.path.realpath(rows[0]["cwd"]) == os.path.realpath(os.path.join(d, ".worktrees", "JR-1")) and "/agent-team:task JR-1" in rows[0]["prompt"])
+check("batch: chép ticket vào worktree", open(os.path.join(d, ".worktrees", "JR-2", ".agent-team", "ticket.md")).read() == "yêu cầu JR-2\n")
+check("batch: TICKET_CMD lấy nội dung ticket chưa có file", open(os.path.join(d, ".agent-team", "tickets", "JR-3.md")).read() == "noi dung JR-3 site-x\n")
+rows[0]["status"] = "idle"; rows[1]["status"] = "idle"; json.dump(rows, open(sess, "w"))
+open(os.path.join(d, ".worktrees", "JR-1", ".agent-team", "stage"), "w").write("S6\n")
+open(os.path.join(d, ".worktrees", "JR-2", ".agent-team", "stage"), "w").write("S3\n")
+code, out = run("batch")
+stop_watch()
+check("batch (không id): có chỗ trống → tự mở task đang chờ", len(json.load(open(sess))) == 3 and "▶ đang chạy · JR-3" in out)
+check("batch: phân biệt xong (S6) với đang dừng cần trả lời + lệnh attach", "✅ xong · JR-1" in out and "⏸ ĐANG DỪNG, cần bạn trả lời · JR-2 → claude attach bg1" in out)
+check("batch --mine: có JIRA_TOKEN trong secret → tự dùng lệnh Jira mặc định (site giả nên lỗi gọi, không đòi config)",
+      run("batch", "--mine")[0] != 0 and "TICKET_LIST_CMD lỗi" in run("batch", "--mine")[1])
+cfg("MAX_PARALLEL=2\nTICKET_CMD=echo noi dung {id}\nTICKET_LIST_CMD=echo '{\"issues\":[{\"key\":\"JR-1\"},{\"key\":\"JR-7\"}]}' | cat\n")
+code, out = run("batch", "--mine", "--dry")
+check("batch --mine --dry: in danh sách, chỉ JR-7 chưa mở, không mở phiên", code == 0 and "chưa mở: JR-7" in out and len(json.load(open(sess))) == 3)
+cfg("MAX_PARALLEL=2\nTICKET_CMD=echo noi dung {id}\nTICKET_LIST_CMD=echo '{\"issues\":[],\"isLast\":true}' | cat\n")
+code, out = run("batch", "--mine", "--dry")
+check("batch --mine: không có ticket → không lấy JSON làm id", code == 0 and "chưa làm: 0" in out)
+ENV["AGENT_TEAM_CLAUDE"] = "/khong/co/claude"
+code, out = run("batch", "JR-8", "--base", "HEAD")
+stop_watch()
+check("batch: không mở được phiên nền → báo rõ, không hiện đang chạy", "✗ KHÔNG mở được phiên nền · JR-8" in out and "▶ đang chạy · JR-8" not in out)
+ENV["AGENT_TEAM_CLAUDE"] = fake
+cfg("")
+os.remove(lc)
+check("batch --mine: không có secret, không có nguồn → hướng dẫn điền key", "agent-team.secret" in run("batch", "--mine")[1])
+del ENV["AGENT_TEAM_CLAUDE"]
+
 # ---- v0.44.0: reconcile — user merge tay branch task vào branch phiên ----
 cfg("MAX_PARALLEL=8\n")
 run("add", "M-2/T-20", "--task-id", "20261126-m2-t20", "--title", "Merge tay")
@@ -253,6 +323,13 @@ check("commit --set: test-executor commit file test + đổi trạng thái 1 l�
       code == 0 and "app/c.test.ts" in sh(w21, "git", "show", "--name-only", "--format=", "HEAD") and "MERGE_WAIT" in out)
 code, out = run("commit", "M-2/T-21", "backend-dev", "khong co gi")
 check("commit: không có file của role → báo, không lỗi", code == 0 and "không có file" in out)
+open(os.path.join(w21, "app", "all.txt"), "w").write("x\n")
+open(os.path.join(w21, "app", "all.test.ts"), "w").write("x\n")
+code, out = run("commit", "M-2/T-21", "all", "ca task")
+stA = sh(w21, "git", "status", "--porcelain")
+check("commit all: 1 commit [team] gom mọi vùng (code + FE + test), vẫn bỏ .env",
+      code == 0 and sh(w21, "git", "log", "-1", "--format=%s").strip() == "[team] 20261126-m2-t21: ca task"
+      and "all.txt" not in stA and "all.test.ts" not in stA and "c.tsx" not in stA and ".env" in stA)
 sh(d, "git", "switch", "-q", "master")
 open(os.path.join(d, "app", "m.txt"), "w").write("x\n")
 code, out = run("commit", "20261126-le", "backend-dev", "x")

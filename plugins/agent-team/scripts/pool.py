@@ -26,8 +26,10 @@ Team (Phase B / C):
 """
 import argparse
 import glob
+import json
 import os
 import re
+import shlex
 import sqlite3
 import subprocess
 import sys
@@ -441,6 +443,154 @@ def cmd_side(db, root, a):
     print(f"Mở terminal mới: cd {path} && claude  → /agent-team:task …  · xong: pool.py side {a.task_id} --done")
 
 
+def batch_sessions(wdir):
+    """{task-id: phiên Claude nền đang ở worktree của task đó}"""
+    try:
+        rows = json.loads(subprocess.run([os.environ.get("AGENT_TEAM_CLAUDE", "claude"), "agents", "--json"], capture_output=True, text=True).stdout)
+    except (OSError, ValueError):
+        rows = []
+    return {os.path.basename(x["cwd"]): x for x in rows
+            if x.get("kind") == "background" and os.path.dirname(os.path.realpath(x.get("cwd") or "/")) == os.path.realpath(wdir)}
+
+
+def batch_kind(wdir, t, x):
+    """run = đang chạy · done = dừng ở S6 · ask = dừng giữa chừng (chờ user trả lời / duyệt quyền / lỗi)."""
+    if x.get("status") == "busy":
+        return "run"
+    try:
+        stage = open(os.path.join(wdir, t, ".agent-team", "stage"), encoding="utf-8").read().strip().upper()
+    except OSError:
+        stage = ""
+    return "done" if stage == "S6" else "ask"
+
+
+def batch_notify(msg):
+    if sys.platform == "darwin" and not os.environ.get("AGENT_TEAM_NO_NOTIFY"):
+        subprocess.run(["osascript", "-e", f'display notification "{msg}" with title "agent-team" sound name "Glass"'], capture_output=True)
+
+
+def ticket_env(root):
+    """Biến cho TICKET_CMD: KEY=giá trị của .claude/agent-team.secret (riêng máy, phải gitignore, hook chặn đọc)."""
+    path = lambda n: os.path.join(root, ".claude", n)
+    read = lambda p: dict(m.groups() for m in (re.match(r"^\s*([A-Z][A-Z0-9_]*)=(.*)$", x) for x in (open(p, encoding="utf-8", errors="ignore") if os.path.isfile(p) else [])) if m)
+    for name in ("agent-team.config", "agent-team.local.config"):
+        bad = [k for k, v in read(path(name)).items() if re.search(r"TOKEN|SECRET|PASSWORD|API_KEY", k) and v.strip()]
+        if bad:
+            die(f"{name} đang chứa {', '.join(bad)}: chuyển sang .claude/agent-team.secret (file riêng cho token, hook chặn đọc)"
+                + (" và đổi token (token đã commit coi như lộ)" if name == "agent-team.config" else ""))
+    env = read(path("agent-team.secret"))
+    if env and git(root, "check-ignore", "-q", path("agent-team.secret"))[0]:
+        die(".claude/agent-team.secret chưa được gitignore: thêm dòng `.claude/agent-team.secret` vào .gitignore")
+    return {**os.environ, **{k: v.strip().strip("'\"") for k, v in env.items()}}
+
+
+TICKET_DEFAULTS = {
+    "jira": ('curl -sf "$JIRA_URL/rest/api/3/issue/{id}?fields=summary,description,comment" -u "$JIRA_EMAIL:$JIRA_TOKEN" --max-time 20',
+             'curl -sfG "$JIRA_URL/rest/api/3/search/jql" --data-urlencode "jql=assignee = currentUser() AND statusCategory = \'To Do\' ORDER BY priority DESC" '
+             '--data-urlencode "fields=key" -u "$JIRA_EMAIL:$JIRA_TOKEN" --max-time 20'),
+    "github": ("gh issue view {id} --json title,body,comments", "gh issue list --assignee @me --state open --json number"),
+}
+
+
+def ticket_cmds(root):
+    """(lệnh lấy 1 ticket, lệnh liệt kê ticket của tôi): config ghi đè, không thì theo TICKET_SOURCE (có JIRA_TOKEN trong secret → jira)."""
+    src = cfg(root, "TICKET_SOURCE", "").lower() or ("jira" if "JIRA_TOKEN" in ticket_env(root) else "")
+    one, many = TICKET_DEFAULTS.get(src, ("", ""))
+    return cfg(root, "TICKET_CMD", one), cfg(root, "TICKET_LIST_CMD", many)
+
+
+def cmd_batch(db, root, a):
+    wdir = os.path.join(root, cfg(root, "WORKTREE_DIR", ".worktrees"))
+    ticket = lambda t: os.path.join(root, ".agent-team", "tickets", f"{t}.md")
+    qf, pf = os.path.join(root, ".agent-team", "batch-queue"), os.path.join(root, ".agent-team", "batch.pid")
+    read_queue = lambda: open(qf, encoding="utf-8").read().split() if os.path.isfile(qf) else []
+    queue = read_queue()
+    fetch, lst = ticket_cmds(root)
+    if a.mine:
+        if not lst:
+            die("chưa biết lấy ticket từ đâu: Jira → điền JIRA_URL, JIRA_EMAIL, JIRA_TOKEN vào .claude/agent-team.secret; "
+                "GitHub → TICKET_SOURCE=github trong .claude/agent-team.local.config; nguồn khác → đặt TICKET_LIST_CMD")
+        r = subprocess.run(lst, shell=True, cwd=root, capture_output=True, text=True, env=ticket_env(root))
+        if r.returncode:
+            die(f"TICKET_LIST_CMD lỗi: {(r.stderr or 'không có kết quả').strip()[-200:]}")
+        found = re.findall(r'"key"\s*:\s*"([^"]+)"', r.stdout) or re.findall(r'"number"\s*:\s*(\d+)', r.stdout) or ([] if r.stdout.lstrip()[:1] in "[{" else r.stdout.split())
+        a.ids = list(dict.fromkeys(a.ids + found))
+        new = [t for t in a.ids if t not in queue and not os.path.isdir(os.path.join(wdir, t))]
+        print(f"Ticket đang giao cho bạn, chưa làm: {len(a.ids)} · chưa mở: {' '.join(new) or '-'}")
+        if a.dry:
+            return
+    for t in a.ids:
+        if not os.path.isfile(ticket(t)) and fetch:
+            r = subprocess.run(fetch.replace("{id}", shlex.quote(t)), shell=True, cwd=root, capture_output=True, text=True, env=ticket_env(root))
+            if r.returncode or not r.stdout.strip():
+                die(f"TICKET_CMD không lấy được {t}: {(r.stderr or 'không có nội dung').strip()[-200:]}")
+            os.makedirs(os.path.dirname(ticket(t)), exist_ok=True)
+            with open(ticket(t), "w", encoding="utf-8") as f:
+                f.write(r.stdout)
+        if not os.path.isfile(ticket(t)):
+            die(f"thiếu nội dung ticket {os.path.relpath(ticket(t), root)}: điền key Jira vào .claude/agent-team.secret, "
+                f"hoặc ghi nguyên văn yêu cầu của {t} vào file này")
+        if t not in queue and not os.path.isdir(os.path.join(wdir, t)):
+            queue.append(t)
+    limit, told, failed = max_parallel(root), set(), []
+    while True:
+        if a.watch:
+            queue = read_queue()
+        live = batch_sessions(wdir)
+        kinds = {t: batch_kind(wdir, t, x) for t, x in live.items()}
+        busy = {t for t, k in kinds.items() if k == "run"}
+        while queue and len(busy) < limit:
+            t = queue.pop(0)
+            cmd_side(db, root, argparse.Namespace(task_id=t, base=a.base or cfg(root, "BASE_BRANCH", "HEAD"), done=False))
+            path = os.path.join(wdir, t)
+            with open(os.path.join(path, ".agent-team", "ticket.md"), "w", encoding="utf-8") as f:
+                f.write(open(ticket(t), encoding="utf-8").read())
+            try:
+                r = subprocess.run([os.environ.get("AGENT_TEAM_CLAUDE", "claude"), "--bg", "--permission-mode", cfg(root, "BATCH_PERMISSION", "auto"),
+                                    f"/agent-team:task {t}: yêu cầu gốc nằm trong .agent-team/ticket.md (đọc nguyên văn). Đang ở worktree task lẻ, "
+                                    f"branch task/{t} đã có: task-id = {t}, không tạo branch mới. Làm tới hết S6, không hỏi lại."],
+                                   cwd=path, capture_output=True, text=True)
+                code, said = r.returncode, (r.stdout + r.stderr).strip()
+            except OSError as e:
+                code, said = 1, str(e)
+            if code or not said:
+                failed.append(t)
+                print(f"  {t}: KHÔNG mở được phiên nền ({said.splitlines()[0] if said else 'không có phản hồi'}) · mở tay: cd {path} && claude")
+                continue
+            print(f"  {t}: {said.splitlines()[0]}")
+            busy.add(t)
+        with open(qf, "w", encoding="utf-8") as f:
+            f.write("\n".join(queue) + "\n")
+        if not a.watch:
+            break
+        for t, k in kinds.items():
+            if k != "run" and (t, k) not in told:
+                told.add((t, k))
+                batch_notify(f"{t}: xong" if k == "done" else f"{t}: đang dừng, cần bạn trả lời (claude attach {live[t].get('id', '')})")
+        if not (queue or busy):
+            break
+        time.sleep(a.interval)
+    if (queue or busy) and not a.watch:
+        try:
+            os.kill(int(open(pf).read()), 0)
+        except (OSError, ValueError):
+            w = subprocess.Popen([sys.executable, os.path.abspath(__file__), "batch", "--watch"], cwd=root, start_new_session=True,
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)
+            open(pf, "w").write(str(w.pid))
+    live = batch_sessions(wdir)
+    label = {"run": "▶ đang chạy", "done": "✅ xong", "ask": "⏸ ĐANG DỪNG, cần bạn trả lời"}
+    for t in sorted(set(live) | busy):
+        x = live.get(t, {})
+        k = "run" if t in busy else batch_kind(wdir, t, x)
+        print(f"{label[k]} · {t}" + (f" → claude attach {x['id']}" if k == "ask" and x.get("id") else f" · {x['id']}" if x.get("id") else ""))
+    for t in failed:
+        print(f"✗ KHÔNG mở được phiên nền · {t}")
+    for t in queue:
+        print(f"○ chờ chỗ trống · {t}")
+    print(f"Tối đa {limit} task cùng lúc (MAX_PARALLEL)" + (" · task chờ tự mở khi có chỗ" if queue else "")
+          + " · task dừng / xong có thông báo trên máy · dọn task xong: pool.py side <id> --done")
+
+
 def cmd_set(db, root, a):
     r = row(db, a.label)
     st = a.state.upper()
@@ -574,8 +724,8 @@ def cmd_reconcile(db, root, a):
 
 OWNER_ZONE = {"backend-dev": "be", "frontend-dev": "fe", "test-executor": "test"}
 TEST_FILE_RE = re.compile(r"(^|/)(__tests__|__mocks__)/|(_spec|_test)\.\w+$|\.(spec|test)\.\w+$|(^|/)test_[^/]+\.py$")
-SECRET_FILE_RE = re.compile(r"(^|/)(\.env(\.(?!example$|sample$|template$|dist$)[^/]+)?|id_(rsa|ed25519|ecdsa|dsa)[^/]*|\.(npmrc|pgpass|netrc)|[^/]+\.(pem|key|dump|sql\.gz|bak))$")
-PROTECTED = ("main", "master", "develop")
+SECRET_FILE_RE = re.compile(r"(^|/)(\.env([._-](?!example$|sample$|template$|dist$)[^/]+)?|id_(rsa|ed25519|ecdsa|dsa)[^/]*|\.(npmrc|pgpass|netrc)|agent-team\.secret|[^/]+\.(pem|key|dump|sql\.gz|bak))$")
+PROTECTED_RE = re.compile(r"^(main|master|develop|([^/]+-)?(production|staging))$")
 
 
 def zone_of(root, rel):
@@ -592,18 +742,18 @@ def cmd_commit(db, root, a):
     if a.set and not r:
         die("--set chỉ dùng với task trong pool (M-n/T-k)")
     wdir = os.path.join(root, r["worktree"]) if r and r["worktree"] else root
-    if git(wdir, "branch", "--show-current")[1] in PROTECTED:
-        die("không commit trên main / master / develop")
+    if PROTECTED_RE.match(git(wdir, "branch", "--show-current")[1]):
+        die("không commit trên main / master / develop / production / staging")
     out = subprocess.run(["git", "-C", wdir, "status", "--porcelain", "--no-renames", "-uall"], capture_output=True, text=True).stdout
     mine, take, left, secret = OWNER_ZONE.get(role), [], [], []
     for line in out.splitlines():
         f = line[3:].strip('"')
         z = zone_of(root, f)
-        (secret if SECRET_FILE_RE.search(f) else left if f.startswith(".claude/") or z not in (None, mine) else take).append(f)
+        (secret if SECRET_FILE_RE.search(f) else left if f.startswith(".claude/") or (role != "all" and z not in (None, mine)) else take).append(f)
     done = "không có file của role để commit"
     if take:
         git(wdir, "add", "--", *take)
-        code, err = git(wdir, "commit", "-q", "-m", f"[{role}] {r['task_id'] if r else a.task}: {msg}", "--", *take)
+        code, err = git(wdir, "commit", "-q", "-m", f"[{'team' if role == 'all' else role}] {r['task_id'] if r else a.task}: {msg}", "--", *take)
         if code:
             die(f"commit lỗi: {err[-300:]}")
         done = f"{len(take)} file · {git(wdir, 'rev-parse', '--short', 'HEAD')[1]}"
@@ -673,7 +823,7 @@ def cmd_wait(db, root, a):
         if done or (free > 0 and ready) or (merge and not db.execute("SELECT 1 FROM pool WHERE state='MERGING'").fetchone()):
             out = done + ([f"Còn chỗ: {', '.join(ready)} → pool.py fill"] if free > 0 and ready else []) + \
                   ([f"Chờ merge: {', '.join(merge)} → pool.py merge-begin {merge[0]}"] if merge else [])
-            print("CÓ VIỆC:\n" + "\n".join(out))
+            print("CÓ VIỆC:\n" + "\n".join(out) + ("\nAgent nào 10 giây sau vẫn hiện đang chạy (waiting on shell): TaskStop ngay agent đó + shell nền của nó, kết quả đã có ở đây" if done else ""))
             sys.exit(0)
         if not rows and not ready and not merge and not db.execute("SELECT 1 FROM pool_modules WHERE state='DESIGN'").fetchone():
             print("HẾT VIỆC trong pool (thiết kế module tiếp theo hoặc báo cáo cuối)")
@@ -1157,7 +1307,7 @@ def main(argv=None):
     sp.add_parser("fill"), sp.add_parser("status"), sp.add_parser("resume")
     s = sp.add_parser("set")
     s.add_argument("label"), s.add_argument("state"), s.add_argument("--note")
-    cm = sp.add_parser("commit", help="agent xong: commit file vùng của role trong worktree của task")
+    cm = sp.add_parser("commit", help="task xong: role `all` = 1 commit cho cả task (mọi file trừ .claude/ và file nhạy cảm)")
     cm.add_argument("task"), cm.add_argument("role"), cm.add_argument("msg"), cm.add_argument("--set")
     mb = sp.add_parser("merge-begin")
     mb.add_argument("label"), mb.add_argument("--allow-schema-change", action="store_true", help="đã duyệt GAP đổi bảng chung")
@@ -1174,6 +1324,10 @@ def main(argv=None):
     sp.add_parser("reconcile", help="user đã merge tay branch task vào branch phiên → đánh DONE + dọn worktree")
     sd = sp.add_parser("side", help="task lẻ chạy song song ở terminal khác: worktree + cổng + DB riêng")
     sd.add_argument("task_id"), sd.add_argument("--base", default="HEAD"), sd.add_argument("--done", action="store_true")
+    bt = sp.add_parser("batch", help="chạy nhiều task lẻ độc lập, mỗi task 1 phiên Claude nền trong worktree riêng (không có id: xem trạng thái)")
+    bt.add_argument("ids", nargs="*"), bt.add_argument("--base")
+    bt.add_argument("--mine", action="store_true", help="lấy danh sách ticket bằng TICKET_LIST_CMD"), bt.add_argument("--dry", action="store_true", help="chỉ in danh sách, không mở phiên")
+    bt.add_argument("--watch", action="store_true"), bt.add_argument("--interval", type=int, default=60)
     w = sp.add_parser("wait")
     w.add_argument("--interval", type=int, default=30), w.add_argument("--max", type=int, default=540)
     a = p.parse_args(argv)

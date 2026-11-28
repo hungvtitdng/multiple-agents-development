@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """agent-team heartbeat: ghi trạng thái subagent vào board.db (last_seen, tool đang chạy, DONE khi kết thúc).
 Dùng cho `board.py wait / status / stuck` và status line. Không bao giờ chặn: lỗi gì cũng exit 0.
-Gọi: heartbeat.py pre | post | stop  (PreToolUse, PostToolUse, SubagentStop)."""
+Gọi: heartbeat.py pre | post | stop | lead-stop  (PreToolUse, PostToolUse, SubagentStop, Stop).
+`lead-stop`: còn agent đang chạy thì nhắc Lead chờ bằng wait (in JSON decision=block, vẫn exit 0)."""
 import importlib.util
 import json
 import os
@@ -15,7 +16,7 @@ def main():
     spec = importlib.util.spec_from_file_location("board", os.path.join(here, "..", "scripts", "board.py"))
     board = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(board)
-    board.heartbeat(event, data)
+    board.lead_stop(data) if event == "lead-stop" else board.heartbeat(event, data)
 
 
 if __name__ == "__main__":

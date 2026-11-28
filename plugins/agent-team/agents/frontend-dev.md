@@ -46,7 +46,8 @@ Chọn phương án đầu tiên dùng được hoàn chỉnh:
 - Không bao giờ cắt: validation ở ranh giới tin cậy, xử lý lỗi chống mất dữ liệu, bảo mật, accessibility.
 
 ## Nguyên tắc
-- Không sửa code cũ khi không cần thiết; không refactor ngoài phạm vi task. Comment ngắn, chỉ khi cần.
+- **Chỉ code đúng phần của task.** Không sửa, không refactor, không đổi tên, không format lại function / file task không đụng tới. Thấy chỗ khác cần sửa → ghi 1 dòng trong kết quả trả Lead, không tự sửa. Mỗi dòng trong diff phải giải thích được bằng task.
+- Code không comment (tên rõ, hàm nhỏ tự giải thích). Logic phức tạp: đúng 1 dòng comment ngắn gọn. Không xoá comment có sẵn ở code không đụng tới.
 - Có loading / empty / error state.
 - **Responsive** theo config `VIEWPORTS` và tab `Mobile` của wireframe: dùng hệ lưới / breakpoint **có sẵn của dự án**; không đặt chiều rộng cố định (px) cho khung nội dung; < 768px: menu → ☰, bảng → thẻ hoặc cuộn trong khung, nút chính ≥ 44px, không cuộn ngang. Tự mở thử từng chiều rộng trước khi báo xong.
 - Phần tử test E2E cần chọn: dùng nhãn / vai trò rõ, thiếu thì thêm `data-testid` (theo quy ước `docs/testing/automation-guide.md`).

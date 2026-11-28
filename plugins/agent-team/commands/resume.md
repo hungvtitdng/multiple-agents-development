@@ -24,7 +24,7 @@ Trạng thái nằm trên đĩa nên làm tiếp được. **Chạy tiếp tới
 | Có CONTEXT, chưa có "Phương án chốt" | Debate: `board.py status` → lượt đang mở còn ai chưa post thì gọi tiếp role đó; lượt đã đủ thì `summary` + `close` rồi mở lượt kế (agent tự đọc board; **điểm kín chưa nộp thì gọi lại** để chấm) |
 | Đã chốt, chưa có Security duyệt solution | Security duyệt nhanh |
 | Lượt / giai đoạn có agent dở (`board.py status` mục Agent) | Agent `DONE`: lấy kết quả từ đó, **không gọi lại**. Agent còn `RUNNING` / ⚠ im / chưa bắt đầu: gọi lại **chỉ agent đó** (chạy nền + `board.py wait`, task.md mục 2), kèm lý do treo trong status (lệnh đang kẹt) |
-| Stage S3, có commit dở | Dev tiếp (đọc `git diff`, `git log` để biết đã làm gì) |
+| Stage S3, có thay đổi chưa commit (task chỉ commit 1 lần khi xong) | Dev tiếp (đọc `git status`, `git diff` để biết đã làm gì) |
 | `MOCKS.md` (task hoặc module) có dòng chờ task này chưa `VERIFIED` | SWAP theo `task.md` mục 6b: `OPEN` → giao dev nối thật + xoá mock; `SWAPPED` → E2E với BE thật |
 | Có `docs/audit/AUDIT-*.md` với `Bước:` khác `DONE` | Làm tiếp theo `audit.md`: `REVIEW` → gọi lại làn chưa có lỗi trong bảng · `CHỜ DUYỆT` → báo user điền cột `Sửa?` · `UPDATE` → dòng `Sửa?: YES` chưa `FIXED` / `BACKLOG` |
 | Stage S4 | test-executor chạy tiếp; xem `docs/testing/test-report.md`. Task có UI: xem ảnh đã có trong `docs/testing/evidence/<task-id>/` để biết chiều rộng nào chưa chạy E2E |

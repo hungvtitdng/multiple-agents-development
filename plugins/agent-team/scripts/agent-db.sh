@@ -240,6 +240,8 @@ install_cmd() {
     package-lock.json) echo "npm ci" ;;
     yarn.lock) echo "yarn install --frozen-lockfile" ;;
     pnpm-lock.yaml) echo "pnpm install --frozen-lockfile" ;;
+    Gemfile.lock) echo "bundle install" ;;
+    go.sum) echo "go mod vendor" ;;
   esac
 }
 

@@ -71,6 +71,8 @@ SEED_CMD=
 SCHEMA_DOC=docs/database/schema.md
 # Điều phối (App / Module, pool.py): số slot cho cả app = task code + debate module. Đổi lúc nào cũng được (tự scale)
 MAX_PARALLEL=8
+# /agent-team:tasks: chế độ quyền của phiên Claude nền (số task cùng lúc = MAX_PARALLEL; nguồn ticket: agent-team.local.config)
+BATCH_PERMISSION=auto
 # Số module debate cùng lúc (mỗi debate 1 slot), module khác chờ
 MAX_DEBATE=4
 # Merge + integration test chạy quá số phút này thì status line hiện ⚠
@@ -121,6 +123,7 @@ SCHEMA_ENV="DB_DATABASE={db}"                           # env riêng của task:
 # SCHEMA_ENV="DB_DATABASE={db} REDIS_PREFIX={task}_ CACHE_PREFIX={task}_ SCOUT_PREFIX={task}_ QUEUE_CONNECTION=sync MAIL_MAILER=log"
 SCHEMA_DOWN_CMD=                                        # dọn dữ liệu service của task khi xong, vd "php artisan cache:clear" (có {task})
 SHARED_DEPS="vendor:composer.lock node_modules:package-lock.json"  # mỗi worktree 1 bản riêng (clone APFS / reflink từ thư mục chính, lock khác thì cài lại)
+# Theo stack (bảng đầy đủ ở init.md): Rails "node_modules:yarn.lock" (+ "vendor/bundle:Gemfile.lock") · Go để trống (có vendor/: "vendor:go.sum") · Node "node_modules:<lock>"
 
 # Biến env app dùng để trỏ tới DB riêng của task. Placeholder: {host} {port} {user} {password} {db} {url}
 CLONE_ENV="DATABASE_URL={url}"

@@ -10,7 +10,7 @@ import subprocess
 import sys
 import time
 
-PROTECTED_BRANCHES = {"main", "master", "develop"}
+PROTECTED_RE = re.compile(r"^(main|master|develop|([^/]+-)?(production|staging))$")
 READONLY_ROLES = {
     "business-analyst", "solution-architect", "technical-architect",
     "test-designer", "code-reviewer", "security", "scout", "challenger", "ui-designer",
@@ -67,12 +67,13 @@ BOARD = "board.py"
 BOARD_ROLE_CMDS = {"post", "read", "status", "whys", "done", "progress"}
 HEREDOC_RE = re.compile(r"<<(-?)\s*['\"]?([A-Za-z_][A-Za-z0-9_]*)['\"]?")
 
-ENV_SAMPLES = {".env.example", ".env.sample", ".env.template", ".env.dist"}
+ENV_SAMPLE_RE = re.compile(r"^\.env[._-](example|sample|template|dist)$")
 SECRET_NAME_RES = [
-    re.compile(r"^\.env(\..+)?$"),
+    re.compile(r"^\.env([._-].+)?$"),
     re.compile(r"^master\.key$"),
+    re.compile(r"^agent-team\.secret$"),
     re.compile(r"^.+\.key$"),
-    re.compile(r"^.+\.pem$"),
+    re.compile(r"^.+\.(pem|p12|pfx)$"),
     re.compile(r"^id_(rsa|ed25519|ecdsa|dsa)(\..*)?$"),
     re.compile(r"^\.(npmrc|pgpass|netrc)$"),
     re.compile(r"^.+\.(dump|sql\.gz|bak)$"),
@@ -108,20 +109,20 @@ def norm_role(data):
     return raw.strip().lower().split(":")[-1]
 
 
-ENV_FILE_RE = re.compile(r"^\.env(\..+)?$")
+ENV_FILE_RE = re.compile(r"^\.env([._-].+)?$")
 
 
 def is_env_file(p):
     """.env, .env.local...: được xem / sửa, chỉ cấm commit / push (mẫu .env.example không tính)."""
     base = os.path.basename((p or "").strip("'\"").rstrip("/"))
-    return bool(ENV_FILE_RE.match(base)) and base not in ENV_SAMPLES
+    return bool(ENV_FILE_RE.match(base)) and not ENV_SAMPLE_RE.match(base)
 
 
 def is_secret_path(p):
     if not p:
         return False
     base = os.path.basename(p.strip("'\"").rstrip("/"))
-    if base in ENV_SAMPLES:
+    if ENV_SAMPLE_RE.match(base):
         return False
     return any(r.match(base) for r in SECRET_NAME_RES)
 
@@ -191,6 +192,35 @@ def check_env_dump(cmd):
         if tk[:2] == ["docker", "inspect"] or (len(tk) >= 3 and tk[0] in ("docker", "docker-compose") and "config" in tk[1:4]):
             block("docker inspect / compose config in ra secret")
 
+MIGRATION_GEN_RE = re.compile(
+    r"\bmake:migration\b|\bmake:model\b.*\s(-\w*[ma]\w*|--migration|--all)\b|\b(g|generate)\s+(migration|model|scaffold|resource)\b"
+    r"|\bmakemigrations\b|\balembic\s+revision\b|\bmigration:(generate|create)\b"
+)
+ENV_COPY_CMDS = {"cp", "mv", "rsync", "install", "ln", "scp"}
+ENV_READ_CMDS = {"cat", "sed", "awk", "grep", "head", "tail", "tee", "sort"}
+
+
+def check_env_copy(cmd, cwd):
+    for tk in parse(cmd):
+        while tk and re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", tk[0]):
+            tk = tk[1:]
+        if not tk:
+            continue
+        fc, args, outs = os.path.basename(tk[0]), [], []
+        for i, t in enumerate(tk[1:], 1):
+            if t.startswith(">"):
+                outs.append(t.lstrip(">") or (tk[i + 1] if i + 1 < len(tk) else ""))
+            elif not t.startswith("-") and not tk[i - 1].startswith(">"):
+                args.append(t)
+        if fc in ENV_COPY_CMDS and len(args) >= 2 and any(is_env_file(a) for a in args[:-1]):
+            outs.append(args[-1])
+        elif not (fc in ENV_READ_CMDS and any(is_env_file(a) for a in args)):
+            continue
+        for o in outs:
+            if o and o != "/dev/null" and not o.startswith("&") and not is_env_file(o) and not os.path.isdir(os.path.join(cwd, os.path.expanduser(o))):
+                block(f"không chép nội dung .env sang file tên khác ('{o}'): file đó không được nhận diện là .env nên dễ bị commit / push kèm KEY. "
+                      "Cần bản riêng thì đặt tên dạng `.env.<tên>`")
+
 
 def check_db(cmd):
     for tk in parse(cmd):
@@ -199,6 +229,8 @@ def check_db(cmd):
             continue
         if DB_TASK_RE.search(" ".join(tk)):
             block("migration/lệnh DB chỉ được chạy qua agent-db.sh (DB riêng của task), không đụng DB thật")
+        if MIGRATION_GEN_RE.search(" ".join(tk)):
+            block("sinh file migration chỉ qua `.claude/agent-team/agent-db.sh generate <task-id> <Tên> [field:type...]` (generator chạy trong container)")
 
 
 def scan_outgoing(cwd):
@@ -290,13 +322,13 @@ def check_git(cmd, cwd, role=None):
                 block("không force push / xoá branch remote")
             for a in args:
                 target = a.split(":")[-1].replace("refs/heads/", "")
-                if target in PROTECTED_BRANCHES:
+                if PROTECTED_RE.match(target):
                     block(f"không push vào '{target}'")
-            if branch in PROTECTED_BRANCHES:
+            if PROTECTED_RE.match(branch):
                 block(f"đang ở '{branch}', chỉ push từ branch task/*")
             scan_outgoing(cwd)
         elif sub in ("commit", "merge", "rebase", "cherry-pick", "revert", "am", "pull"):
-            if branch in PROTECTED_BRANCHES:
+            if PROTECTED_RE.match(branch):
                 block(f"không {sub} trên '{branch}', hãy dùng branch task/*")
             if sub == "commit":
                 if find_root(hook_cwd):
@@ -1021,6 +1053,16 @@ def check_forever(cmd):
         if rx.search(flat):
             block(f"{what}: lệnh không tự dừng sẽ làm treo. Dùng: {alt} (hoặc bọc `timeout <giây> ...`)")
 
+def check_agent_background(ti, role):
+    if not role:
+        return
+    flat = " ".join(unquoted(ti.get("command") or "").split())
+    bg = ti.get("run_in_background") or re.search(r"(?<![&>|])&(?![&>])", flat) or re.search(r"\bnohup\b", flat)
+    if bg and not re.search(r"(^|[;&|(]\s*)timeout\s+\d+", flat):
+        block("agent không mở shell chạy nền không có giới hạn: shell còn sống thì agent không kết thúc được dù đã báo xong. "
+              "Chạy foreground, hoặc bọc `timeout <giây> ...` với số giây đủ cho việc đó (việc 30 phút: `timeout 2400`), hook không giới hạn con số")
+
+
 def check_stage_change(new_stage, cwd):
     """Lead đổi giai đoạn: TASK.md (task mới nhất) phải đủ điều kiện."""
     root = find_root(cwd)
@@ -1487,6 +1529,7 @@ def main():
         if role and re.search(r"\bpool\.py\b", cmd):
             block("pool.py (điều phối task, worktree, merge) chỉ Lead dùng")
         check_forever(cmd)
+        check_agent_background(ti, role)
         if role and any(first_cmd(tk) in PERM_CMDS for tk in parse(cmd)):
             block("không được đổi quyền file (chmod/chown...), nhờ Lead")
         check_graphify(cmd, role)
@@ -1502,6 +1545,7 @@ def main():
             check_stage_change(m.group(1), cwd)
         check_secret_tokens(cmd)
         check_env_dump(cmd)
+        check_env_copy(cmd, cwd)
         check_db(cmd)
         check_shared_container(cmd, cwd)
         check_git(cmd, cwd, role)

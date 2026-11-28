@@ -37,7 +37,7 @@ Làm đúng playbook dưới đây. **Không hỏi lại user**, team tự bàn 
 - Gọi subagent `agent-team:<role>`. Mỗi agent chạy xong là kết thúc. Agent **tự đọc và post lên board** (mục 3), trả về bạn ≤ 5 dòng: số tin đã post, **điểm chấm** (kín, không post), `Assumption`. Không ghi TASK.md (hook chặn). **Gọi các agent cùng lượt trong cùng một message để chạy song song.**
 - Mỗi lần gọi nêu: task-id, mục tiêu, đầu vào (đường dẫn TASK.md, CONTEXT.md). **Không dán lại kết quả lượt trước**: agent tự `board.py read <task-id>`. Đầu ra: bài post ≤ 15 dòng theo `templates/POST.md` + điểm chấm trả riêng cho bạn.
 - Skill trong plugin (`agent-team:<tên>`) agent tự nạp khi cần, không cần dán vào prompt.
-- **Ít lượt gọi (mỗi lượt của bạn đọc lại toàn bộ ngữ cảnh phiên):** agent xong → **một** lệnh `python3 .claude/agent-team/pool.py commit <M-n/T-k | task-id> <role> "<mô tả>" [--set <STATE>]` (tự add file vùng của role + file docs, commit `[role] task-id: mô tả`, đổi trạng thái; file vùng role khác / `.claude/` / file nhạy cảm để lại và in ra), không `git status` / `git add` / `git commit` rời; các lệnh sổ sách khác liên tiếp (`board.py step / plan`, ghi stage) nối bằng `&&` trong **một** lần Bash; nhiều agent xong cùng lúc → xử lý chung 1 lượt. Không tự `grep` / `cat` code để kiểm lại việc của agent: cần thêm thì đọc `board.py read` hoặc hỏi lại agent đó. Không `Read` ảnh chụp trừ khi phải tự chấm.
+- **Ít lượt gọi (mỗi lượt của bạn đọc lại toàn bộ ngữ cảnh phiên):** **mỗi task đúng 1 commit**: agent xong thì **không commit** (code, test, tài liệu, TASK.md cứ để chưa commit trong worktree, agent sau làm tiếp trên đó); S5 `APPROVED` + điền xong TASK.md → **một** lệnh `python3 .claude/agent-team/pool.py commit <M-n/T-k | task-id> all "<mô tả task>" [--set <STATE>]` (add mọi file của task trừ `.claude/` + file nhạy cảm, commit `[team] task-id: mô tả`, đổi trạng thái), không `git status` / `git add` / `git commit` rời, không commit riêng tài liệu của bạn; các lệnh sổ sách khác liên tiếp (`board.py step / plan`, ghi stage) nối bằng `&&` trong **một** lần Bash; nhiều agent xong cùng lúc → xử lý chung 1 lượt. Không tự `grep` / `cat` / `git status` để xem task tới đâu: **một** lệnh `$B status <task-id>` in lượt đang mở, agent, các bước, điều kiện TASK.md và file đổi chưa commit; cần thêm thì đọc `board.py read` hoặc hỏi lại agent đó. Không `Read` ảnh chụp trừ khi phải tự chấm.
 - **Gọi agent chạy nền, chờ bằng `board.py wait`** (để 1 agent treo không làm bạn kẹt theo):
   ```
   1. Gọi các agent của lượt trong cùng 1 message, mỗi agent `run_in_background: true`.
@@ -49,7 +49,12 @@ Làm đúng playbook dưới đây. **Không hỏi lại user**, team tự bàn 
                         TaskStop agent đó → gọi lại đúng agent đó, kèm lý do trong output
                         ("lần trước kẹt ở docker compose up: dùng up -d") → wait tiếp
   3. Agent DONE rồi mà thông báo chạy nền tới sau: bỏ qua, kết quả đã lấy ở bước 2.
+  4. Agent chạy `board.py done` (hoặc kết thúc) thì shell nền nó mở bằng `run_in_background` **tự bị tắt**. Vẫn còn:
+     agent đã trả kết quả / board ghi DONE mà **10 giây sau** vẫn hiện đang chạy ("waiting on shell": còn shell nền
+     chưa thoát): **TaskStop** agent đó + shell nền của nó ngay, không chờ thêm. Kết quả đã ở board; kiểm `git status`
+     của worktree trước khi commit. Agent chưa DONE thì không tắt theo luật này (việc chạy lâu là bình thường, xem exit 3).
   ```
+  **Còn agent đang chạy thì không kết thúc lượt, không viết câu "đang chờ":** lệnh cuối của lượt là `wait`. Hook Stop nhắc 1 lần khi bạn dừng mà còn agent chạy; cần user quyết định thật thì dừng lần nữa.
   Treo = **im lặng** (không dùng tool nào), không phải chạy lâu: agent vẽ 11 màn vẫn ghi file liên tục nên không bị báo. `$B stuck <task-id>` in agent treo + lệnh đang kẹt (`pgrep` để tắt từ terminal khác).
 - **Agent kết thúc bằng `board.py done <task-id> --role <role> --body "<≤ 5 dòng>"`** (skill `debate-board` mục 5). Sau `done`, board từ chối post thêm ở lượt đó. Quên `done` → hook `SubagentStop` tự ghi DONE khi agent kết thúc.
 - Chỉ truyền ngữ cảnh cần thiết. Không nhờ nhiều agent làm cùng một phân tích trừ khi cần đối chiếu độc lập.
@@ -76,7 +81,7 @@ Mọi lần bạn làm 1 bước, **toàn bộ lịch sử phiên** được g�
 - **Không tự đọc bài post trên board.** Biết debate qua: (1) kết quả agent trả về (≤ 5 dòng), (2) `$B status` / `$B whys <task-id> --open`, (3) cần phán quyết 1 điểm thì `$B read <task-id> --why <n>` (đúng câu WHY đó), cần 1 lượt cũ thì `$B read --stage S2 --round 3`. Không `read --all`.
 - **Tóm tắt lượt** viết từ kết quả agent trả về + `status`, không chép bài. `close` bị từ chối khi lượt có bài mà chưa `summary`.
 - **Tóm tắt giai đoạn:** trước khi đổi giai đoạn (S2→S3, S3→S4, S4→S5, S5→S6) ghi mục `## S<n>` trong `board/SUMMARY.md` (quyết định, kết quả, file đã đổi, việc còn mở). Hook chặn đổi giai đoạn khi chưa có. Từ giai đoạn sau **chỉ dựa vào SUMMARY.md + TASK.md**, cần chi tiết cũ thì query board / file, không dựa vào trí nhớ.
-- **Sửa TASK.md bằng Edit từng đoạn nhỏ**, không Write lại cả file, không đọc lại cả file khi chỉ cần 1 dòng (`grep -n "Phương án chốt" TASK.md`).
+- **Điền các dòng `- Tên: giá trị` của TASK.md bằng 1 lệnh:** `$B field <task-id> "Kết quả test=PASS 49/49" "Lint/format=PASS" "Gap còn mở=0"` (không Edit / `sed` từng dòng; lệnh đổi giai đoạn `echo S<n>` chạy ở lần Bash kế, vì hook kiểm TASK.md trước khi lệnh chạy). Phần còn lại **sửa bằng Edit từng đoạn nhỏ**, không Write lại cả file, không đọc lại cả file khi chỉ cần 1 dòng (`grep -n "Phương án chốt" TASK.md`).
 - Không đọc file code / KB dài để "nắm tình hình": giao Scout hoặc agent đúng vai, nhận lại tóm tắt.
 - Trả lời user ngắn; chi tiết nằm ở `REPORT.html`.
 
@@ -171,9 +176,9 @@ lặp tới hết việc:
      `- Tiêu chí nghiệm thu:` AC của task) → `cd <worktree> && echo S3 > .agent-team/stage` → `cd <worktree> && board.py plan ...`
      → gọi agent (nền), prompt ghi rõ: "làm trong <worktree>, mọi lệnh `cd <worktree> && ...`, sửa file bằng đường dẫn trong worktree"
   2. $P wait                → exit 0 có việc (agent DONE / còn chỗ + READY / có task chờ merge) · 3 agent treo · 4 chờ tiếp
-  3. agent DONE → bạn commit theo role bằng 1 lệnh: `$P commit <M-n/T-k> <role> "..."` (bước cuối của task: thêm `--set MERGE_WAIT`)
-     → bước kế của task (dev → test-executor S4 → code-reviewer ∥ security S5) → S5 APPROVED + điền `Cập nhật KB`, `Bài học` trong TASK.md
-     của worktree + commit → `$P set <M-n/T-k> MERGE_WAIT` (task ĐÃ CHIA không `echo S6` trong worktree: merge là bước đóng)
+  3. agent DONE → **không commit**, gọi luôn bước kế của task (dev → test-executor S4 → code-reviewer ∥ security S5)
+     → S5 APPROVED + điền `Cập nhật KB`, `Bài học` trong TASK.md của worktree → **1 commit cho cả task**:
+     `$P commit <M-n/T-k> all "<mô tả task>" --set MERGE_WAIT` (task ĐÃ CHIA không `echo S6` trong worktree: merge là bước đóng)
      GAP → `$P set <task> GAP --note ..` + debate nhỏ (mục 7b), task khác chạy tiếp. Đổi contract → dừng các task dùng contract đó.
   4. $P merge-begin <task>  → merge --no-commit vào branch phiên (conflict → --abort, task FIX)
      chạy INTEGRATION_CMD (mặc định `TEST_CMD` + E2E **của module** `agent-db.sh e2e <task> --grep @m<n>` + spec task đã sửa, ở thư mục chính; **toàn bộ E2E chỉ chạy ở M-E2E** / trước demo)
@@ -243,7 +248,7 @@ Dev/test-executor thiếu thông tin thì dừng đúng phần đó và trả **
 Lỗi thuộc sản phẩm của người khác → ghi vào kết quả giao lại cho đúng chủ, không sửa hộ.
 
 ## 9. Git
-- **Chỉ bạn (Lead) dùng git ghi** (commit, push, merge, tag, worktree); agent bị hook chặn. Agent DONE → bạn commit file của role đó: `git add <file trong vùng role>` (không `git add .`), commit **một dòng** `[<role>] <task-id>: <mô tả>`. Không body, không Co-authored-by/Signed-off-by (hook chặn). Board và `docs/` commit cùng repo chính.
+- **Chỉ bạn (Lead) dùng git ghi** (commit, push, merge, tag, worktree); agent bị hook chặn. **Mỗi task 1 commit**, làm ở S6 sau khi review `APPROVED` (mục 2 "Ít lượt gọi"): `pool.py commit <task-id> all "<mô tả task>"` → **một dòng** `[team] <task-id>: <mô tả>`. Trước đó không commit từng bước; sửa theo review cũng không commit riêng. Việc chưa commit vẫn nằm trên đĩa trong worktree: resume đọc `git status` + `git diff`. Không body, không Co-authored-by/Signed-off-by (hook chặn). Board và `docs/` commit cùng repo chính.
 - Push: `git push -u origin task/<task-id>` (`PUSH=0`: không push, báo user branch nằm ở máy). Nhiều repo: commit/push trong từng repo (`git -C ../FrontEnd push -u origin task/<task-id>`), mỗi repo chỉ commit file của repo đó.
 - Không push/merge vào main/develop, không force push, không rewrite lịch sử, không tạo PR, không xoá branch. Hook chặn commit / push có secret, `.env*`, key, dump DB. `.env*` được xem / sửa, không in giá trị KEY ra chat / board.
 

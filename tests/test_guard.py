@@ -41,6 +41,9 @@ cases = [
     ("đọc .env.production", "Read", {"file_path": "/p/.env.production"}, None, None, OK),
     ("đọc .env.example", "Read", {"file_path": "/p/.env.example"}, None, None, OK),
     ("đọc master.key", "Read", {"file_path": "/p/config/master.key"}, None, None, B),
+    ("đọc agent-team.secret bị chặn", "Read", {"file_path": "/p/.claude/agent-team.secret"}, None, None, B),
+    ("cat agent-team.secret bị chặn", "Bash", {"command": "cat .claude/agent-team.secret"}, "backend-dev", None, B),
+    ("đọc agent-team.secret.example được", "Read", {"file_path": "/p/templates/agent-team.secret.example"}, None, None, OK),
     ("cat .env", "Bash", {"command": "cat .env"}, None, None, OK),
     ("printenv", "Bash", {"command": "printenv"}, None, None, B),
     ("docker inspect", "Bash", {"command": "docker inspect db"}, None, None, B),
@@ -48,6 +51,29 @@ cases = [
     ("migrate DB thật trong sh -c", "Bash", {"command": "docker compose exec app sh -c \"bin/rails db:migrate\""}, "backend-dev", None, B),
     ("migrate qua clone", "Bash", {"command": ".claude/agent-team/agent-db.sh migrate T1"}, "backend-dev", None, OK),
     ("grep -r cả repo bị chặn (quét mù)", "Bash", {"command": "grep -rn \"db:migrate\" ."}, "code-reviewer", None, B),
+    ("generator migration chạy trên host bị chặn (Laravel)", "Bash", {"command": "php artisan make:migration create_x_table"}, "backend-dev", None, B),
+    ("generator migration chạy thẳng docker exec bị chặn (Rails)", "Bash", {"command": "docker compose exec app bin/rails g migration AddX"}, None, None, B),
+    ("make:model -m sinh migration bị chặn", "Bash", {"command": "php artisan make:model Order -m"}, "backend-dev", None, B),
+    ("make:model không sinh migration thì được", "Bash", {"command": "docker compose exec app php artisan make:model Order"}, None, None, OK),
+    ("agent-db.sh generate được", "Bash", {"command": ".claude/agent-team/agent-db.sh generate T-1 AddX name:string"}, None, None, OK),
+    ("cp .env sang tên lạ bị chặn", "Bash", {"command": "cp .env env-backup.txt"}, "backend-dev", None, B),
+    ("cat .env > tên lạ bị chặn", "Bash", {"command": "cat .env > config.txt"}, None, None, B),
+    ("mv .env.local sang tên lạ bị chặn", "Bash", {"command": "mv .env.local local.cfg"}, None, None, B),
+    ("cp .env sang .env.<tên> được (tên vẫn bị chặn commit)", "Bash", {"command": "cp .env .env.testing.local"}, None, None, OK),
+    ("cp .env.example .env được", "Bash", {"command": "cp .env.example .env"}, None, None, OK),
+    ("grep .env > /dev/null được", "Bash", {"command": "grep -q APP_KEY .env > /dev/null"}, None, None, OK),
+    ("agent chạy Bash nền không timeout bị chặn", "Bash", {"command": "php artisan test", "run_in_background": True}, "test-executor", None, B),
+    ("agent lệnh kết thúc bằng & bị chặn", "Bash", {"command": "php artisan queue:work &"}, "backend-dev", None, B),
+    ("agent nohup bị chặn", "Bash", {"command": "nohup php artisan queue:work > q.log"}, "backend-dev", None, B),
+    ("agent chạy nền có timeout được", "Bash", {"command": "timeout 120 php artisan queue:work &"}, "backend-dev", None, OK),
+    ("agent & giữa lệnh bị chặn", "Bash", {"command": "php artisan queue:work & sleep 3 && curl localhost:8000"}, "backend-dev", None, B),
+    ("agent cờ --timeout không tính là bọc timeout", "Bash", {"command": "pytest --timeout 30 &"}, "backend-dev", None, B),
+    ("agent 2>&1 không phải chạy nền", "Bash", {"command": "php artisan test 2>&1"}, "backend-dev", None, OK),
+    ("reviewer git diff --merge-base được", "Bash", {"command": "git diff --merge-base main"}, "code-reviewer", None, OK),
+    ("đọc .env-example được", "Read", {"file_path": "/p/.env-example"}, "code-reviewer", None, OK),
+    ("đọc credentials.yml.enc (Rails) được", "Read", {"file_path": "/p/config/credentials.yml.enc"}, "backend-dev", None, OK),
+    ("agent lệnh nối && không phải chạy nền", "Bash", {"command": "ls app && ls tests"}, "backend-dev", None, OK),
+    ("Lead chạy Bash nền được", "Bash", {"command": "php artisan test", "run_in_background": True}, None, None, OK),
     ("grep -r trong thư mục cụ thể", "Bash", {"command": "grep -rn \"db:migrate\" db/"}, "code-reviewer", None, OK),
     ("force push", "Bash", {"command": "git push -f origin task/x"}, None, repo, B),
     ("push develop", "Bash", {"command": "git push origin develop"}, None, repo, B),
@@ -97,6 +123,10 @@ open(os.path.join(repo, "c.rb"), "w").write('key = ENV.fetch("API_KEY")\n')
 sh(repo, "git", "add", ".")
 sh(repo, "git", "commit", "-qm", "ok")
 cases.append(("push sạch từ task/*", "Bash", {"command": "git push -u origin task/t1"}, None, repo, OK))
+cases.append(("push vào staging bị chặn", "Bash", {"command": "git push origin task/t1:staging"}, None, repo, B))
+cases.append(("push vào <tên>-production bị chặn", "Bash", {"command": "git push origin HEAD:renova-production"}, None, repo, B))
+cases.append(("push vào branch có chữ staging ở giữa vẫn được", "Bash", {"command": "git push -u origin task/t1:task/staging-fix"}, None, repo, OK))
+cases.append(("push vào task/<tên>-staging vẫn được", "Bash", {"command": "git push -u origin task/t1:task/fix-staging"}, None, repo, OK))
 cases.append(("agent tự commit bị chặn (v0.25: chỉ Lead commit)", "Bash", {"command": "git commit -m x"}, "backend-dev", repo, B))
 cases.append(("Lead commit trên task/*", "Bash", {"command": "git commit -m x"}, None, repo, OK))
 

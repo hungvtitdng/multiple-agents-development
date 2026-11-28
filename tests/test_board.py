@@ -253,6 +253,22 @@ _db.commit(); _db.close()
 code, out = hrun("wait", "H1", "--interval", "1", "--max", "2")
 check("lệnh có timeout 1800: im 10 phút chưa coi là treo (exit 4)", code == 4 and "đang làm" in out)
 
+
+def lead_stop(**extra):
+    return subprocess.run([sys.executable, HB, "lead-stop"], input=_json.dumps({"cwd": hp, **extra}), capture_output=True, text=True).stdout
+
+
+check("Lead dừng khi còn agent chạy → nhắc wait", '"decision": "block"' in lead_stop() and "test-designer" in lead_stop())
+_side = os.path.join(hp, ".worktrees", "JR-1", ".agent-team"); os.makedirs(_side)
+import shutil as _shutil
+_shutil.copy(os.path.join(hp, ".agent-team", "board.db"), _side)
+open(os.path.join(_side, "side"), "w").write(hp + "\n")
+_db = _sq.connect(os.path.join(_side, "board.db")); _db.execute("UPDATE agent_runs SET role='backend-dev' WHERE role='test-designer'"); _db.commit(); _db.close()
+check("Lead dừng: agent của phiên task lẻ khác không tính", "backend-dev" not in lead_stop())
+_shutil.rmtree(os.path.join(hp, ".worktrees"))
+check("Lead dừng lần 2 (stop_hook_active) → cho qua", lead_stop(stop_hook_active=True) == "")
+check("subagent dừng không bị hook Lead chặn", lead_stop(agent_type="agent-team:backend-dev") == "")
+
 # ---- v0.20.0: danh sách bước ----
 P = "20261123-plan"
 code, out = run("plan", P)
@@ -277,6 +293,31 @@ hrun("done", "H1", "--role", "scout", "--body", "KB xong")
 check("board.py done: tự ✅ bước ▶ của role", "✅ 1. Quét KB" in hrun("plan", "H1")[1])
 hb("stop", "test-designer")
 check("SubagentStop (chưa done): tự ✅ bước ▶ của role", "✅ 2. Thiết kế test" in hrun("plan", "H1")[1])
+check("mọi agent DONE → Lead dừng được", lead_stop() == "")
+open(os.path.join(hp, "docs", "agent-tasks", "H1", "TASK.md"), "w").write("- Kết quả test: TODO (PASS / FAIL)\n- Lint/format: TODO\n")
+code, out = hrun("field", "H1", "Kết quả test=PASS 49/49", "Lint/format=PASS")
+check("field điền 2 dòng trong 1 lệnh", code == 0 and "Kết quả test=PASS 49/49" in out
+      and open(os.path.join(hp, "docs", "agent-tasks", "H1", "TASK.md")).read() == "- Kết quả test: PASS 49/49\n- Lint/format: PASS\n")
+check("field dòng không có → từ chối", hrun("field", "H1", "Không có=1")[0] == 1)
+check("status in điều kiện TASK.md", "Điều kiện: " in hrun("status", "H1")[1] and "Lint/format=PASS" in hrun("status", "H1")[1])
+
+# shell nền còn sót khi agent DONE: tự tắt
+import glob as _glob
+_tid = f"t{os.getpid()}"
+_td = os.path.join("/tmp", f"claude-test-{os.getpid()}", "s", "tasks"); os.makedirs(_td)
+_sh = subprocess.Popen(["sleep", "60"], stdout=open(os.path.join(_td, _tid + ".output"), "w"))
+hrun("open", "H1", "S4", "1", "--roles", "test-executor")
+hb("pre", "test-executor", ti={"command": "timeout 600 npm test", "run_in_background": True})
+subprocess.run([sys.executable, HB, "post"], input=_json.dumps({"agent_type": "agent-team:test-executor", "tool_name": "Bash", "cwd": hp,
+               "tool_input": {"command": "timeout 600 npm test"}, "tool_response": {"backgroundTaskId": _tid}}), capture_output=True, text=True)
+check("shell nền của agent còn sống trước DONE", _sh.poll() is None)
+code, out = hrun("done", "H1", "--role", "test-executor", "--body", "49 PASS")
+try:
+    _sh.wait(timeout=5)
+except subprocess.TimeoutExpired:
+    pass
+check("done: tự tắt shell nền còn sót của agent", code == 0 and "Đã tắt 1 tiến trình" in out and _sh.poll() is not None)
+_sh.kill(); shutil.rmtree(os.path.dirname(os.path.dirname(_td)), ignore_errors=True)
 
 import sqlite3 as _sql3
 # ---- v0.26: agent làm trong worktree → nhịp tim ghi vào board.db của worktree ----

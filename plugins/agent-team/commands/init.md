@@ -47,6 +47,24 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
    - `scripts/gap-check.py` → `.claude/agent-team/gap-check.py` (chmod +x). Kiểm tài liệu sản phẩm `docs/product/` của App Mode.
    - `scripts/owner-form.py` → `.claude/agent-team/owner-form.py` (chmod +x, cần `gap-check.py` cùng thư mục). Sinh form `.xlsx` gửi owner và nhập câu trả lời.
    - `CLONE_MODE=schema` (1 container DB + 1 container app): thêm vào compose của app `volumes: ["./:/var/www/main", "./.worktrees:/var/www/.worktrees", "/var/www/main/.worktrees", "./.env:/var/www/.env:ro"]` + `ports: ["8800-8899:8800-8899"]` (mở sẵn 100 cổng, không phải restart container; mount `.env` để symlink `../../.env` của worktree trỏ đúng cả trên máy lẫn trong container): thư mục chính `:8800`, worktree `:8801`, `:8802`... (`E2E_PORT_BASE` mặc định 8801 khi `CLONE_MODE=schema`). Thêm `.worktrees` vào ignore của tool quét thư mục: `tsconfig` `exclude`, ESLint `ignores`, Vite `server.watch.ignored`, PHPUnit / Pint chỉ quét `app/`, `tests/`.
+   - **`CLONE_MODE=schema`: bạn (Lead) tự đánh giá dự án rồi điền, không chép bảng mẫu** (mặc định trong config mẫu là Laravel). Bảng dưới chỉ là gợi ý; giá trị thật lấy từ **bằng chứng trong repo**:
+     1. Đọc: `Dockerfile` (`WORKDIR`, lệnh chạy), compose (service, volume, cổng), lock file có trong repo, `.gitignore` (thư mục sinh ra khi chạy: dependency, cache, build), file cấu hình DB (app đọc biến nào), cấu hình linter / test / watcher (tool nào quét cả thư mục).
+     2. Điền 5 dòng của bảng cho đúng dự án này. Dự án lai (vd Laravel + Go worker) → gộp giá trị của từng phần. Trong bảng duyệt cấu hình (bước 3b) ghi **mỗi giá trị kèm nguồn** (`file:dòng`); không tìm ra bằng chứng → `TODO`, không đoán.
+     3. **Chạy thử sau khi user duyệt** (trước khi gọi agent): `pool.py side init-check` → `agent-db.sh up init-check` → `agent-db.sh test init-check` (và `e2e` nếu có `E2E_CMD`) → kiểm DB riêng `<DB_NAME>_init-check` có bảng, thư mục dependency của worktree là bản riêng, app lên đúng cổng → `agent-db.sh down init-check` + xoá worktree. Bước nào lỗi: sửa đúng key gây lỗi trong config, chạy lại, ghi vào `release-notes.md` giá trị đã đổi + vì sao.
+     4. Về sau, task lỗi do cấu hình này (worktree thiếu dependency, ghi nhầm DB, trùng cổng, tool quét lẫn `.worktrees`): bạn sửa config ngay, báo user 1 dòng (key, cũ → mới, lý do), ghi bài học. Không phải chờ user duyệt lại (`CONFIG_APPROVED` chỉ duyệt lần đầu).
+
+     Gợi ý theo stack:
+
+     | | Laravel | Rails | Go | Node (Nest / Express) |
+     |---|---|---|---|---|
+     | `SHARED_DEPS` (thư mục mỗi worktree phải có bản riêng, không dùng chung) | `vendor:composer.lock node_modules:package-lock.json` | `node_modules:yarn.lock` (gem cài trong project: thêm `vendor/bundle:Gemfile.lock`) | để trống (module cache nằm trong container; có thư mục `vendor/`: `vendor:go.sum`) | `node_modules:<lock file>` |
+     | `CONTAINER_MAIN` / `CONTAINER_WT` | theo `WORKDIR`, vd `/var/www/main` · `/var/www/.worktrees` | vd `/rails/main` · `/rails/.worktrees` | vd `/app/main` · `/app/.worktrees` | vd `/app/main` · `/app/.worktrees` |
+     | `SCHEMA_ENV` (tách DB + service dùng chung) | `DB_DATABASE={db} REDIS_PREFIX={task}_ CACHE_PREFIX={task}_ QUEUE_CONNECTION=sync MAIL_MAILER=log` | biến mà `config/database.yml` đọc, vd `DB_NAME={db}`; Redis / cache / Sidekiq: namespace `{task}` | biến DB mà app đọc, vd `DB_NAME={db}` | biến DB mà app đọc |
+     | `APP_START_CMD` | `PHP_CLI_SERVER_WORKERS=8 php -S 0.0.0.0:{port} -t public` | `bin/rails s -b 0.0.0.0 -p {port}` | `PORT={port} go run ./cmd/<app>` | `PORT={port} npm run start` |
+     | Tool quét thư mục chính phải bỏ qua `.worktrees` | PHPUnit / Pint chỉ quét `app/`, `tests/`; `tsconfig` `exclude`; ESLint `ignores`; Vite `server.watch.ignored` | RuboCop `AllCops.Exclude`; Tailwind `content`; Jest `modulePathIgnorePatterns` | `go build / test ./...` tự bỏ thư mục bắt đầu bằng dấu chấm; chỉ cần thêm vào `exclude_dir` của Air / watcher | `tsconfig` `exclude`; ESLint `ignores`; Jest `modulePathIgnorePatterns`; nodemon `ignore` |
+     | Bẫy riêng | không chạy `config:cache` (cache giữ tên DB, bỏ qua `SCHEMA_ENV` → task ghi nhầm DB) | `database.yml` ghi cứng tên DB thì `SCHEMA_ENV` không có tác dụng: đổi sang đọc ENV | binary build ra thư mục của từng worktree, không ghi chung 1 đường dẫn | cổng ghi cứng trong code thì `{port}` không có tác dụng |
+
+     Stack không có trong bảng: áp cùng 5 câu hỏi (thư mục dependency nào, đường dẫn trong container, biến nào tách DB, lệnh chạy app theo cổng, tool nào quét cả thư mục).
    - `scripts/progress.py` → `.claude/agent-team/progress.py` (chmod +x). Thêm vào `.claude/settings.json` của repo chính (merge, không ghi đè key khác; đã có `statusLine` thì hỏi user): `"statusLine": {"type": "command", "command": "python3 .claude/agent-team/progress.py"}`. Status line hiện các bảng có khung: module của app / task của module (`M | Module | Trạng thái`), giai đoạn S1-S6 (ngang), các bước (`# | Bước | Role | Trạng thái`: ✅ Xong / ▶ Đang làm Np / ⏳ Chờ / ⛔ Chặn). Mặc định status line 1 dòng (`PROGRESS_LINES=1`), bảng đầy đủ ghi vào `.agent-team/STATUS.md` (mở preview, tự cập nhật); `PROGRESS_LINES=table` → bảng trên status line. `progress.py --list` in đủ danh sách ✅ / ▶ / ○ để Lead dán vào chat. Về sau hook `SessionStart` (`hooks/sync.py`) tự chép lại script khi plugin cập nhật và tự thêm `statusLine` nếu thiếu.
 5. **CLAUDE.md**: chưa có mục "## Agent Team" thì thêm nội dung `templates/claude-md-section.md` vào cuối. Không sửa phần khác.
 5a. **Vẽ sơ đồ trong báo cáo**: kiểm `mmdc --version` (Mermaid CLI). Chưa có → báo user lệnh cài `npm i -g @mermaid-js/mermaid-cli` (không tự cài). Không có thì REPORT.html vẫn tạo được, sơ đồ hiện dạng văn bản.
@@ -68,6 +86,7 @@ Thiết lập agent team cho project hiện tại. Liệt kê ngắn từng bư�
    .claude/agent-team/*.sh
    .claude/agent-team/__pycache__/
    .claude/agent-team.local.config
+   .claude/agent-team.secret
    .claude/agent-team/e2e-template/
    e2e/.auth/
    ```

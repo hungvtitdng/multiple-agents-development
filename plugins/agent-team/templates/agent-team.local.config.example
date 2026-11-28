@@ -14,3 +14,12 @@ E2E_PORT_BASE=
 HANG_MINUTES=
 # Status line: table | 1
 PROGRESS_LINES=
+
+# /agent-team:tasks lấy ticket từ đâu: jira | github | file (tự ghi .agent-team/tickets/<mã>.md).
+# Để trống: có JIRA_TOKEN trong .claude/agent-team.secret thì tự hiểu là jira. Jira / GitHub không cần cấu hình gì thêm.
+TICKET_SOURCE=
+# Chỉ đặt khi muốn đổi lệnh mặc định (vd lọc theo sprint) hoặc dùng nguồn khác. {id} = mã ticket; dùng được $KEY của agent-team.secret.
+# Lệnh không được kết thúc bằng dấu nháy. Token KHÔNG ghi vào file này.
+#   TICKET_LIST_CMD=curl -sfG "$JIRA_URL/rest/api/3/search/jql" --data-urlencode "jql=assignee = currentUser() AND sprint in openSprints() AND statusCategory = 'To Do'" --data-urlencode "fields=key" -u "$JIRA_EMAIL:$JIRA_TOKEN" --max-time 20
+TICKET_CMD=
+TICKET_LIST_CMD=

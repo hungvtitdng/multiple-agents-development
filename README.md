@@ -4,7 +4,7 @@ Plugin cho Claude Code. Đưa 1 task → Lead + BA + Architect + Test Design deb
 
 ## Bắt đầu: làm gì sau mỗi bước
 
-Cài plugin (mục "Cài đặt") → mở project trong Claude Code → chọn 1 trong 4 đường:
+Cài plugin (mục "Cài đặt") → mở project trong Claude Code → chọn 1 trong 6 đường:
 
 ```
 Dự án mới, có ý tưởng ──────────▶ A
@@ -47,6 +47,10 @@ Viết lại hệ thống cũ ───────────▶ C
 
 **D. Đang dở**: `/agent-team:resume` (đọc trạng thái trên đĩa, làm tiếp đúng bước). Phiên dài, tốn token: `/clear` rồi `/agent-team:resume` khi không còn agent nào đang chạy.
 
+**E. Task xong rồi mới thấy bug, chưa merge**: `git switch task/<task-id>` rồi `/agent-team:fix "<bug>"` (sửa trên chính branch đó, test lại, review phần mới, push lại). Đã merge rồi: `/agent-team:task "fix: ..."`.
+
+**F. Nhiều ticket độc lập cùng lúc**: `/agent-team:tasks JR-001 JR-002 JR-003` (mỗi ticket 1 phiên Claude nền trong worktree riêng, tối đa `MAX_PARALLEL` cùng lúc; nguồn ticket khai ở `.claude/agent-team.local.config`; xem trạng thái: `/agent-team:tasks -s`).
+
 **Lúc nào cũng dùng được:** xem tiến độ ở dòng trạng thái và `.agent-team/STATUS.md`; team không tự merge vào nhánh chính, không tự mở PR.
 
 ## Cấu trúc
@@ -61,6 +65,8 @@ Viết lại hệ thống cũ ───────────▶ C
 │   │   ├── module.md    ← /agent-team:module - module mới trong app đang chạy (như app, phạm vi 1 module)
 │   │   ├── app.md       ← /agent-team:app    - làm cả app từ ý tưởng (hỏi owner → tài liệu → owner duyệt → build từng module)
 │   │   ├── resume.md    ← /agent-team:resume - làm tiếp task dang dở (hết quota, lỗi)
+│   │   ├── fix.md       ← /agent-team:fix - sửa bug của task đã xong, chưa merge (đứng ở branch task)
+│   │   ├── tasks.md     ← /agent-team:tasks - chạy nhiều task độc lập, mỗi task 1 phiên nền
 │   │   ├── ask.md       ← /agent-team:ask    - hỏi về logic dự án, có dẫn nguồn
 │   │   ├── kb.md        ← /agent-team:kb     - dựng/làm đầy KB từ code (nhiều Scout, kiểm bằng kb-check)
 │   │   ├── audit.md     ← /agent-team:audit  - audit dự án cũ: cấu trúc, code, bảo mật, KB, skill → duyệt → sửa, lỗi code vào Backlog

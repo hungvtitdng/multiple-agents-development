@@ -11,7 +11,7 @@ description: Quy trình security review chung cho mọi stack - nhóm lỗ hổn
 - Chưa có hoặc thiếu nhóm nào → tự suy mẫu từ code dự án (cách dự án kiểm quyền, query, render), làm theo nguyên tắc dưới đây, rồi ghi vào kết quả **"Đề xuất bổ sung review-patterns.md"** (mẫu + `file:dòng` ví dụ). Security cập nhật file đó khi đóng task.
 
 ## 1. Phạm vi
-Bắt đầu từ diff (`git diff --name-only <nhánh gốc>...HEAD`), sau đó mới mở rộng ra caller và nơi dùng chung. Không liệt kê checklist chung chung cho phần code không đổi.
+Bắt đầu từ diff (`git diff --name-only --merge-base <nhánh gốc>` + `git status --short`: task chưa commit tới khi review xong), sau đó mới mở rộng ra caller và nơi dùng chung. Không liệt kê checklist chung chung cho phần code không đổi.
 
 ## 2. Nhóm cần soi (mọi stack)
 | Nhóm | Câu hỏi |

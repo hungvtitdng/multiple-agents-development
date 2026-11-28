@@ -1,3 +1,24 @@
+# Release notes - 27/11/2026 (v0.46.0 - lệnh fix, hook chặn migration / .env / shell nền)
+
+## Thay đổi
+- Panel `Agent team` cạnh khung chat (mod `hooks/panel.tsx`): tự mở khi terminal rộng từ 144 cột, hẹp hơn thì gõ `/team-panel`. Mỗi phần là 1 block có viền màu (main, tasks, module, task, agents, log): phiên chính, task batch, tiến độ module, bước + debate của task, agent (timeline, token, chi phí, treo), lượt vừa xong, log. Cần `python3`; cập nhật plugin: `/plugin marketplace update kevin-agent-team`.
+- Hook chặn commit / push thêm branch `production`, `staging`, `<tên>-production`, `<tên>-staging`; chặn push thêm file `.p12`, `.pfx`, `.yml.enc`.
+- Hook chặn lệnh generator migration chạy ngoài `agent-db.sh generate` (`make:migration`, `make:model -m`, `rails g migration|model`, `makemigrations`, `alembic revision`).
+- Hook chặn chép nội dung `.env` sang file tên khác (`cp`, `mv`, `cat .env > x`); tên `.env-x`, `.env_x` cũng bị chặn commit / push như `.env.x`.
+- backend-dev / frontend-dev: code không comment; logic phức tạp thì đúng 1 dòng ngắn gọn (code-reviewer soi theo luật này).
+- backend-dev / frontend-dev: chỉ code đúng phần của task, không sửa / refactor / format lại function không đụng tới; thấy chỗ khác cần sửa thì báo Lead.
+- `/agent-team:fix "<bug>"` (lệnh mới): đứng ở branch của task đã xong nhưng chưa merge, sửa bug ngay trên branch đó (không task mới, không debate), dev tìm nguyên nhân gốc + chỗ cùng lỗi + vì sao lọt trước khi sửa, vá đúng lớp bị thủng (AC / test case / test / quy chuẩn), architect duyệt hướng sửa trước khi dev sửa, thêm test bắt bug, Lead viết bài học, push lại.
+- code-reviewer: đọc lại KB của phần bị diff chạm tới (module, business rule, quyền, API, DB) rồi mới review; code trái business rule / quyền = Critical, lệch API / schema = High, KB sai thì báo `KB SAI`.
+- Hook chặn agent mở shell chạy nền không có `timeout` (Bash `run_in_background`, lệnh kết thúc bằng `&`, `nohup`): shell còn sống làm agent treo dù đã báo xong. Số giây do agent tự đặt theo việc (hook không giới hạn). Agent DONE mà 10 giây sau còn "waiting on shell": Lead TaskStop ngay (`board.py wait` / `pool.py wait` in nhắc).
+- `CLONE_MODE=schema`: Lead tự đánh giá repo (Dockerfile, compose, lock file, `.gitignore`, cấu hình DB / tool) rồi điền, ghi nguồn từng giá trị, chạy thử 1 worktree `init-check` sau khi user duyệt, tự sửa config khi task lỗi do cấu hình. Bảng gợi ý: `SHARED_DEPS`, đường dẫn container, `SCHEMA_ENV`, `APP_START_CMD`, danh sách tool phải bỏ qua `.worktrees` theo stack (Laravel / Rails / Go / Node); `agent-db.sh` biết cài lại theo `Gemfile.lock`, `go.sum`.
+- **Mỗi task 1 commit**: agent xong không commit từng bước; review xong Lead chạy `pool.py commit <task> all "<mô tả>"` → 1 commit `[team] <task-id>: ...` (gồm code, test, tài liệu). Reviewer đọc diff gồm cả phần chưa commit.
+- **`/agent-team:tasks <mã 1> <mã 2> ...`**: chạy nhiều task độc lập, mỗi task 1 phiên Claude nền trong worktree riêng (`pool.py batch`). `/agent-team:tasks -s` xem trạng thái (đang chạy / xong / đang dừng cần trả lời + lệnh `claude attach`); task dừng hoặc xong có thông báo trên máy (macOS). Số task cùng lúc = `MAX_PARALLEL`. Config mới: `BATCH_PERMISSION=auto`; `/agent-team:tasks mine` chạy các ticket đang giao cho bạn (lấy bằng `TICKET_LIST_CMD`); riêng máy (`.claude/agent-team.local.config`, không commit): `TICKET_SOURCE`, `TICKET_CMD`, `TICKET_LIST_CMD` (Jira / GitHub có lệnh mặc định, không cần đặt). Token (Jira: `JIRA_URL`, `JIRA_EMAIL`, `JIRA_TOKEN`) ghi ở `.claude/agent-team.secret` (mẫu `templates/agent-team.secret.example`): thêm dòng `.claude/agent-team.secret` vào `.gitignore`; hook chặn Lead / agent đọc file này.
+- **Tự tắt shell nền còn sót**: agent chạy `board.py done` (hoặc kết thúc) thì shell nền nó mở bằng `run_in_background` bị tắt ngay, không cần Lead TaskStop. Shell mở bằng `&` trong lệnh thì chưa tự tắt.
+- **Lead ít lượt hơn**: hook Stop nhắc 1 lần khi Lead dừng mà còn agent chạy (chờ bằng `wait`); `board.py field <task> "Tên=giá trị" ...` điền nhiều dòng TASK.md trong 1 lệnh; `board.py status <task>` in thêm điều kiện TASK.md + file đổi chưa commit.
+
+## Cần làm tay
+- Task xong chưa merge mà có bug: `git switch task/<task-id>` rồi `/agent-team:fix "<bug>"`.
+
 # Release notes - 26/11/2026 (v0.45.0 - duyệt cấu hình, branch task/*)
 
 ## Thay đổi

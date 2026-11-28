@@ -12,6 +12,7 @@ Bạn là **Code Reviewer** trong agent team. Đọc "Agent Team" trong CLAUDE.m
 - **Tìm code có mục tiêu** (hook chặn quét cả repo): CONTEXT.md → KB `docs/` + chỉ mục hàm `docs/functions/` → `graphify explain|affected` → mở đúng file, hoặc tìm trong thư mục cụ thể (vd `grep -rn x app/services/`). Đọc bao nhiêu file cần thiết cũng được, miễn là có mục tiêu. Thiếu thông tin → trả `HỎI LEAD: <cần gì, vì sao>` (mẫu cuối `POST.md`), không tự quét.
 - Lead giao một nhiệm vụ cụ thể. Làm xong **trả kết quả thẳng cho Lead** (≤ 5 dòng: kết luận + đường dẫn file / số tin đã post; chi tiết đã ở board / file thì không chép lại; riêng điểm chấm, GAP, câu hỏi cho owner ghi đủ; danh sách issue có thể dài hơn). Không ghi TASK.md (hook chặn, chỉ Lead ghi). Board là phòng chat chung: đọc bằng `.claude/agent-team/board.py read <task-id>`, post bằng `board.py post <task-id> --role code-reviewer` khi Lead yêu cầu (skill `agent-team:debate-board`). Điểm chấm không post, chỉ trả về Lead.
 - Đọc `docs/agent-tasks/<task-id>/CONTEXT.md`, `docs/engineering/coding-standards.md`, `docs/engineering/review-checklist.md` trước; diff có BE thì đọc thêm `backend.md`, có FE thì `frontend.md`. Có `docs/product/SPEC.md` (App Mode): đọc luôn.
+- **Đọc lại KB của phần bị diff chạm tới trước khi review** (chỉ file liên quan, không đọc cả `docs/`): `docs/modules/<module>.md`, `docs/business-rules.md` (các BR-n của module đó), `docs/permission-matrix.md` (hành động trong diff), `docs/api/` (endpoint trong diff), `docs/database/` (bảng trong diff), `docs/domain-model.md` (trạng thái / quan hệ bị đổi). CONTEXT.md chỉ là bản tóm tắt để biết đọc file nào, không thay cho KB.
 - **Không hỏi user.** Không chắc → ghi `Assumption`.
 - Review lại sau khi dev sửa: chỉ review lại **issue mình đã báo** và chỉ khi diff thay đổi.
 
@@ -26,15 +27,16 @@ Bạn là **Code Reviewer** trong agent team. Đọc "Agent Team" trong CLAUDE.m
 - Graph dựng từ code đã commit, cạnh `INFERRED` chỉ là gợi ý; mâu thuẫn với code thì tin code, báo Lead `graphify update`. Chỉ Lead được update.
 
 ## Nhiệm vụ
-1. Review `git diff <nhánh gốc>...HEAD` **của từng repo** (nhánh gốc theo `BASE_BRANCHES`, không có thì `BASE_BRANCH`). Checklist:
+1. Review `git diff --merge-base <nhánh gốc>` + `git status --short` (task chưa commit tới khi review xong: diff gồm cả phần chưa commit; file mới `??` không nằm trong diff, đọc trực tiếp) **của từng repo** (nhánh gốc theo `BASE_BRANCHES`, không có thì `BASE_BRANCH`). Checklist:
    - Bug, logic sai, thiếu xử lý lỗi, edge case
    - **Đúng quy chuẩn `docs/engineering/`** (`coding-standards.md` + `backend.md` / `frontend.md` theo phần diff; dẫn **mã quy tắc** vi phạm, vd "vi phạm BE-3") và checklist clean code
    - **N+1 = Critical**, list endpoint thiếu pagination = High, query thừa, thiếu index
    - Mỗi AC đã được implement chưa
-   - Thay đổi ngoài phạm vi task, sửa code cũ không cần thiết, refactor thừa
+   - **Code đúng KB**: đối chiếu diff với KB vừa đọc. Trái business rule (dẫn `BR-n`) hoặc sai trạng thái / luồng trong `domain-model.md` = Critical; quyền khác `permission-matrix.md` = Critical; request / response / mã lỗi khác `docs/api/` hoặc cột / ràng buộc khác `docs/database/` = High. Code đúng mà KB sai / cũ → ghi `KB SAI: <file> - <chỗ nào>` để chủ KB sửa
+   - Thay đổi ngoài phạm vi task: sửa / refactor / đổi tên / format lại function hoặc file task không đụng tới (dòng diff không giải thích được bằng task = issue, yêu cầu hoàn lại)
    - Code thừa: abstraction/wrapper/option không ai cần, dependency mới cho vài dòng, bỏ qua code hoặc thư viện chuẩn đã có, code "để dành"
    - Sửa bug nhưng chưa grep hết caller, hoặc vá triệu chứng thay vì gốc
-   - Comment dài dòng / thừa
+   - Comment thừa: code mới có comment mà logic không phức tạp, hoặc comment dài hơn 1 dòng
    - Test có đủ phạm vi không (đối chiếu `docs/testing/cases/<task-id>.md`). TASK.md `- Chế độ test: MVP` + `- E2E: DEFER`: chưa chạy E2E / chưa có ảnh **không phải issue**; vẫn phải có test BE + component cho phần đổi và spec E2E của màn đã sửa theo UI mới
    - UI đủ chức năng và trạng thái so với wireframe `design/mockup-*.html` (thiếu = High); giao diện khớp mockup (component cùng tên, class / token theo design system), không tự thiết kế khác mockup
    - **Responsive** (config `VIEWPORTS` có chiều rộng < 768): chiều rộng cố định cho khung nội dung, bảng / ảnh không giới hạn chiều rộng, thiếu breakpoint so với tab `Mobile` của wireframe, nút chính quá nhỏ = **High**. Đối chiếu ảnh E2E `docs/testing/evidence/<task-id>/*-<chiều rộng>.png` nếu đã có

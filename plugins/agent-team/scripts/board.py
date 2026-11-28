@@ -17,10 +17,12 @@ WHY trong bài post (mỗi dòng một lệnh, dòng sau không có từ khoá t
 WHY đóng khi MỌI thành viên team (trừ người trả lời) AGREE.
 """
 import argparse
+import glob
 import json
 import os
 import re
 import sqlite3
+import subprocess
 import sys
 import time
 
@@ -54,7 +56,7 @@ CREATE TABLE IF NOT EXISTS vote_log (
 CREATE TABLE IF NOT EXISTS agent_runs (
   task TEXT NOT NULL, role TEXT NOT NULL, run TEXT NOT NULL, started_at INTEGER NOT NULL, last_seen INTEGER NOT NULL,
   last_tool TEXT, busy_since INTEGER, tool_timeout INTEGER, state TEXT NOT NULL DEFAULT 'RUNNING',
-  step TEXT, eta_min INTEGER, result TEXT, ended_at INTEGER, PRIMARY KEY(task, role, run));
+  step TEXT, eta_min INTEGER, result TEXT, ended_at INTEGER, bg TEXT, PRIMARY KEY(task, role, run));
 CREATE TABLE IF NOT EXISTS plan_steps (
   task TEXT NOT NULL, n INTEGER NOT NULL, title TEXT NOT NULL, role TEXT, state TEXT NOT NULL DEFAULT 'todo',
   started_at INTEGER, ended_at INTEGER, grp INTEGER, PRIMARY KEY(task, n));
@@ -98,6 +100,9 @@ def connect():
     db.executescript(SCHEMA)
     if "grp" not in {r[1] for r in db.execute("PRAGMA table_info(plan_steps)")}:  # board.db của v0.20.0
         db.execute("ALTER TABLE plan_steps ADD COLUMN grp INTEGER")
+        db.commit()
+    if "bg" not in {r[1] for r in db.execute("PRAGMA table_info(agent_runs)")}:
+        db.execute("ALTER TABLE agent_runs ADD COLUMN bg TEXT")
         db.commit()
     return db
 
@@ -426,6 +431,32 @@ def cmd_status(db, a):
     if steps:
         print("Các bước:")
         print("\n".join("  " + x for x in steps))
+    tp = os.path.join(root, "docs", "agent-tasks", a.task, "TASK.md")
+    if os.path.isfile(tp):
+        print(gate_line(open(tp, encoding="utf-8", errors="ignore").read()))
+    files = subprocess.run(["git", "-C", root, "status", "--short"], capture_output=True, text=True).stdout.splitlines()
+    if files:
+        print(f"File đổi chưa commit ({len(files)}):" + (" (15 file đầu)" if len(files) > 15 else ""))
+        print("\n".join("  " + x for x in files[:15]))
+
+
+def gate_line(text):
+    return "Điều kiện: " + " · ".join(f"{k}={' '.join(cond_value(text, k).split())[:30]}" for k in COND_KEYS)
+
+
+def cmd_field(db, a):
+    path = os.path.join(find_root(), "docs", "agent-tasks", a.task, "TASK.md")
+    if not os.path.isfile(path):
+        die(f"không có {path}")
+    text = open(path, encoding="utf-8").read()
+    for kv in a.pairs:
+        k, sep, v = kv.partition("=")
+        text, n = re.subn(rf"(?im)^([\s>*-]*{re.escape(k.strip())}\s*:).*$", lambda m: f"{m.group(1)} {v.strip()}", text, count=1)
+        if not sep or not n:
+            die(f"không có dòng `- {k.strip()}:` trong TASK.md (dạng: \"Tên dòng=giá trị\")")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text)
+    print(gate_line(text))
 
 
 def cmd_summary(db, a):
@@ -1017,6 +1048,30 @@ def touch_run(db, task, role, run, **kw):
     db.commit()
 
 
+def kill_bg(db, task, role, run):
+    """Tắt shell nền agent đã mở (tìm theo file output của shell): agent DONE mà shell còn sống thì agent treo."""
+    row = run_row(db, task, role, run)
+    keep, pid = {os.getpid()}, os.getpid()
+    while pid > 1:
+        pid = int(subprocess.run(["ps", "-o", "ppid=", "-p", str(pid)], capture_output=True, text=True).stdout.strip() or 0)
+        keep.add(pid)
+    pids = set()
+    for tid in filter(None, ((row["bg"] if row else "") or "").split(",")):
+        for out in glob.glob(f"/tmp/claude-*/*/tasks/{tid}.output") + glob.glob(f"/tmp/claude-*/*/*/tasks/{tid}.output"):
+            pids |= {int(x) for x in subprocess.run(["lsof", "-t", out], capture_output=True, text=True).stdout.split() if x.isdigit()}
+    n = 0
+    for pid in pids - keep:
+        try:
+            os.kill(pid, 15)
+            n += 1
+        except OSError:
+            pass
+    if row and row["bg"]:
+        db.execute("UPDATE agent_runs SET bg=NULL WHERE task=? AND role=? AND run=?", (task, role, run))
+        db.commit()
+    return n
+
+
 def cmd_done(db, a):
     role, run = norm_role(a.role), current_run(db, a.task)
     row = run_row(db, a.task, role, run)
@@ -1027,7 +1082,8 @@ def cmd_done(db, a):
         die("kết quả done tối đa 5 dòng (chi tiết đã nằm trên board / file)")
     touch_run(db, a.task, role, run, state="DONE", result=body, ended_at=int(time.time()), busy_since=None)
     finish_step(db, a.task, role)
-    print(f"Đã ghi DONE {role} ({run}). KẾT THÚC NGAY: trả kết quả về Lead, không chờ Lead trả lời.")
+    n = kill_bg(db, a.task, role, run)
+    print(f"Đã ghi DONE {role} ({run}). KẾT THÚC NGAY: trả kết quả về Lead, không chờ Lead trả lời." + (f" Đã tắt {n} tiến trình shell nền còn sót." if n else ""))
 
 
 def cmd_progress(db, a):
@@ -1097,6 +1153,8 @@ def cmd_wait(db, a):
                     if "stuck" in kinds else "CHƯA XONG, đang chạy bình thường: gọi wait lần nữa")
             print(f"[{run}] {head}")
             print("\n".join(line for _, _, line in view))
+            if done_all:
+                print("Agent nào 10 giây sau vẫn hiện đang chạy (waiting on shell): TaskStop ngay agent đó + shell nền của nó, kết quả đã có ở đây")
             sys.exit(0 if done_all else 3 if "stuck" in kinds else 4)
         time.sleep(a.interval)
         db.commit()  # đọc bản mới nhất (WAL)
@@ -1193,6 +1251,7 @@ def heartbeat(event, data):
         if row and row["state"] != "DONE":
             touch_run(db, task, role, run, state="DONE", busy_since=None, ended_at=int(time.time()),
                       result=row["result"] or "(agent kết thúc nhưng chưa chạy board.py done: xem bài post / kết quả trả về)")
+        kill_bg(db, task, role, run)
         return
     ti = data.get("tool_input") or {}
     tool = data.get("tool_name") or "?"
@@ -1202,7 +1261,44 @@ def heartbeat(event, data):
         m = re.search(r"\btimeout\s+(\d+)", ti.get("command", "") if tool == "Bash" else "")
         touch_run(db, task, role, run, last_tool=desc, busy_since=int(time.time()), tool_timeout=int(m.group(1)) if m else None)
     else:
-        touch_run(db, task, role, run, busy_since=None)
+        m = re.search(r'backgroundTaskId"\s*:\s*"(\w+)"|background with ID: (\w+)', json.dumps(data.get("tool_response") or "")) if tool == "Bash" else None
+        row = run_row(db, task, role, run)
+        bg = {"bg": ",".join(filter(None, [(row["bg"] if row else "") or "", m.group(1) or m.group(2)]))} if m else {}
+        touch_run(db, task, role, run, busy_since=None, **bg)
+
+
+def worktree_base(root):
+    for name in ("agent-team.local.config", "agent-team.config"):
+        try:
+            for line in open(os.path.join(root, ".claude", name), encoding="utf-8", errors="ignore"):
+                m = re.match(r"^\s*WORKTREE_DIR=\s*['\"]?([^'\"#\s]+)", line)
+                if m:
+                    return m.group(1)
+        except OSError:
+            pass
+    return ".worktrees"
+
+
+def lead_stop(data):
+    """Hook Stop của Lead: còn agent đang chạy thì nhắc 1 lần chờ bằng wait thay vì dừng lượt."""
+    if data.get("agent_type") or data.get("stop_hook_active"):
+        return
+    os.chdir(data.get("cwd") or os.getcwd())
+    root = find_root()
+    now, live = int(time.time()), set()
+    for p in [os.path.join(root, ".agent-team", "board.db"), *glob.glob(os.path.join(root, worktree_base(root), "*", ".agent-team", "board.db"))]:
+        if not os.path.isfile(p) or (os.path.dirname(os.path.dirname(p)) != root and os.path.isfile(os.path.join(os.path.dirname(p), "side"))):
+            continue
+        con = sqlite3.connect(f"file:{p}?mode=ro", uri=True, timeout=5)
+        live |= {r[0] for r in con.execute(
+            "SELECT role FROM agent_runs WHERE state != 'DONE' AND (last_seen > ? OR "
+            "(busy_since IS NOT NULL AND last_seen + COALESCE(tool_timeout, 0) + 60 > ?))", (now - hang_minutes(root) * 60, now))}
+        con.close()
+    if live:
+        print(json.dumps({"decision": "block", "reason":
+                          f"Còn agent đang chạy ({', '.join(sorted(live))}). Không dừng lượt, không viết câu trạng thái: chạy "
+                          "`board.py wait <task-id>` (nhiều task: `pool.py wait`) rồi xử lý khi nó trả về. "
+                          "Cần user quyết định thật thì dừng lần nữa sẽ được."}, ensure_ascii=False))
 
 
 # ---------- danh sách bước: Lead ghi, status line (progress.py) + chat đọc ----------
@@ -1345,6 +1441,8 @@ def main(argv=None):
     pl.add_argument("task"), pl.add_argument("--set", help='"bước 1 @role ∥ bước 2 @role | bước 3 @role" (| nối tiếp, ∥ song song; lập lại: bước trùng tên giữ trạng thái)')
     st = sp.add_parser("step", help="Lead: đánh dấu 1 bước, in lại danh sách")
     st.add_argument("task"), st.add_argument("n", type=int), st.add_argument("action", choices=list(STEP_STATE))
+    fd = sp.add_parser("field", help='Lead: điền nhiều dòng `- Tên: giá trị` của TASK.md trong 1 lệnh')
+    fd.add_argument("task"), fd.add_argument("pairs", nargs="+", metavar='"Tên dòng=giá trị"')
     rp = sp.add_parser("report")
     rp.add_argument("task"), rp.add_argument("--task-md"), rp.add_argument("--out")
     a = p.parse_args(argv)
